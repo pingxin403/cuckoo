@@ -1,0 +1,35 @@
+# Code Ownership Definition
+# This file defines code ownership for different parts of the monorepo
+# Format: path/pattern @owner-team
+
+# Default owners for everything in the repo
+* @platform-team
+
+# API Contract Layer - owned by platform team
+/api/ @platform-team
+
+# Frontend Application
+/apps/web/ @frontend-team
+
+# Java Services
+/apps/hello-service/ @backend-java-team
+
+# Go Services
+/apps/todo-service/ @backend-go-team
+
+# Shared Libraries
+/libs/ @platform-team
+
+# Build Tools and Scripts
+/tools/ @platform-team
+/scripts/ @platform-team
+
+# Service Templates
+/templates/ @platform-team
+
+# Documentation
+/docs/ @platform-team
+README.md @platform-team
+
+# CI/CD Configuration
+/.github/ @platform-team
