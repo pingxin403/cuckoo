@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package api.v1;
+
+// Go package path for generated code
+option go_package = "github.com/myorg/myrepo/api/v1/hellopb";
+
+// Java package configuration
+option java_package = "com.myorg.api.v1";
+option java_multiple_files = true;
+option java_outer_classname = "HelloProto";
+
+// HelloService 提供问候功能
+//
+// 该服务接收用户姓名并返回个性化的问候消息。
+// 如果未提供姓名，则返回默认问候语。
+service HelloService {
+  // SayHello 生成问候消息
+  //
+  // 根据提供的姓名生成个性化问候。如果姓名为空或仅包含空格，
+  // 则返回默认问候消息 "Hello, World!"。
+  //
+  // Example:
+  //   Request: { name: "Alice" }
+  //   Response: { message: "Hello, Alice!" }
+  //
+  //   Request: { name: "" }
+  //   Response: { message: "Hello, World!" }
+  rpc SayHello(HelloRequest) returns (HelloResponse);
+}
+
+// HelloRequest 包含问候请求的参数
+message HelloRequest {
+  // name 是要问候的用户姓名
+  //
+  // 该字段是可选的。如果为空或仅包含空格，服务将返回默认问候消息。
+  // 最大长度建议不超过 100 个字符。
+  string name = 1;
+}
+
+// HelloResponse 包含生成的问候消息
+message HelloResponse {
+  // message 是生成的问候消息
+  //
+  // 格式：
+  // - 如果提供了姓名："Hello, {name}!"
+  // - 如果未提供姓名："Hello, World!"
+  string message = 1;
+}

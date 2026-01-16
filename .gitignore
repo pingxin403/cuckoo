@@ -1,0 +1,60 @@
+# Build outputs
+target/
+bin/
+build/
+dist/
+out/
+
+# Generated code
+gen/
+**/gen/
+**/java-gen/
+**/src/main/java-gen/
+
+# Dependencies
+node_modules/
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Language specific
+# Java
+*.class
+*.jar
+*.war
+*.ear
+.gradle/
+.mvn/
+
+# Go
+*.exe
+*.test
+*.prof
+go.work
+
+# Node/TypeScript
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.env
+.env.local
+.env.*.local
+
+# Testing
+coverage/
+*.cover
+.nyc_output/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+.cache/
