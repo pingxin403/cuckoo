@@ -1,6 +1,7 @@
-.PHONY: help gen-proto gen-proto-go gen-proto-java gen-proto-ts verify-proto \
+.PHONY: help init check-env gen-proto gen-proto-go gen-proto-java gen-proto-ts verify-proto \
         build build-hello build-todo build-web \
         test test-hello test-todo test-web \
+        lint lint-hello lint-todo lint-web format format-hello format-todo format-web \
         docker-build docker-build-hello docker-build-todo \
         dev clean
 
@@ -9,6 +10,8 @@ help:
 	@echo "Monorepo Build System"
 	@echo ""
 	@echo "Available targets:"
+	@echo "  init               - Initialize development environment and install dependencies"
+	@echo "  check-env          - Check if all required tools are installed"
 	@echo "  gen-proto          - Generate code from Protobuf definitions (all languages)"
 	@echo "  gen-proto-go       - Generate Go code from Protobuf"
 	@echo "  gen-proto-java     - Generate Java code from Protobuf"
@@ -25,6 +28,16 @@ help:
 	@echo "  test-todo          - Run TODO service tests"
 	@echo "  test-web           - Run Web application tests"
 	@echo ""
+	@echo "  lint               - Run linters on all services"
+	@echo "  lint-hello         - Run Java linters (Checkstyle, SpotBugs)"
+	@echo "  lint-todo          - Run Go linter (golangci-lint)"
+	@echo "  lint-web           - Run TypeScript linter (ESLint)"
+	@echo ""
+	@echo "  format             - Format code in all services"
+	@echo "  format-hello       - Format Java code"
+	@echo "  format-todo        - Format Go code"
+	@echo "  format-web         - Format TypeScript code (Prettier)"
+	@echo ""
 	@echo "  docker-build       - Build all Docker images"
 	@echo "  docker-build-hello - Build Hello service Docker image"
 	@echo "  docker-build-todo  - Build TODO service Docker image"
@@ -32,18 +45,34 @@ help:
 	@echo "  dev                - Start all services in development mode"
 	@echo "  clean              - Clean all build artifacts"
 
+# Initialization
+init:
+	@echo "Initializing development environment..."
+	@./scripts/init.sh
+
+# Environment check
+check-env:
+	@./scripts/check-env.sh
+
 # Protobuf code generation
 gen-proto: gen-proto-go gen-proto-java gen-proto-ts
 
 gen-proto-go:
 	@echo "Generating Go code from Protobuf..."
-	@mkdir -p apps/todo-service/gen
-	protoc --go_out=apps/todo-service/gen \
+	@mkdir -p apps/todo-service/gen/hellopb
+	@mkdir -p apps/todo-service/gen/todopb
+	protoc --go_out=apps/todo-service/gen/hellopb \
 	       --go_opt=paths=source_relative \
-	       --go-grpc_out=apps/todo-service/gen \
+	       --go-grpc_out=apps/todo-service/gen/hellopb \
 	       --go-grpc_opt=paths=source_relative \
 	       -I api/v1 \
-	       api/v1/*.proto
+	       api/v1/hello.proto
+	protoc --go_out=apps/todo-service/gen/todopb \
+	       --go_opt=paths=source_relative \
+	       --go-grpc_out=apps/todo-service/gen/todopb \
+	       --go-grpc_opt=paths=source_relative \
+	       -I api/v1 \
+	       api/v1/todo.proto
 
 gen-proto-java:
 	@echo "Generating Java code from Protobuf..."
@@ -63,14 +92,7 @@ gen-proto-java:
 gen-proto-ts:
 	@echo "Generating TypeScript code from Protobuf..."
 	@if [ -d "apps/web" ]; then \
-		mkdir -p apps/web/src/gen; \
-		cd apps/web && npm install; \
-		protoc --plugin=./apps/web/node_modules/.bin/protoc-gen-ts_proto \
-		       --ts_proto_out=apps/web/src/gen \
-		       --ts_proto_opt=esModuleInterop=true \
-		       --ts_proto_opt=outputServices=grpc-web \
-		       -I api/v1 \
-		       api/v1/*.proto; \
+		cd apps/web && npm run gen-proto; \
 	else \
 		echo "Warning: apps/web directory not found. Skipping TypeScript generation."; \
 		echo "TypeScript code will be generated when the web app is initialized."; \
@@ -112,6 +134,43 @@ test-todo:
 test-web:
 	@echo "Running Web application tests..."
 	@cd apps/web && npm test
+
+# Lint targets
+lint: lint-hello lint-todo lint-web
+
+lint-hello:
+	@echo "Running Java linters (Checkstyle, SpotBugs)..."
+	@cd apps/hello-service && ./gradlew checkstyleMain checkstyleTest spotbugsMain
+
+lint-todo:
+	@echo "Running Go linter (golangci-lint)..."
+	@if command -v golangci-lint >/dev/null 2>&1; then \
+		cd apps/todo-service && golangci-lint run ./...; \
+	else \
+		echo "Warning: golangci-lint not found. Install it from https://golangci-lint.run/usage/install/"; \
+		echo "Falling back to basic go vet..."; \
+		cd apps/todo-service && go vet ./...; \
+	fi
+
+lint-web:
+	@echo "Running TypeScript linter (ESLint)..."
+	@cd apps/web && npm run lint
+
+# Format targets
+format: format-hello format-todo format-web
+
+format-hello:
+	@echo "Formatting Java code..."
+	@echo "Note: Java formatting is enforced by Checkstyle. Run 'make lint-hello' to check."
+	@cd apps/hello-service && ./gradlew checkstyleMain checkstyleTest
+
+format-todo:
+	@echo "Formatting Go code..."
+	@cd apps/todo-service && gofmt -w . && goimports -w .
+
+format-web:
+	@echo "Formatting TypeScript code (Prettier)..."
+	@cd apps/web && npm run format
 
 # Docker build targets
 docker-build: docker-build-hello docker-build-todo

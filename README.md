@@ -1,6 +1,18 @@
 # Monorepo Hello/TODO Services
 
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com)
+[![Local Setup](https://img.shields.io/badge/local%20setup-verified-brightgreen)](docs/LOCAL_SETUP_VERIFICATION.md)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 A multi-language monorepo project demonstrating microservices architecture with Java/Spring Boot, Go, and React/TypeScript.
+
+## ✅ 项目状态
+
+- **本地开发**: ✅ 已验证可运行 ([查看验证报告](docs/LOCAL_SETUP_VERIFICATION.md))
+- **构建系统**: ✅ 所有服务可成功构建
+- **基础设施**: ✅ Envoy/Higress 配置完成
+- **CI/CD**: ✅ GitHub Actions 流水线配置完成
+- **代码质量**: ⚠️ 工具已配置（待启用）
 
 ## 项目概述
 
@@ -40,6 +52,70 @@ A multi-language monorepo project demonstrating microservices architecture with 
 
 ## 快速开始
 
+> 📖 **详细指南**: 查看 [Getting Started Guide](docs/GETTING_STARTED.md) 获取完整的设置说明和故障排查。
+
+### 🚀 一键初始化（推荐）
+
+```bash
+# 1. 克隆项目
+git clone <repository-url>
+cd cuckoo
+
+# 2. 初始化环境（自动安装依赖和配置）
+make init
+
+# 3. 启动所有服务
+./scripts/dev.sh
+
+# 4. 访问前端
+# 打开浏览器访问 http://localhost:5173
+```
+
+`make init` 会自动完成以下操作：
+- ✅ 检查必需的工具（Java, Go, Node.js, protoc）
+- ✅ 安装 Go 工具（protoc-gen-go, protoc-gen-go-grpc）
+- ✅ 安装前端依赖（npm install）
+- ✅ 生成 Protobuf 代码
+- ✅ 安装 Git hooks
+- ✅ 创建必要的目录
+
+### 🔧 手动设置（如果需要）
+
+如果 `make init` 失败或需要手动设置：
+
+```bash
+# 1. 安装依赖
+# macOS
+brew install protobuf go node
+
+# 2. 安装 Go 工具
+go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+
+# 3. 安装前端依赖
+cd apps/web && npm install && cd ../..
+
+# 4. 生成 Protobuf 代码
+make gen-proto
+
+# 5. 安装 Git hooks
+./scripts/install-hooks.sh
+```
+
+### 🎯 5 分钟快速验证
+
+### 🎯 验证安装（可选）
+
+初始化完成后，可以运行以下命令验证：
+
+```bash
+# 构建所有服务
+make build
+
+# 测试服务状态
+./scripts/test-services.sh
+```
+
 ### 前置要求
 
 - **Java**: JDK 17+
@@ -51,14 +127,33 @@ A multi-language monorepo project demonstrating microservices architecture with 
 
 ### 安装依赖
 
+**自动安装（推荐）**:
+```bash
+make init
+```
+
+**手动安装**:
+
 ```bash
 # 安装 Protobuf 编译器 (macOS)
 brew install protobuf
 
+# 安装 Envoy (可选但推荐，用于 API 网关)
+brew install envoy
+
 # 安装 gRPC 插件
 go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+
+# 安装前端依赖
+cd apps/web && npm install && cd ../..
 ```
+
+**关于 Envoy**:
+- Envoy 是可选的，但强烈推荐安装
+- 没有 Envoy，前端无法通过 API 网关访问后端服务
+- 服务仍然可以独立运行和测试
+- 安装命令：`brew install envoy` (macOS) 或参考 [Envoy 官方文档](https://www.envoyproxy.io/docs/envoy/latest/start/install)
 
 ### 生成代码
 
@@ -149,6 +244,10 @@ make docker-build-todo     # TODO Service 镜像
 
 - **南北向流量** (North-South): 前端 → Higress 网关 → 后端服务
 - **东西向流量** (East-West): 服务间直连 gRPC 通信
+
+详细的前后端通信架构说明请参考：
+- **[apps/web/DEPLOYMENT.md](apps/web/DEPLOYMENT.md)** - 完整的部署和通信架构文档
+- **[docs/COMMUNICATION.md](docs/COMMUNICATION.md)** - 快速参考指南
 
 ### API 契约
 

@@ -3,7 +3,7 @@ syntax = "proto3";
 package api.v1;
 
 // Go package path for generated code
-option go_package = "github.com/myorg/myrepo/api/v1/hellopb";
+option go_package = "github.com/pingxin/cuckoo/api/v1/hellopb";
 
 // Java package configuration
 option java_package = "com.myorg.api.v1";

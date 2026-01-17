@@ -1,0 +1,67 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: hello-service
+  description: Hello greeting service - provides personalized greeting messages via gRPC
+  annotations:
+    github.com/project-slug: pingxin/cuckoo
+    backstage.io/techdocs-ref: dir:.
+  tags:
+    - java
+    - spring-boot
+    - grpc
+    - backend
+  links:
+    - url: https://api.example.com/api/hello
+      title: API Endpoint
+      icon: web
+    - url: https://github.com/pingxin/cuckoo/tree/main/apps/hello-service
+      title: Source Code
+      icon: github
+spec:
+  type: service
+  lifecycle: production
+  owner: backend-java-team
+  system: monorepo-platform
+  providesApis:
+    - hello-api
+  dependsOn:
+    - resource:default/hello-database
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: hello-api
+  description: Hello Service gRPC API - provides greeting functionality
+  tags:
+    - grpc
+    - protobuf
+spec:
+  type: grpc
+  lifecycle: production
+  owner: backend-java-team
+  system: monorepo-platform
+  definition: |
+    # Hello Service API
+    
+    This API is defined in Protobuf format.
+    
+    **Location**: `api/v1/hello.proto`
+    
+    ## Service Definition
+    
+    ```protobuf
+    service HelloService {
+      rpc SayHello(HelloRequest) returns (HelloResponse);
+    }
+    ```
+    
+    ## Messages
+    
+    - **HelloRequest**: Contains the name to greet
+    - **HelloResponse**: Contains the greeting message
+    
+    ## Usage
+    
+    The service accepts a name and returns a personalized greeting.
+    If no name is provided, it returns "Hello, World!".

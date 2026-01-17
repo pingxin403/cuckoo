@@ -1,0 +1,38 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: todo-service
+  description: TODO management service
+  annotations:
+    github.com/project-slug: pingxin/cuckoo
+    backstage.io/techdocs-ref: dir:.
+  tags:
+    - go
+    - grpc
+    - todo
+  links:
+    - url: https://api.example.com/api/todo
+      title: API Endpoint
+      icon: web
+spec:
+  type: service
+  lifecycle: production
+  owner: backend-go-team
+  system: monorepo-platform
+  providesApis:
+    - todo-api
+  consumesApis:
+    - hello-api
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: todo-api
+  description: TODO Service gRPC API
+spec:
+  type: grpc
+  lifecycle: production
+  owner: backend-go-team
+  system: monorepo-platform
+  definition: |
+    file: api/v1/todo.proto

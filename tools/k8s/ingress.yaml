@@ -1,0 +1,149 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: monorepo-ingress
+  namespace: default
+  labels:
+    app: monorepo-platform
+    component: api-gateway
+  annotations:
+    # Higress specific annotations for gRPC support
+    higress.io/backend-protocol: "GRPC"
+    
+    # CORS configuration
+    higress.io/cors-allow-origin: "*"
+    higress.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
+    higress.io/cors-allow-headers: "content-type,x-grpc-web,x-user-agent,grpc-timeout,authorization"
+    higress.io/cors-expose-headers: "grpc-status,grpc-message,grpc-status-details-bin"
+    higress.io/cors-max-age: "86400"
+    higress.io/cors-allow-credentials: "true"
+    
+    # gRPC-Web support
+    higress.io/enable-grpc-web: "true"
+    
+    # Timeout configuration
+    higress.io/upstream-timeout: "30s"
+    
+    # Rate limiting (optional, adjust as needed)
+    # higress.io/rate-limit: "100"
+    # higress.io/rate-limit-burst: "200"
+    
+    # SSL/TLS configuration (uncomment when using HTTPS)
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    # higress.io/ssl-redirect: "true"
+spec:
+  ingressClassName: higress
+  
+  # TLS configuration (uncomment when using HTTPS)
+  # tls:
+  # - hosts:
+  #   - api.example.com
+  #   secretName: monorepo-tls-secret
+  
+  rules:
+  - host: api.example.com  # Replace with your actual domain
+    http:
+      paths:
+      # Hello Service routing
+      - path: /api/hello
+        pathType: Prefix
+        backend:
+          service:
+            name: hello-service
+            port:
+              number: 9090
+      
+      # TODO Service routing
+      - path: /api/todo
+        pathType: Prefix
+        backend:
+          service:
+            name: todo-service
+            port:
+              number: 9091
+  
+  # Additional rule for localhost/IP access (development)
+  - http:
+      paths:
+      - path: /api/hello
+        pathType: Prefix
+        backend:
+          service:
+            name: hello-service
+            port:
+              number: 9090
+      
+      - path: /api/todo
+        pathType: Prefix
+        backend:
+          service:
+            name: todo-service
+            port:
+              number: 9091
+
+---
+# McpBridge configuration for advanced gRPC-Web features (optional)
+# Uncomment if you need advanced Higress features
+# apiVersion: extensions.higress.io/v1alpha1
+# kind: McpBridge
+# metadata:
+#   name: grpc-web-bridge
+#   namespace: higress-system
+# spec:
+#   services:
+#   - name: hello-service
+#     namespace: default
+#     port: 9090
+#     protocol: grpc
+#   - name: todo-service
+#     namespace: default
+#     port: 9091
+#     protocol: grpc
+
+---
+# Health check endpoint configuration (optional)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ingress-config
+  namespace: default
+  labels:
+    app: monorepo-platform
+data:
+  # Additional Higress configuration can be added here
+  readme.md: |
+    # Ingress Configuration
+    
+    This ingress configuration provides:
+    - gRPC and gRPC-Web protocol support
+    - CORS configuration for cross-origin requests
+    - Path-based routing to backend services
+    - Health checks and timeouts
+    
+    ## Services
+    - Hello Service: /api/hello -> hello-service:9090
+    - TODO Service: /api/todo -> todo-service:9091
+    
+    ## Usage
+    Apply this configuration:
+    ```bash
+    kubectl apply -f tools/k8s/ingress.yaml
+    ```
+    
+    ## Verify
+    ```bash
+    kubectl get ingress monorepo-ingress
+    kubectl describe ingress monorepo-ingress
+    ```
+    
+    ## Testing
+    ```bash
+    # Get ingress IP/hostname
+    kubectl get ingress monorepo-ingress -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+    
+    # Test Hello Service
+    grpcurl -plaintext -d '{"name": "World"}' <INGRESS_IP>:80 api.v1.HelloService/SayHello
+    
+    # Test TODO Service
+    grpcurl -plaintext <INGRESS_IP>:80 api.v1.TodoService/ListTodos
+    ```

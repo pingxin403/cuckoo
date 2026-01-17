@@ -1,0 +1,28 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: web-app
+  description: React frontend application for Hello and TODO services
+  annotations:
+    github.com/project-slug: myorg/myrepo
+    backstage.io/techdocs-ref: dir:.
+  tags:
+    - react
+    - typescript
+    - frontend
+    - grpc-web
+  links:
+    - url: http://localhost:5173
+      title: Development Server
+      icon: web
+spec:
+  type: website
+  lifecycle: production
+  owner: frontend-team
+  system: monorepo-platform
+  consumesApis:
+    - hello-api
+    - todo-api
+  dependsOn:
+    - component:default/hello-service
+    - component:default/todo-service

@@ -1,0 +1,337 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository }}
+
+jobs:
+  # Job 1: Verify Protobuf code generation
+  verify-proto:
+    name: Verify Protobuf Generation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Protobuf compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+          protoc --version
+
+      - name: Install Protobuf plugins
+        run: |
+          # Go plugins
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+          
+          # TypeScript plugin
+          cd apps/web
+          npm ci
+          cd ../..
+
+      - name: Generate Protobuf code
+        run: make gen-proto
+
+      - name: Verify generated code is up to date
+        run: |
+          git diff --exit-code || (echo "Generated code is out of date. Run 'make gen-proto' and commit changes." && exit 1)
+
+  # Job 2: Test and build Hello Service (Java)
+  build-hello-service:
+    name: Build Hello Service
+    runs-on: ubuntu-latest
+    needs: verify-proto
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x apps/hello-service/gradlew
+
+      - name: Build with Gradle
+        working-directory: apps/hello-service
+        run: ./gradlew build --no-daemon
+
+      - name: Run tests
+        working-directory: apps/hello-service
+        run: ./gradlew test --no-daemon
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hello-service-test-results
+          path: apps/hello-service/build/reports/tests/
+
+      - name: Build Docker image
+        if: github.event_name == 'push'
+        working-directory: apps/hello-service
+        run: docker build -t hello-service:${{ github.sha }} .
+
+      - name: Save Docker image
+        if: github.event_name == 'push'
+        run: |
+          docker save hello-service:${{ github.sha }} | gzip > hello-service.tar.gz
+
+      - name: Upload Docker image artifact
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: hello-service-image
+          path: hello-service.tar.gz
+          retention-days: 1
+
+  # Job 3: Test and build TODO Service (Go)
+  build-todo-service:
+    name: Build TODO Service
+    runs-on: ubuntu-latest
+    needs: verify-proto
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache-dependency-path: apps/todo-service/go.sum
+
+      - name: Download dependencies
+        working-directory: apps/todo-service
+        run: go mod download
+
+      - name: Run tests
+        working-directory: apps/todo-service
+        run: go test -v -race -coverprofile=coverage.out ./...
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: apps/todo-service/coverage.out
+          flags: todo-service
+
+      - name: Build binary
+        working-directory: apps/todo-service
+        run: go build -v -o bin/todo-service .
+
+      - name: Build Docker image
+        if: github.event_name == 'push'
+        working-directory: apps/todo-service
+        run: docker build -t todo-service:${{ github.sha }} .
+
+      - name: Save Docker image
+        if: github.event_name == 'push'
+        run: |
+          docker save todo-service:${{ github.sha }} | gzip > todo-service.tar.gz
+
+      - name: Upload Docker image artifact
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: todo-service-image
+          path: todo-service.tar.gz
+          retention-days: 1
+
+  # Job 4: Test and build Frontend (React)
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    needs: verify-proto
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: apps/web
+        run: npm ci
+
+      - name: Run linter
+        working-directory: apps/web
+        run: npm run lint
+
+      - name: Run tests
+        working-directory: apps/web
+        run: npm test -- --run
+
+      - name: Build production bundle
+        working-directory: apps/web
+        run: npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: apps/web/dist/
+          retention-days: 7
+
+  # Job 5: Push Docker images (only on push to main/develop)
+  push-images:
+    name: Push Docker Images
+    runs-on: ubuntu-latest
+    needs: [build-hello-service, build-todo-service]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download Hello Service image
+        uses: actions/download-artifact@v4
+        with:
+          name: hello-service-image
+
+      - name: Download TODO Service image
+        uses: actions/download-artifact@v4
+        with:
+          name: todo-service-image
+
+      - name: Load Docker images
+        run: |
+          docker load < hello-service.tar.gz
+          docker load < todo-service.tar.gz
+
+      - name: Tag and push Hello Service
+        run: |
+          IMAGE_TAG=${{ github.ref == 'refs/heads/main' && 'latest' || 'develop' }}
+          docker tag hello-service:${{ github.sha }} ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/hello-service:$IMAGE_TAG
+          docker tag hello-service:${{ github.sha }} ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/hello-service:${{ github.sha }}
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/hello-service:$IMAGE_TAG
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/hello-service:${{ github.sha }}
+
+      - name: Tag and push TODO Service
+        run: |
+          IMAGE_TAG=${{ github.ref == 'refs/heads/main' && 'latest' || 'develop' }}
+          docker tag todo-service:${{ github.sha }} ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/todo-service:$IMAGE_TAG
+          docker tag todo-service:${{ github.sha }} ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/todo-service:${{ github.sha }}
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/todo-service:$IMAGE_TAG
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/todo-service:${{ github.sha }}
+
+  # Job 6: Deploy to Kubernetes (only on push to main)
+  deploy-k8s:
+    name: Deploy to Kubernetes
+    runs-on: ubuntu-latest
+    needs: push-images
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'latest'
+
+      - name: Configure kubectl
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/.kube/config
+
+      - name: Update image tags in Kustomize
+        run: |
+          cd k8s/overlays/production
+          kustomize edit set image \
+            hello-service=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/hello-service:${{ github.sha }} \
+            todo-service=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/todo-service:${{ github.sha }}
+
+      - name: Deploy to production
+        run: |
+          kubectl apply -k k8s/overlays/production
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/hello-service -n production --timeout=5m
+          kubectl rollout status deployment/todo-service -n production --timeout=5m
+
+      - name: Verify deployment
+        run: |
+          kubectl get pods -n production
+          kubectl get svc -n production
+          kubectl get ingress -n production
+
+  # Job 7: Security scanning
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: [build-hello-service, build-todo-service]
+    if: github.event_name == 'push'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Hello Service image
+        uses: actions/download-artifact@v4
+        with:
+          name: hello-service-image
+
+      - name: Download TODO Service image
+        uses: actions/download-artifact@v4
+        with:
+          name: todo-service-image
+
+      - name: Load Docker images
+        run: |
+          docker load < hello-service.tar.gz
+          docker load < todo-service.tar.gz
+
+      - name: Run Trivy vulnerability scanner - Hello Service
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: hello-service:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-hello-results.sarif'
+
+      - name: Run Trivy vulnerability scanner - TODO Service
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: todo-service:${{ github.sha }}
+          format: 'sarif'
+          output: 'trivy-todo-results.sarif'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: '.'
