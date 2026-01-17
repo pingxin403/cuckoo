@@ -1,0 +1,25 @@
+# Dependencies
+node_modules
+
+# Build output
+dist
+build
+
+# Generated code
+src/gen
+
+# Cache
+.cache
+.vite
+
+# Logs
+*.log
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode
+.idea

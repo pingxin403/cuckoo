@@ -1,0 +1,43 @@
+# Ingress patch for production with TLS and domain configuration
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: monorepo-ingress
+  annotations:
+    # Production-specific annotations
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    higress.io/ssl-redirect: "true"
+    higress.io/rate-limit: "1000"
+    higress.io/rate-limit-burst: "2000"
+    
+    # Enhanced security headers
+    higress.io/custom-headers: |
+      X-Frame-Options: DENY
+      X-Content-Type-Options: nosniff
+      X-XSS-Protection: 1; mode=block
+      Strict-Transport-Security: max-age=31536000; includeSubDomains
+spec:
+  tls:
+  - hosts:
+    - api.production.example.com
+    secretName: monorepo-tls-secret
+  
+  rules:
+  - host: api.production.example.com
+    http:
+      paths:
+      - path: /api/hello
+        pathType: Prefix
+        backend:
+          service:
+            name: hello-service
+            port:
+              number: 9090
+      
+      - path: /api/todo
+        pathType: Prefix
+        backend:
+          service:
+            name: todo-service
+            port:
+              number: 9091

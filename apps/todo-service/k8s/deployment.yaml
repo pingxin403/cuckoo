@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todo-service
+  namespace: default
+  labels:
+    app: todo-service
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: todo-service
+  template:
+    metadata:
+      labels:
+        app: todo-service
+        version: v1
+    spec:
+      containers:
+      - name: todo-service
+        image: todo-service:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: grpc
+          containerPort: 9091
+          protocol: TCP
+        env:
+        - name: PORT
+          value: "9091"
+        - name: HELLO_SERVICE_ADDR
+          value: "hello-service:9090"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          grpc:
+            port: 9091
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        readinessProbe:
+          grpc:
+            port: 9091
+          initialDelaySeconds: 5
+          periodSeconds: 5

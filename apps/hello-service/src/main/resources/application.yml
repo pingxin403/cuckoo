@@ -1,0 +1,12 @@
+grpc:
+  server:
+    port: 9090
+
+spring:
+  application:
+    name: hello-service
+
+logging:
+  level:
+    root: INFO
+    com.pingxin.cuckoo: DEBUG

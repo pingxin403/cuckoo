@@ -1,0 +1,78 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Metadata
+metadata:
+  name: monorepo-base
+  annotations:
+    description: "Base Kubernetes resources for Monorepo Hello/TODO Services"
+
+# Namespace for all resources
+namespace: default
+
+# Common labels applied to all resources
+commonLabels:
+  project: monorepo-platform
+  managed-by: kustomize
+  environment: base
+
+# Common annotations applied to all resources
+commonAnnotations:
+  documentation: "https://github.com/myorg/myrepo"
+  contact: "platform-team@example.com"
+
+# Resources to include
+resources:
+  # Hello Service resources
+  - ../../apps/hello-service/k8s/deployment.yaml
+  - ../../apps/hello-service/k8s/service.yaml
+  - ../../apps/hello-service/k8s/configmap.yaml
+  
+  # TODO Service resources
+  - ../../apps/todo-service/k8s/deployment.yaml
+  - ../../apps/todo-service/k8s/service.yaml
+  
+  # Ingress configuration
+  - ../../tools/k8s/ingress.yaml
+
+# Images (can be overridden in overlays)
+images:
+  - name: hello-service
+    newName: hello-service
+    newTag: latest
+  - name: todo-service
+    newName: todo-service
+    newTag: latest
+
+# ConfigMap generator (optional, for additional config)
+configMapGenerator:
+  - name: platform-config
+    literals:
+      - ENVIRONMENT=base
+      - LOG_LEVEL=info
+      - ENABLE_METRICS=true
+
+# Secret generator (optional, for sensitive data)
+# secretGenerator:
+#   - name: platform-secrets
+#     literals:
+#       - DATABASE_PASSWORD=changeme
+
+# Replicas (can be overridden in overlays)
+replicas:
+  - name: hello-service
+    count: 2
+  - name: todo-service
+    count: 2
+
+# Resource name prefix (optional)
+# namePrefix: monorepo-
+
+# Resource name suffix (optional)
+# nameSuffix: -v1
+
+# Labels to add to all resources
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: monorepo-platform
+      app.kubernetes.io/managed-by: kustomize
