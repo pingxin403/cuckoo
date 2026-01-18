@@ -8,13 +8,14 @@ WORKDIR /app
 COPY build.gradle settings.gradle gradlew ./
 COPY gradle ./gradle
 
-# 复制源代码（包括生成的 Protobuf 代码）
-COPY src ./src
-COPY build/generated ./build/generated
+# 复制 API 定义文件（用于 Protobuf 生成）
+COPY ../../api/v1 /api/v1
 
-# 构建应用（跳过测试和 protobuf 生成以加快构建速度）
-# 使用 -x generateProto 跳过 protobuf 生成，因为代码已经提交到 git
-RUN ./gradlew clean build -x test -x generateProto --no-daemon
+# 复制源代码
+COPY src ./src
+
+# 构建应用（跳过测试以加快构建速度）
+RUN ./gradlew clean build -x test --no-daemon
 
 # Stage 2: Runtime stage
 FROM eclipse-temurin:17-jre-alpine
