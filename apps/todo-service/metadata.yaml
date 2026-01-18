@@ -1,0 +1,9 @@
+spec:
+  name: todo-service
+  description: A gRPC service providing task management functionality
+  type: go
+  cd: true
+  codeowners:
+    - "@backend-go-team"
+test:
+  coverage: 70

@@ -1,0 +1,9 @@
+spec:
+  name: hello-service
+  description: A gRPC service providing greeting functionality
+  type: java
+  cd: true
+  codeowners:
+    - "@backend-java-team"
+test:
+  coverage: 30

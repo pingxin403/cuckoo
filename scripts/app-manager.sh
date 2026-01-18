@@ -55,33 +55,69 @@ normalize_app_name() {
     esac
 }
 
+# Auto-detect app type based on files
+detect_app_type() {
+    local app_dir="$1"
+    
+    # Priority 1: Check .apptype file
+    if [ -f "$app_dir/.apptype" ]; then
+        cat "$app_dir/.apptype" | tr -d '[:space:]'
+        return
+    fi
+    
+    # Priority 2: Check metadata.yaml
+    if [ -f "$app_dir/metadata.yaml" ]; then
+        local type=$(grep "^  type:" "$app_dir/metadata.yaml" | awk '{print $2}' | tr -d '[:space:]')
+        if [ -n "$type" ]; then
+            echo "$type"
+            return
+        fi
+    fi
+    
+    # Priority 3: Detect by file characteristics
+    if [ -f "$app_dir/build.gradle" ] || [ -f "$app_dir/pom.xml" ]; then
+        echo "java"
+    elif [ -f "$app_dir/go.mod" ]; then
+        echo "go"
+    elif [ -f "$app_dir/package.json" ]; then
+        echo "node"
+    else
+        echo ""
+    fi
+}
+
 # Get app type
 get_app_type() {
     local app=$(normalize_app_name "$1")
-    case "$app" in
-        hello-service) echo "java" ;;
-        todo-service) echo "go" ;;
-        web) echo "node" ;;
-        test-service) echo "go" ;;
-        *) echo "" ;;
-    esac
+    local app_dir=$(get_app_path "$app")
+    
+    if [ -z "$app_dir" ] || [ ! -d "$app_dir" ]; then
+        echo ""
+        return
+    fi
+    
+    detect_app_type "$app_dir"
 }
 
 # Get app path
 get_app_path() {
     local app=$(normalize_app_name "$1")
-    case "$app" in
-        hello-service) echo "apps/hello-service" ;;
-        todo-service) echo "apps/todo-service" ;;
-        web) echo "apps/web" ;;
-        test-service) echo "apps/test-service" ;;
-        *) echo "" ;;
-    esac
+    
+    # Check if app directory exists
+    if [ -d "apps/$app" ]; then
+        echo "apps/$app"
+    else
+        echo ""
+    fi
 }
 
-# Get list of all apps
+# Get list of all apps dynamically
 get_all_apps() {
-    echo "hello-service todo-service web"
+    for app_dir in apps/*/; do
+        if [ -d "$app_dir" ]; then
+            basename "$app_dir"
+        fi
+    done | tr '\n' ' ' | xargs
 }
 
 # Get list of apps to operate on
@@ -93,7 +129,7 @@ get_apps() {
         if [ -z "$app_type" ]; then
             log_error "Unknown app: $APP_NAME" >&2
             log_info "Available apps: $(get_all_apps)" >&2
-            log_info "Short names: hello, todo, web" >&2
+            log_info "Short names: hello, todo" >&2
             exit 1
         fi
         echo "$normalized_app"

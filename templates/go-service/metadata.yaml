@@ -1,0 +1,9 @@
+spec:
+  name: {{SERVICE_NAME}}
+  description: {{SERVICE_DESCRIPTION}}
+  type: go
+  cd: true
+  codeowners:
+    - "@{{TEAM_NAME}}"
+test:
+  coverage: 80
