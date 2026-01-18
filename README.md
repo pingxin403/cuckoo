@@ -12,7 +12,7 @@ A multi-language monorepo project demonstrating microservices architecture with 
 - **构建系统**: ✅ 所有服务可成功构建
 - **基础设施**: ✅ Envoy/Higress 配置完成
 - **CI/CD**: ✅ GitHub Actions 流水线配置完成
-- **代码质量**: ⚠️ 工具已配置（待启用）
+- **代码质量**: ✅ Shift-left 实践已实施 ([查看详情](docs/SHIFT_LEFT.md))
 
 ## 项目概述
 
@@ -239,6 +239,9 @@ make test APP=web
 ### 代码质量检查
 
 ```bash
+# 运行所有预提交检查（推荐）
+make pre-commit                 # 运行 lint、test、安全检查等
+
 # 运行 lint 检查
 make lint                       # 检查所有变更的应用
 make lint APP=hello             # 检查特定应用（支持简写）
@@ -523,8 +526,19 @@ kubectl get ingress
 
 项目配置了 pre-commit hook，会自动检查：
 
-- Protobuf 生成代码是否最新
-- 代码格式是否符合规范
+- ✅ 工具版本是否正确
+- ✅ Protobuf 生成代码是否最新
+- ✅ 代码格式是否符合规范
+- ✅ 单元测试是否通过
+- ✅ 是否包含潜在的安全问题
+
+手动运行所有检查：
+
+```bash
+make pre-commit
+```
+
+详细的 Shift-Left 实践请参考 [docs/SHIFT_LEFT.md](docs/SHIFT_LEFT.md)
 
 ### Pull Request 流程
 
@@ -573,6 +587,7 @@ cd apps/todo-service && go run .
 - [快速开始](docs/GETTING_STARTED.md) - 详细的环境设置指南
 - [创建应用](docs/CREATE_APP_GUIDE.md) - 创建新应用的完整指南
 - [应用管理](docs/APP_MANAGEMENT.md) - 应用管理系统使用指南
+- [Shift-Left 实践](docs/SHIFT_LEFT.md) - 质量左移和预提交检查
 - [测试指南](docs/TESTING_GUIDE.md) - 测试编写、运行和覆盖率要求
 - [代码检查指南](docs/LINTING_GUIDE.md) - Linting 配置和使用说明
 - [通信架构](docs/COMMUNICATION.md) - 前后端通信模式

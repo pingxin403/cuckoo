@@ -66,8 +66,10 @@ jacocoTestReport {
 			fileTree(dir: it, exclude: [
 				'**/gen/**',
 				'**/generated/**',
+				'**/proto/**',
 				'**/*Application.class',
-				'**/*Config.class'
+				'**/*Config.class',
+				'**/*Configuration.class'
 			])
 		}))
 	}

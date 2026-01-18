@@ -20,8 +20,15 @@ COVERAGE_HTML="coverage.html"
 
 echo -e "${BLUE}Running Go tests with coverage...${NC}\n"
 
-# Run tests with coverage
+# Run tests with coverage, excluding generated code
 go test ./... -coverprofile="$COVERAGE_FILE" -covermode=atomic
+
+# Remove generated code from coverage report
+if [ -f "$COVERAGE_FILE" ]; then
+    # Exclude gen/ directory and main.go from coverage
+    grep -v "/gen/" "$COVERAGE_FILE" | grep -v "main.go" > "${COVERAGE_FILE}.tmp"
+    mv "${COVERAGE_FILE}.tmp" "$COVERAGE_FILE"
+fi
 
 # Check if coverage file was generated
 if [ ! -f "$COVERAGE_FILE" ]; then

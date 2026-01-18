@@ -1,7 +1,7 @@
 .PHONY: help init check-env check-versions proto gen-proto gen-proto-go gen-proto-java gen-proto-ts verify-proto \
         build test lint lint-fix format docker-build run clean list-apps create \
         test-coverage test-coverage-hello test-coverage-todo verify-coverage verify-coverage-hello verify-coverage-todo \
-        dev
+        dev pre-commit
 
 # Default target
 help:
@@ -14,14 +14,18 @@ help:
 	@echo "  proto              - Generate code from Protobuf definitions (all languages)"
 	@echo "  verify-proto       - Verify generated code is up to date (for CI)"
 	@echo ""
+	@echo "  Quality & Testing:"
+	@echo "  pre-commit         - Run all pre-commit quality checks (lint, test, security)"
+	@echo "  lint [APP=name]    - Run linters for app(s)"
+	@echo "  lint-fix [APP=name] - Auto-fix lint errors for app(s)"
+	@echo "  format [APP=name]  - Format code for app(s)"
+	@echo "  test [APP=name]    - Run tests for app(s)"
+	@echo "  test-coverage      - Run tests with coverage for all services"
+	@echo ""
 	@echo "  App Management (supports APP=<name> or auto-detects changed apps):"
 	@echo "  list-apps          - List all available apps"
 	@echo "  create             - Create a new app from template"
 	@echo "  build [APP=name]   - Build app(s)"
-	@echo "  test [APP=name]    - Run tests for app(s)"
-	@echo "  lint [APP=name]    - Run linters for app(s)"
-	@echo "  lint-fix [APP=name] - Auto-fix lint errors for app(s)"
-	@echo "  format [APP=name]  - Format code for app(s)"
 	@echo "  docker-build [APP=name] - Build Docker image(s)"
 	@echo "  run [APP=name]     - Run app(s) locally"
 	@echo "  clean [APP=name]   - Clean build artifacts for app(s)"
@@ -29,12 +33,11 @@ help:
 	@echo "  dev                - Start all services in development mode"
 	@echo ""
 	@echo "Examples:"
-	@echo "  make create                    # Interactive app creation"
+	@echo "  make pre-commit                # Run all quality checks before commit"
 	@echo "  make proto                     # Generate code from Protobuf"
 	@echo "  make test APP=hello            # Test specific app (short name)"
-	@echo "  make test                      # Test changed apps (auto-detect)"
+	@echo "  make lint-fix                  # Fix linting issues in all changed apps"
 	@echo "  make build APP=todo            # Build specific app (short name)"
-	@echo "  make docker-build              # Build images for changed apps"
 
 # Initialization
 init:
@@ -218,3 +221,8 @@ verify-coverage-todo:
 dev:
 	@echo "Starting all services in development mode..."
 	@./scripts/dev.sh
+
+# Pre-commit checks (run all quality checks before commit)
+pre-commit:
+	@echo "Running pre-commit checks..."
+	@./scripts/pre-commit-checks.sh
