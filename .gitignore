@@ -10,11 +10,13 @@ out/
 *.dylib
 *.dll
 
-# Generated code (allow proto-generated code to be committed)
-# gen/
-# **/gen/
-# **/java-gen/
-# **/src/main/java-gen/
+# Generated code - DO NOT commit proto-generated code
+# All proto-generated code should be generated during build time
+# This ensures Single Source of Truth (proto files) and prevents sync issues
+gen/
+**/gen/
+**/build/generated/
+**/src/gen/
 
 # Dependencies
 node_modules/
