@@ -67,6 +67,7 @@ jacocoTestReport {
 				'**/gen/**',
 				'**/generated/**',
 				'**/proto/**',
+				'**/com/myorg/**',  // Exclude generated protobuf code
 				'**/*Application.class',
 				'**/*Config.class',
 				'**/*Configuration.class'
@@ -101,8 +102,10 @@ jacocoTestCoverageVerification {
 				'**/gen/**',
 				'**/generated/**',
 				'**/proto/**',
+				'**/com/myorg/**',  // Exclude generated protobuf code
 				'**/*Application.class',
-				'**/*Config.class'
+				'**/*Config.class',
+				'**/*Configuration.class'
 			])
 		}))
 	}

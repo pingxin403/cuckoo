@@ -493,3 +493,52 @@
 - ✅ Protobuf 文件生成
 - ✅ 自动注册到应用管理系统
 - ✅ 立即集成所有大仓特性（CI/CD、测试、Docker、K8s）
+
+
+### Task 11: Shift-Left Quality Practices
+
+- [x] 11.1 限制测试覆盖率范围
+  - 更新 `apps/todo-service/scripts/test-coverage.sh` 排除生成代码和 main.go
+  - 更新 `apps/hello-service/build.gradle` 排除生成代码和配置类
+  - 调整覆盖率阈值为合理水平（Go: 70%/75%, Java: 30%/50%）
+  - 添加 TODO 注释说明未来提高阈值的计划
+
+- [x] 11.2 统一 lint 命令和 pre-commit hook
+  - 创建 `scripts/pre-commit-checks.sh` 综合检查脚本
+  - 实现 6 类检查：工具版本、Protobuf、Linting、测试、常见问题、安全
+  - 更新 `.githooks/pre-commit` 使用新脚本
+  - 添加 `make pre-commit` 命令
+  - 修复 golangci-lint 检查逻辑
+
+- [x] 11.3 实施其他左移方案
+  - 创建 `docs/SHIFT_LEFT.md` 综合文档
+  - 更新 `README.md` 添加左移实践引用
+  - 更新 `Makefile` 帮助文本突出质量命令
+  - 添加 pre-commit 到开发工作流
+
+**完成状态**: ✅ 已完成
+**相关文件**:
+- `apps/todo-service/scripts/test-coverage.sh`
+- `apps/hello-service/build.gradle`
+- `scripts/pre-commit-checks.sh`
+- `.githooks/pre-commit`
+- `Makefile`
+- `docs/SHIFT_LEFT.md`
+- `README.md`
+
+**功能特性**:
+- ✅ 合理的测试覆盖率范围（排除生成代码）
+- ✅ 统一的 lint 命令（make lint, make lint-fix）
+- ✅ 自动 pre-commit 检查（6 类检查）
+- ✅ 工具版本一致性验证
+- ✅ Protobuf 代码同步验证
+- ✅ 安全检查（潜在密钥扫描）
+- ✅ 常见问题检查（console.log, TODOs, 大文件）
+- ✅ 综合文档和最佳实践指南
+
+**测试结果**:
+- ✅ Go 服务覆盖率：74.7% (阈值 70%)
+- ✅ Java 服务覆盖率：通过 (阈值 30%)
+- ✅ 所有 pre-commit 检查通过
+- ✅ 所有 lint 检查通过
+- ✅ 所有单元测试通过

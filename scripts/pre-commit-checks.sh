@@ -87,7 +87,8 @@ if files_changed_in "apps/todo-service"; then
     
     # Run golangci-lint if available
     if command -v golangci-lint >/dev/null 2>&1; then
-        if golangci-lint run ./... 2>&1 | grep -q "^$"; then
+        LINT_OUTPUT=$(golangci-lint run ./... 2>&1)
+        if echo "$LINT_OUTPUT" | grep -q "0 issues"; then
             echo -e "${GREEN}  ✓ Go linting passed${NC}"
         else
             echo -e "${RED}  ✗ Go linting issues found${NC}"
