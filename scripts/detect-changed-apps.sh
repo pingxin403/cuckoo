@@ -60,7 +60,7 @@ CHANGED_APPS=$(echo "$CHANGED_APPS" | tr ' ' '\n' | sort -u | tr '\n' ' ' | xarg
 
 # If no apps changed, return all apps (for safety)
 if [ -z "$CHANGED_APPS" ]; then
-    echo "hello-service todo-service web"
+    echo -n "hello-service todo-service web"
 else
-    echo "$CHANGED_APPS"
+    echo -n "$CHANGED_APPS"
 fi
