@@ -1,0 +1,9 @@
+spec:
+  name: {{SERVICE_NAME}}
+  description: {{SERVICE_DESCRIPTION}}
+  type: java
+  cd: true
+  codeowners:
+    - "@{{TEAM_NAME}}"
+test:
+  coverage: 30

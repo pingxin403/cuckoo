@@ -1,7 +1,7 @@
 .PHONY: help init check-env check-versions proto gen-proto gen-proto-go gen-proto-java gen-proto-ts verify-proto \
         build test lint lint-fix format docker-build run clean list-apps create \
         test-coverage test-coverage-hello test-coverage-todo verify-coverage verify-coverage-hello verify-coverage-todo \
-        dev pre-commit
+        dev pre-commit verify-auto-detection
 
 # Default target
 help:
@@ -11,6 +11,7 @@ help:
 	@echo "  init               - Initialize development environment and install dependencies"
 	@echo "  check-env          - Check if all required tools are installed"
 	@echo "  check-versions     - Verify tool versions match requirements"
+	@echo "  verify-auto-detection - Verify app type auto-detection works correctly"
 	@echo "  proto              - Generate code from Protobuf definitions (all languages)"
 	@echo "  verify-proto       - Verify generated code is up to date (for CI)"
 	@echo ""
@@ -47,6 +48,10 @@ init:
 # Environment check
 check-env:
 	@./scripts/check-env.sh
+
+# Verify auto-detection functionality
+verify-auto-detection:
+	@./scripts/verify-auto-detection.sh
 
 # Version check
 check-versions:

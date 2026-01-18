@@ -39,7 +39,7 @@ jobs:
             BASE_BRANCH="origin/main"
           fi
           
-          CHANGED_APPS=$(./scripts/detect-changed-apps.sh "$BASE_BRANCH" || echo "hello-service todo-service web")
+          CHANGED_APPS=$(./scripts/detect-changed-apps.sh "$BASE_BRANCH" || ./scripts/detect-changed-apps.sh main)
           
           echo "Changed apps: $CHANGED_APPS"
           echo "apps=$CHANGED_APPS" >> $GITHUB_OUTPUT
@@ -132,9 +132,35 @@ jobs:
           echo "PROTOC_GEN_GO_VERSION=$PROTOC_GEN_GO_VERSION" >> $GITHUB_OUTPUT
           echo "PROTOC_GEN_GO_GRPC_VERSION=$PROTOC_GEN_GO_GRPC_VERSION" >> $GITHUB_OUTPUT
 
+      # 🔥 NEW: Auto-detect app type
+      - name: Detect app type
+        id: detect-type
+        run: |
+          APP_DIR="apps/${{ matrix.app }}"
+          
+          # Priority 1: Check .apptype file
+          if [ -f "$APP_DIR/.apptype" ]; then
+            APP_TYPE=$(cat "$APP_DIR/.apptype" | tr -d '[:space:]')
+          # Priority 2: Check metadata.yaml
+          elif [ -f "$APP_DIR/metadata.yaml" ]; then
+            APP_TYPE=$(grep "^  type:" "$APP_DIR/metadata.yaml" | awk '{print $2}' | tr -d '[:space:]')
+          # Priority 3: Detect by file characteristics
+          elif [ -f "$APP_DIR/build.gradle" ] || [ -f "$APP_DIR/pom.xml" ]; then
+            APP_TYPE="java"
+          elif [ -f "$APP_DIR/go.mod" ]; then
+            APP_TYPE="go"
+          elif [ -f "$APP_DIR/package.json" ]; then
+            APP_TYPE="node"
+          else
+            APP_TYPE="unknown"
+          fi
+          
+          echo "type=$APP_TYPE" >> $GITHUB_OUTPUT
+          echo "Detected app type for ${{ matrix.app }}: $APP_TYPE"
+
       # Setup for Java services
       - name: Set up JDK 17
-        if: matrix.app == 'hello-service'
+        if: steps.detect-type.outputs.type == 'java'
         uses: actions/setup-java@v4
         with:
           java-version: '17'
@@ -143,7 +169,7 @@ jobs:
 
       # Setup for Go services
       - name: Set up Go
-        if: matrix.app == 'todo-service'
+        if: steps.detect-type.outputs.type == 'go'
         uses: actions/setup-go@v5
         with:
           go-version: ${{ steps.versions.outputs.GO_VERSION }}
@@ -151,7 +177,7 @@ jobs:
 
       # Setup for Node.js services
       - name: Set up Node.js
-        if: matrix.app == 'web'
+        if: steps.detect-type.outputs.type == 'node'
         uses: actions/setup-node@v4
         with:
           node-version: ${{ steps.versions.outputs.NODE_VERSION }}
@@ -160,7 +186,7 @@ jobs:
 
       # Install protoc for proto generation
       - name: Install Protobuf compiler
-        if: matrix.app != 'hello-service'
+        if: steps.detect-type.outputs.type != 'java'
         run: |
           PROTOC_VERSION=${{ steps.versions.outputs.PROTOC_VERSION }}
           PROTOC_ZIP=protoc-${PROTOC_VERSION}-linux-x86_64.zip
@@ -169,34 +195,34 @@ jobs:
           sudo unzip -o $PROTOC_ZIP -d /usr/local 'include/*'
           rm -f $PROTOC_ZIP
 
-      # Build Java service (hello-service)
+      # Build Java service
       - name: Build Java service
-        if: matrix.app == 'hello-service'
+        if: steps.detect-type.outputs.type == 'java'
         run: |
           chmod +x apps/${{ matrix.app }}/gradlew
           cd apps/${{ matrix.app }}
           ./gradlew generateProto build jacocoTestReport jacocoTestCoverageVerification --no-daemon
 
       - name: Upload Java test results
-        if: matrix.app == 'hello-service' && always()
+        if: steps.detect-type.outputs.type == 'java' && always()
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.app }}-test-results
           path: apps/${{ matrix.app }}/build/reports/
 
-      # Build Go service (todo-service)
+      # Build Go service
       - name: Install Go protoc plugins
-        if: matrix.app == 'todo-service'
+        if: steps.detect-type.outputs.type == 'go'
         run: |
           go install google.golang.org/protobuf/cmd/protoc-gen-go@${{ steps.versions.outputs.PROTOC_GEN_GO_VERSION }}
           go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@${{ steps.versions.outputs.PROTOC_GEN_GO_GRPC_VERSION }}
 
       - name: Generate proto for Go
-        if: matrix.app == 'todo-service'
+        if: steps.detect-type.outputs.type == 'go'
         run: make proto-go
 
       - name: Build Go service
-        if: matrix.app == 'todo-service'
+        if: steps.detect-type.outputs.type == 'go'
         run: |
           cd apps/${{ matrix.app }}
           go mod download
@@ -204,15 +230,15 @@ jobs:
           go build -v -o bin/${{ matrix.app }} .
 
       - name: Upload Go coverage
-        if: matrix.app == 'todo-service' && always()
+        if: steps.detect-type.outputs.type == 'go' && always()
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.app }}-coverage
           path: apps/${{ matrix.app }}/coverage.html
 
-      # Build Node.js service (web)
+      # Build Node.js service
       - name: Generate proto for TypeScript
-        if: matrix.app == 'web'
+        if: steps.detect-type.outputs.type == 'node'
         run: |
           cd apps/${{ matrix.app }}
           npm ci
@@ -220,7 +246,7 @@ jobs:
           make proto-ts
 
       - name: Build Node.js service
-        if: matrix.app == 'web'
+        if: steps.detect-type.outputs.type == 'node'
         run: |
           cd apps/${{ matrix.app }}
           npm run lint
@@ -228,7 +254,7 @@ jobs:
           npm run build
 
       - name: Upload frontend build
-        if: matrix.app == 'web'
+        if: steps.detect-type.outputs.type == 'node'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.app }}-dist
@@ -236,17 +262,17 @@ jobs:
 
       # Build Docker images (only on push)
       - name: Build Docker image
-        if: github.event_name == 'push' && matrix.app != 'web'
+        if: github.event_name == 'push' && steps.detect-type.outputs.type != 'node'
         run: |
           # Generate proto for Docker build (Java only)
-          if [ "${{ matrix.app }}" = "hello-service" ]; then
+          if [ "${{ steps.detect-type.outputs.type }}" = "java" ]; then
             cd apps/${{ matrix.app }}
             ./gradlew generateProto --no-daemon
             cd ../..
           fi
           
           # Build Docker image
-          if [ "${{ matrix.app }}" = "todo-service" ]; then
+          if [ "${{ steps.detect-type.outputs.type }}" = "go" ]; then
             cd apps/${{ matrix.app }}
             docker build -t ${{ matrix.app }}:${{ github.sha }} .
           else
@@ -254,12 +280,12 @@ jobs:
           fi
 
       - name: Save Docker image
-        if: github.event_name == 'push' && matrix.app != 'web'
+        if: github.event_name == 'push' && steps.detect-type.outputs.type != 'node'
         run: |
           docker save ${{ matrix.app }}:${{ github.sha }} | gzip > ${{ matrix.app }}.tar.gz
 
       - name: Upload Docker image artifact
-        if: github.event_name == 'push' && matrix.app != 'web'
+        if: github.event_name == 'push' && steps.detect-type.outputs.type != 'node'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.app }}-image
@@ -279,16 +305,41 @@ jobs:
       matrix:
         app: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
     steps:
-      - name: Skip if web app
-        if: matrix.app == 'web'
-        run: echo "Skipping web app (no Docker image)"
-
       - name: Checkout code
-        if: matrix.app != 'web'
         uses: actions/checkout@v4
 
+      # 🔥 NEW: Auto-detect app type
+      - name: Detect app type
+        id: detect-type
+        run: |
+          APP_DIR="apps/${{ matrix.app }}"
+          
+          # Priority 1: Check .apptype file
+          if [ -f "$APP_DIR/.apptype" ]; then
+            APP_TYPE=$(cat "$APP_DIR/.apptype" | tr -d '[:space:]')
+          # Priority 2: Check metadata.yaml
+          elif [ -f "$APP_DIR/metadata.yaml" ]; then
+            APP_TYPE=$(grep "^  type:" "$APP_DIR/metadata.yaml" | awk '{print $2}' | tr -d '[:space:]')
+          # Priority 3: Detect by file characteristics
+          elif [ -f "$APP_DIR/build.gradle" ] || [ -f "$APP_DIR/pom.xml" ]; then
+            APP_TYPE="java"
+          elif [ -f "$APP_DIR/go.mod" ]; then
+            APP_TYPE="go"
+          elif [ -f "$APP_DIR/package.json" ]; then
+            APP_TYPE="node"
+          else
+            APP_TYPE="unknown"
+          fi
+          
+          echo "type=$APP_TYPE" >> $GITHUB_OUTPUT
+          echo "Detected app type for ${{ matrix.app }}: $APP_TYPE"
+
+      - name: Skip if Node.js app
+        if: steps.detect-type.outputs.type == 'node'
+        run: echo "Skipping Node.js app (no Docker image)"
+
       - name: Log in to Container Registry
-        if: matrix.app != 'web'
+        if: steps.detect-type.outputs.type != 'node'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -296,18 +347,18 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download Docker image
-        if: matrix.app != 'web'
+        if: steps.detect-type.outputs.type != 'node'
         uses: actions/download-artifact@v4
         with:
           name: ${{ matrix.app }}-image
 
       - name: Load Docker image
-        if: matrix.app != 'web'
+        if: steps.detect-type.outputs.type != 'node'
         run: |
           docker load < ${{ matrix.app }}.tar.gz
 
       - name: Tag and push image
-        if: matrix.app != 'web'
+        if: steps.detect-type.outputs.type != 'node'
         run: |
           IMAGE_TAG=${{ github.ref == 'refs/heads/main' && 'latest' || 'develop' }}
           docker tag ${{ matrix.app }}:${{ github.sha }} ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.app }}:$IMAGE_TAG
@@ -379,27 +430,52 @@ jobs:
       matrix:
         app: ${{ fromJson(needs.detect-changes.outputs.matrix) }}
     steps:
-      - name: Skip if web app
-        if: matrix.app == 'web'
-        run: echo "Skipping web app (no Docker image)"
-
       - name: Checkout code
-        if: matrix.app != 'web'
         uses: actions/checkout@v4
 
+      # 🔥 NEW: Auto-detect app type
+      - name: Detect app type
+        id: detect-type
+        run: |
+          APP_DIR="apps/${{ matrix.app }}"
+          
+          # Priority 1: Check .apptype file
+          if [ -f "$APP_DIR/.apptype" ]; then
+            APP_TYPE=$(cat "$APP_DIR/.apptype" | tr -d '[:space:]')
+          # Priority 2: Check metadata.yaml
+          elif [ -f "$APP_DIR/metadata.yaml" ]; then
+            APP_TYPE=$(grep "^  type:" "$APP_DIR/metadata.yaml" | awk '{print $2}' | tr -d '[:space:]')
+          # Priority 3: Detect by file characteristics
+          elif [ -f "$APP_DIR/build.gradle" ] || [ -f "$APP_DIR/pom.xml" ]; then
+            APP_TYPE="java"
+          elif [ -f "$APP_DIR/go.mod" ]; then
+            APP_TYPE="go"
+          elif [ -f "$APP_DIR/package.json" ]; then
+            APP_TYPE="node"
+          else
+            APP_TYPE="unknown"
+          fi
+          
+          echo "type=$APP_TYPE" >> $GITHUB_OUTPUT
+          echo "Detected app type for ${{ matrix.app }}: $APP_TYPE"
+
+      - name: Skip if Node.js app
+        if: steps.detect-type.outputs.type == 'node'
+        run: echo "Skipping Node.js app (no Docker image)"
+
       - name: Download Docker image
-        if: matrix.app != 'web'
+        if: steps.detect-type.outputs.type != 'node'
         uses: actions/download-artifact@v4
         with:
           name: ${{ matrix.app }}-image
 
       - name: Load Docker image
-        if: matrix.app != 'web'
+        if: steps.detect-type.outputs.type != 'node'
         run: |
           docker load < ${{ matrix.app }}.tar.gz
 
       - name: Run Trivy vulnerability scanner
-        if: matrix.app != 'web'
+        if: steps.detect-type.outputs.type != 'node'
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ matrix.app }}:${{ github.sha }}
@@ -407,7 +483,7 @@ jobs:
           output: 'trivy-${{ matrix.app }}-results.sarif'
 
       - name: Upload Trivy results to GitHub Security
-        if: matrix.app != 'web'
+        if: steps.detect-type.outputs.type != 'node'
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'trivy-${{ matrix.app }}-results.sarif'
