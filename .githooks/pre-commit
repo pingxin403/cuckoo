@@ -36,20 +36,30 @@ fi
 
 # Check Java files (Hello Service)
 if files_changed_in "apps/hello-service/src"; then
-    echo -e "${YELLOW}Java files changed, running linters...${NC}"
+    echo -e "${YELLOW}Java files changed, running linters and tests...${NC}"
     if cd apps/hello-service && ./gradlew checkstyleMain checkstyleTest --quiet; then
         echo -e "${GREEN}✓ Java linting passed${NC}"
-        cd ../..
     else
         echo -e "${RED}✗ Java linting failed${NC}"
-        cd ../..
         FAILED=1
     fi
+    
+    # Run tests with coverage verification
+    echo -e "${YELLOW}Running tests with coverage verification...${NC}"
+    if ./gradlew test jacocoTestCoverageVerification --quiet; then
+        echo -e "${GREEN}✓ Java tests and coverage passed${NC}"
+    else
+        echo -e "${RED}✗ Java tests or coverage failed${NC}"
+        echo -e "${YELLOW}Run './gradlew test jacocoTestReport' to see coverage report${NC}"
+        FAILED=1
+    fi
+    
+    cd ../..
 fi
 
 # Check Go files (TODO Service)
 if files_changed_in "apps/todo-service"; then
-    echo -e "${YELLOW}Go files changed, running linters...${NC}"
+    echo -e "${YELLOW}Go files changed, running linters and tests...${NC}"
     
     # Run gofmt check
     if cd apps/todo-service && [ -z "$(gofmt -l . | grep -v gen/)" ]; then
@@ -70,6 +80,16 @@ if files_changed_in "apps/todo-service"; then
         fi
     else
         echo -e "${YELLOW}⚠ golangci-lint not found, skipping Go linting${NC}"
+    fi
+    
+    # Run tests with coverage verification
+    echo -e "${YELLOW}Running tests with coverage verification...${NC}"
+    if ./scripts/test-coverage.sh > /dev/null 2>&1; then
+        echo -e "${GREEN}✓ Go tests and coverage passed${NC}"
+    else
+        echo -e "${RED}✗ Go tests or coverage failed${NC}"
+        echo -e "${YELLOW}Run './scripts/test-coverage.sh' to see details${NC}"
+        FAILED=1
     fi
     
     cd ../..

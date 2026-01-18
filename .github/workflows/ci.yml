@@ -80,9 +80,9 @@ jobs:
         working-directory: apps/hello-service
         run: ./gradlew build --no-daemon
 
-      - name: Run tests
+      - name: Run tests with coverage
         working-directory: apps/hello-service
-        run: ./gradlew test --no-daemon
+        run: ./gradlew test jacocoTestReport jacocoTestCoverageVerification --no-daemon
 
       - name: Upload test results
         if: always()
@@ -90,6 +90,13 @@ jobs:
         with:
           name: hello-service-test-results
           path: apps/hello-service/build/reports/tests/
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hello-service-coverage-report
+          path: apps/hello-service/build/reports/jacoco/test/html/
 
       - name: Build Docker image
         if: github.event_name == 'push'
@@ -128,11 +135,18 @@ jobs:
         working-directory: apps/todo-service
         run: go mod download
 
-      - name: Run tests
+      - name: Run tests with coverage verification
         working-directory: apps/todo-service
-        run: go test -v -race -coverprofile=coverage.out ./...
+        run: ./scripts/test-coverage.sh
 
-      - name: Upload coverage
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: todo-service-coverage-report
+          path: apps/todo-service/coverage.html
+
+      - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
           files: apps/todo-service/coverage.out

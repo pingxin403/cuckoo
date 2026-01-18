@@ -4,6 +4,11 @@ bin/
 build/
 dist/
 out/
+*.o
+*.a
+*.so
+*.dylib
+*.dll
 
 # Generated code
 gen/
@@ -22,6 +27,10 @@ vendor/
 *.swo
 *~
 .DS_Store
+*.iml
+.project
+.classpath
+.settings/
 
 # Language specific
 # Java
@@ -29,14 +38,20 @@ vendor/
 *.jar
 *.war
 *.ear
+*.nar
 .gradle/
 .mvn/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
 
 # Go
 *.exe
 *.test
 *.prof
+*.out
 go.work
+go.work.sum
 
 # Node/TypeScript
 *.log
@@ -44,17 +59,39 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+lerna-debug.log*
 .env
 .env.local
 .env.*.local
+.vite/
+.rollup.cache/
 
 # Testing
 coverage/
 *.cover
+*.coverprofile
 .nyc_output/
+test-results/
+junit.xml
+.jqwik-database
 
 # Temporary files
 *.tmp
 *.bak
 *.swp
+*.orig
 .cache/
+*.pid
+*.seed
+*.pid.lock
+
+# OS specific
+Thumbs.db
+Desktop.ini
+
+# Docker
+.dockerignore
+
+# Logs
+logs/
+*.log.*

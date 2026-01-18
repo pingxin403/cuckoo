@@ -26,6 +26,12 @@ To automatically run linters before each commit:
 make lint
 ```
 
+### Auto-fix Lint Errors
+
+```bash
+make lint-fix
+```
+
 ### Run All Formatters
 
 ```bash
@@ -57,8 +63,12 @@ cd apps/hello-service
 # Run all quality checks
 ./gradlew check
 
+# Auto-fix formatting issues with Spotless
+./gradlew spotlessApply
+
 # Or from root
-make lint-hello
+make lint APP=hello-service
+make lint-fix APP=hello-service
 ```
 
 ### Reports
@@ -107,13 +117,17 @@ go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 cd apps/todo-service
 golangci-lint run ./...
 
+# Auto-fix issues
+golangci-lint run --fix ./...
+
 # Format code
 gofmt -w .
 goimports -w .
 
 # Or from root
-make lint-todo
-make format-todo
+make lint APP=todo-service
+make lint-fix APP=todo-service
+make format APP=todo-service
 ```
 
 ### Enabled Linters
@@ -158,7 +172,7 @@ cd apps/web
 npm run lint
 
 # Fix ESLint issues automatically
-npm run lint:fix
+npm run lint -- --fix
 
 # Format with Prettier
 npm run format
@@ -167,8 +181,9 @@ npm run format
 npm run format:check
 
 # Or from root
-make lint-web
-make format-web
+make lint APP=web
+make lint-fix APP=web
+make format APP=web
 ```
 
 ### ESLint Rules
@@ -262,8 +277,8 @@ Configure them to use the project's configuration files.
 ## Best Practices
 
 1. **Run linters locally** before pushing code
-2. **Fix issues immediately** rather than accumulating technical debt
-3. **Use auto-fix** when available (`eslint --fix`, `gofmt -w`)
+2. **Use auto-fix** when available: `make lint-fix` or `make lint-fix APP=<app-name>`
+3. **Fix issues immediately** rather than accumulating technical debt
 4. **Don't disable rules** without good reason and team discussion
 5. **Keep configurations in sync** across the team
 6. **Update tools regularly** to get latest bug fixes and improvements

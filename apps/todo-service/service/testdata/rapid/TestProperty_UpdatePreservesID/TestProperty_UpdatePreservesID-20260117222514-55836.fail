@@ -1,0 +1,21 @@
+# 2026/01/17 22:25:14.492841 [TestProperty_UpdatePreservesID] [rapid] draw title: ""
+# 2026/01/17 22:25:14.492844 [TestProperty_UpdatePreservesID] [rapid] draw description: ""
+# 2026/01/17 22:25:14.492845 [TestProperty_UpdatePreservesID] [rapid] draw numUpdates: 1
+# 2026/01/17 22:25:14.492849 [TestProperty_UpdatePreservesID] [rapid] draw newTitle: " "
+# 2026/01/17 22:25:14.492849 [TestProperty_UpdatePreservesID] [rapid] draw newDescription: ""
+# 2026/01/17 22:25:14.492850 [TestProperty_UpdatePreservesID] [rapid] draw completed: false
+# 2026/01/17 22:25:14.492851 [TestProperty_UpdatePreservesID] UpdateTodo failed: rpc error: code = InvalidArgument desc = title is required and cannot be empty
+# 
+v0.4.8#995309178864036016
+0x0
+0x0
+0x0
+0x0
+0x0
+0x5555555555555
+0x0
+0xc05c654ab866b
+0x14
+0x0
+0x0
+0x0

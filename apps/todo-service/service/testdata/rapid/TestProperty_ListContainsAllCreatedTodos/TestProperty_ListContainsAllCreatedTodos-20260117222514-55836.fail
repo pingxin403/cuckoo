@@ -1,0 +1,15 @@
+# 2026/01/17 22:25:14.473921 [TestProperty_ListContainsAllCreatedTodos] [rapid] draw numTodos: 1
+# 2026/01/17 22:25:14.473924 [TestProperty_ListContainsAllCreatedTodos] [rapid] draw title: " "
+# 2026/01/17 22:25:14.473926 [TestProperty_ListContainsAllCreatedTodos] [rapid] draw description: ""
+# 2026/01/17 22:25:14.473926 [TestProperty_ListContainsAllCreatedTodos] CreateTodo failed: rpc error: code = InvalidArgument desc = title is required and cannot be empty
+# 
+v0.4.8#18323222371067535342
+0x0
+0x0
+0x1
+0x5555555555555
+0x0
+0xc05c654ab866b
+0x14
+0x0
+0x0
