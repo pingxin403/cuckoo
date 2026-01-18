@@ -119,8 +119,7 @@ jobs:
 
       - name: Build Docker image
         if: github.event_name == 'push'
-        working-directory: apps/hello-service
-        run: docker build -t hello-service:${{ github.sha }} .
+        run: docker build -f apps/hello-service/Dockerfile -t hello-service:${{ github.sha }} .
 
       - name: Save Docker image
         if: github.event_name == 'push'
