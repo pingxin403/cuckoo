@@ -8,10 +8,7 @@ WORKDIR /app
 COPY build.gradle settings.gradle gradlew ./
 COPY gradle ./gradle
 
-# 复制 API 定义（用于 Protobuf 生成）
-COPY ../../api/v1 /api/v1
-
-# 复制源代码
+# 复制源代码（包括生成的 Protobuf 代码）
 COPY src ./src
 
 # 构建应用（跳过测试以加快构建速度）

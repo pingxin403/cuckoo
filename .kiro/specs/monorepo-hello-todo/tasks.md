@@ -104,13 +104,13 @@
   - 定义服务元数据、所有权、API 引用
   - _Requirements: 12.6_
 
-- [ ]* 3.8 编写 Hello 服务单元测试
+- [x]* 3.8 编写 Hello 服务单元测试
   - 测试 `sayHello` 方法的各种输入情况
   - 测试空名字返回默认消息
   - 使用 JUnit 5 + Mockito
   - _Requirements: 7.1, 7.2_
 
-- [ ]* 3.9 编写 Hello 服务属性测试
+- [x]* 3.9 编写 Hello 服务属性测试
   - **Property 1: Hello Service Name Inclusion**
   - 使用 jqwik 生成随机名字字符串
   - 验证响应消息包含输入的名字
@@ -179,16 +179,16 @@
   - 定义服务元数据、依赖关系（consumesApis: hello-api）
   - _Requirements: 12.6_
 
-- [ ]* 4.10 编写 TODO 服务单元测试
+- [x]* 4.10 编写 TODO 服务单元测试
   - 测试内存存储的 CRUD 操作
   - 测试并发访问场景
   - 使用 Go testing + testify
   - _Requirements: 8.1, 8.2, 8.3, 8.4_
 
-- [ ]* 4.11 编写 TODO 服务属性测试
+- [x]* 4.11 编写 TODO 服务属性测试
   - **Property 2: TODO Creation Returns Unique IDs**
   - **Property 3: TODO CRUD Round-Trip Consistency**
-  - 使用 gopter 或 rapid 生成随机 TODO 数据
+  - 使用 rapid 生成随机 TODO 数据
   - 验证 ID 唯一性和 CRUD 一致性
   - _Requirements: 8.1, 8.2, 8.3, 8.4_
 
@@ -301,6 +301,7 @@
   - 创建 `.github/workflows/ci.yml`
   - 配置测试、构建、Docker 镜像推送
   - 配置 K8s 部署步骤
+  - 添加测试覆盖率验证（80% 整体，90% 服务类）
   - _Requirements: 11.1, 11.2, 11.7_
 
 - [x] 6.6 配置代码格式化和 Lint
@@ -310,70 +311,78 @@
   - 添加到 CI 流水线
   - _Requirements: 11.6_
 
-- [ ] 7. 服务模板和文档
+- [x] 7. 服务模板和文档
   - 创建可复用的服务模板
   - 编写项目文档
   - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 12.6, 13.1, 13.2, 13.3, 13.4, 13.5_
 
-- [ ] 7.1 创建 Java 服务模板
+- [x] 7.1 创建 Java 服务模板
   - 复制 Hello 服务作为模板到 `templates/java-service/`
   - 泛化配置和代码
   - 添加 README 说明如何使用模板
   - _Requirements: 13.1, 13.2_
 
-- [ ] 7.2 创建 Go 服务模板
+- [x] 7.2 创建 Go 服务模板
   - 复制 TODO 服务作为模板到 `templates/go-service/`
   - 泛化配置和代码
   - 添加 README 说明如何使用模板
   - _Requirements: 13.1, 13.2_
 
-- [ ] 7.3 更新根 README
+- [x] 7.3 更新根 README
   - 说明项目结构和架构
   - 添加快速开始指南（运行 `scripts/dev.sh`）
   - 添加构建和部署说明
   - 添加如何添加新服务的指南
   - _Requirements: 12.1, 12.2, 12.3, 12.4_
 
-- [ ] 7.4 创建 API 文档
+- [x] 7.4 创建 API 文档
   - 在 `api/v1/README.md` 中说明 Protobuf 定义
   - 添加使用示例和注释
   - _Requirements: 12.5_
 
-- [ ] 7.5 创建架构图
+- [x] 7.5 创建架构图
   - 使用 Mermaid 或其他工具创建架构图
   - 说明南北向和东西向流量
   - 添加到 README
   - _Requirements: 12.6_
 
-- [ ] 7.6 创建治理文档
+- [x] 7.6 创建治理文档
   - 创建 `docs/governance.md`
   - 说明代码所有权、PR 流程、健康度指标
   - _Requirements: 13.4, 13.5, 13.6_
 
-- [ ] 8. 最终验证和部署
+- [x] 7.7 创建测试指南和更新模板
+  - 创建 `docs/TESTING_GUIDE.md` 说明测试编写、运行和覆盖率要求
+  - 更新 Java 服务模板添加 JaCoCo 配置和测试示例
+  - 更新 Go 服务模板添加测试覆盖率脚本和测试示例
+  - 更新 pre-commit hook 添加覆盖率验证
+  - 更新 CI 流水线添加覆盖率验证步骤
+  - _Requirements: 7.1, 7.2, 8.1, 8.2, 11.1, 13.1, 13.2_
+
+- [x] 8. 最终验证和部署
   - 端到端测试
   - 部署到 K8s
   - _Requirements: 11.1, 11.2, 11.7_
 
-- [ ] 8.1 本地端到端测试
+- [x] 8.1 本地端到端测试
   - 运行 `scripts/dev.sh` 启动所有服务
   - 在浏览器中测试 Hello 表单
   - 测试 TODO 的创建、列表、更新、删除
   - 验证服务间通信（TODO 调用 Hello）
   - _Requirements: 11.5_
 
-- [ ] 8.2 构建 Docker 镜像
+- [x] 8.2 构建 Docker 镜像
   - 运行 `make docker-build`
   - 验证镜像构建成功
   - _Requirements: 11.7_
 
-- [ ] 8.3 部署到 K8s 集群
+- [x] 8.3 部署到 K8s 集群
   - 应用 Kustomize 配置：`kubectl apply -k k8s/overlays/production`
   - 验证所有 Pod 运行正常
   - 验证 Higress Ingress 配置
   - _Requirements: 11.2_
 
-- [ ] 8.4 验证生产环境
+- [x] 8.4 验证生产环境
   - 通过 Higress 网关访问服务
   - 测试前端功能
   - 检查日志和监控
@@ -386,3 +395,101 @@
 - 建议按顺序执行任务，因为存在依赖关系
 - 属性测试任务包含了设计文档中定义的正确性属性
 - 完成每个主要阶段后，建议进行检查点验证
+
+
+## Additional Tasks
+
+### Task 9: App Management System
+
+- [x] 9.1 创建应用变更检测脚本
+  - 创建 `scripts/detect-changed-apps.sh`
+  - 基于 git diff 检测变更的应用
+  - 检查 `apps/*/` 目录变更
+  - 检查 `api/` 变更（影响所有后端服务）
+  - 检查 `libs/` 变更（影响所有应用）
+  - 返回空格分隔的应用名称列表
+
+- [x] 9.2 创建应用管理脚本
+  - 创建 `scripts/app-manager.sh`
+  - 实现统一的应用管理接口
+  - 支持命令：test, build, run, docker, lint, clean, format, list
+  - 支持指定应用名称或自动检测变更的应用
+  - 定义应用类型（java, go, node）和路径
+  - 为每种应用类型实现特定命令
+  - 支持 Gradle 和 Maven 构建工具
+
+- [x] 9.3 集成到 Makefile
+  - 更新 `Makefile` 集成 app-manager.sh
+  - 添加 `list-apps` 目标
+  - 更新 `build`, `test`, `lint`, `format`, `docker-build`, `run`, `clean` 支持 APP 参数
+  - 保留旧的应用特定目标（build-hello, test-hello 等）以保持向后兼容
+  - 为旧目标添加弃用警告
+  - 支持显式应用名称（`make test APP=hello-service`）和自动检测（`make test`）
+
+- [x] 9.4 创建文档
+  - 创建 `docs/APP_MANAGEMENT.md`
+  - 说明应用管理系统的使用方法
+  - 提供快速开始指南
+  - 说明自动检测的工作原理
+  - 提供应用类型和命令的详细说明
+  - 添加故障排查指南
+  - 说明如何添加新应用
+
+- [x] 9.5 更新主 README
+  - 在 `README.md` 中引用应用管理系统
+  - 更新构建、测试、Docker 构建部分
+  - 添加提示说明新的 APP 参数方式
+  - 在文档列表中添加应用管理指南链接
+
+**完成状态**: ✅ 已完成
+**相关文件**:
+- `scripts/detect-changed-apps.sh`
+- `scripts/app-manager.sh`
+- `Makefile`
+- `docs/APP_MANAGEMENT.md`
+- `README.md`
+
+
+### Task 10: App Creation System
+
+- [x] 10.1 创建应用创建脚本
+  - 创建 `scripts/create-app.sh`
+  - 支持交互式和命令行参数模式
+  - 支持 Java、Go、Node.js 三种应用类型
+  - 自动分配端口号
+  - 自动替换模板占位符
+  - 创建 Protobuf 文件
+  - 自动注册到 app-manager.sh
+
+- [x] 10.2 集成到 Makefile
+  - 添加 `make create` 命令
+  - 支持交互式应用创建
+  - 更新帮助信息
+
+- [x] 10.3 创建文档
+  - 创建 `docs/CREATE_APP_GUIDE.md`
+  - 详细说明创建流程
+  - 提供示例和最佳实践
+  - 说明自动集成的特性
+
+- [x] 10.4 更新现有文档
+  - 更新 `docs/APP_MANAGEMENT.md` 添加创建应用部分
+  - 更新 `README.md` 说明 create 命令
+  - 添加快速开始示例
+
+**完成状态**: ✅ 已完成
+**相关文件**:
+- `scripts/create-app.sh`
+- `Makefile`
+- `docs/CREATE_APP_GUIDE.md`
+- `docs/APP_MANAGEMENT.md`
+- `README.md`
+
+**功能特性**:
+- ✅ 交互式应用创建
+- ✅ 命令行参数支持
+- ✅ 自动端口分配
+- ✅ 模板占位符替换
+- ✅ Protobuf 文件生成
+- ✅ 自动注册到应用管理系统
+- ✅ 立即集成所有大仓特性（CI/CD、测试、Docker、K8s）

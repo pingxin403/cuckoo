@@ -1,9 +1,7 @@
 .PHONY: help init check-env gen-proto gen-proto-go gen-proto-java gen-proto-ts verify-proto \
-        build build-hello build-todo build-web \
-        test test-hello test-todo test-web \
-        lint lint-hello lint-todo lint-web format format-hello format-todo format-web \
-        docker-build docker-build-hello docker-build-todo \
-        dev clean
+        build test lint lint-fix format docker-build run clean list-apps create \
+        test-coverage test-coverage-hello test-coverage-todo verify-coverage verify-coverage-hello verify-coverage-todo \
+        dev
 
 # Default target
 help:
@@ -18,32 +16,26 @@ help:
 	@echo "  gen-proto-ts       - Generate TypeScript code from Protobuf"
 	@echo "  verify-proto       - Verify generated code is up to date (for CI)"
 	@echo ""
-	@echo "  build              - Build all services"
-	@echo "  build-hello        - Build Hello service (Java)"
-	@echo "  build-todo         - Build TODO service (Go)"
-	@echo "  build-web          - Build Web application (React)"
-	@echo ""
-	@echo "  test               - Run all tests"
-	@echo "  test-hello         - Run Hello service tests"
-	@echo "  test-todo          - Run TODO service tests"
-	@echo "  test-web           - Run Web application tests"
-	@echo ""
-	@echo "  lint               - Run linters on all services"
-	@echo "  lint-hello         - Run Java linters (Checkstyle, SpotBugs)"
-	@echo "  lint-todo          - Run Go linter (golangci-lint)"
-	@echo "  lint-web           - Run TypeScript linter (ESLint)"
-	@echo ""
-	@echo "  format             - Format code in all services"
-	@echo "  format-hello       - Format Java code"
-	@echo "  format-todo        - Format Go code"
-	@echo "  format-web         - Format TypeScript code (Prettier)"
-	@echo ""
-	@echo "  docker-build       - Build all Docker images"
-	@echo "  docker-build-hello - Build Hello service Docker image"
-	@echo "  docker-build-todo  - Build TODO service Docker image"
+	@echo "  App Management (supports APP=<name> or auto-detects changed apps):"
+	@echo "  list-apps          - List all available apps"
+	@echo "  create             - Create a new app from template"
+	@echo "  build [APP=name]   - Build app(s)"
+	@echo "  test [APP=name]    - Run tests for app(s)"
+	@echo "  lint [APP=name]    - Run linters for app(s)"
+	@echo "  lint-fix [APP=name] - Auto-fix lint errors for app(s)"
+	@echo "  format [APP=name]  - Format code for app(s)"
+	@echo "  docker-build [APP=name] - Build Docker image(s)"
+	@echo "  run [APP=name]     - Run app(s) locally"
+	@echo "  clean [APP=name]   - Clean build artifacts for app(s)"
 	@echo ""
 	@echo "  dev                - Start all services in development mode"
-	@echo "  clean              - Clean all build artifacts"
+	@echo ""
+	@echo "Examples:"
+	@echo "  make create                    # Interactive app creation"
+	@echo "  make test APP=hello-service    # Test specific app"
+	@echo "  make test                      # Test changed apps (auto-detect)"
+	@echo "  make build APP=todo-service    # Build specific app"
+	@echo "  make docker-build              # Build images for changed apps"
 
 # Initialization
 init:
@@ -105,94 +97,116 @@ verify-proto:
 	@git diff --exit-code apps/*/gen apps/*/src/main/java-gen apps/*/src/gen || \
 	  (echo "Generated code is out of date. Run 'make gen-proto' and commit changes." && exit 1)
 
-# Build targets
-build: build-hello build-todo build-web
+# App management targets (new unified interface)
+list-apps:
+	@./scripts/app-manager.sh list
 
-build-hello:
-	@echo "Building Hello service..."
-	@cd apps/hello-service && ./mvnw clean package -DskipTests
+create:
+	@echo "Create a new app from template"
+	@echo ""
+	@read -p "App type (java/go/node): " app_type; \
+	read -p "App name (e.g., user-service): " app_name; \
+	read -p "Port (default: auto-assign): " port; \
+	read -p "Description: " description; \
+	if [ "$$app_type" = "java" ]; then \
+		read -p "Java package (default: com.pingxin.cuckoo.$$app_name): " package; \
+	fi; \
+	if [ "$$app_type" = "go" ]; then \
+		read -p "Go module (default: github.com/pingxin/cuckoo/apps/$$app_name): " module; \
+	fi; \
+	read -p "Team name (default: platform-team): " team; \
+	cmd="./scripts/create-app.sh $$app_type $$app_name"; \
+	[ -n "$$port" ] && cmd="$$cmd --port $$port"; \
+	[ -n "$$description" ] && cmd="$$cmd --description \"$$description\""; \
+	[ -n "$$package" ] && cmd="$$cmd --package $$package"; \
+	[ -n "$$module" ] && cmd="$$cmd --module $$module"; \
+	[ -n "$$team" ] && cmd="$$cmd --team $$team"; \
+	eval $$cmd
 
-build-todo:
-	@echo "Building TODO service..."
-	@cd apps/todo-service && go build -o bin/todo-service .
+build:
+ifdef APP
+	@./scripts/app-manager.sh build $(APP)
+else
+	@./scripts/app-manager.sh build
+endif
 
-build-web:
-	@echo "Building Web application..."
-	@cd apps/web && npm run build
+test:
+ifdef APP
+	@./scripts/app-manager.sh test $(APP)
+else
+	@./scripts/app-manager.sh test
+endif
 
-# Test targets
-test: test-hello test-todo test-web
+lint:
+ifdef APP
+	@./scripts/app-manager.sh lint $(APP)
+else
+	@./scripts/app-manager.sh lint
+endif
 
-test-hello:
-	@echo "Running Hello service tests..."
-	@cd apps/hello-service && ./mvnw test
+lint-fix:
+ifdef APP
+	@./scripts/app-manager.sh lint-fix $(APP)
+else
+	@./scripts/app-manager.sh lint-fix
+endif
 
-test-todo:
-	@echo "Running TODO service tests..."
-	@cd apps/todo-service && go test ./...
+format:
+ifdef APP
+	@./scripts/app-manager.sh format $(APP)
+else
+	@./scripts/app-manager.sh format
+endif
 
-test-web:
-	@echo "Running Web application tests..."
-	@cd apps/web && npm test
+docker-build:
+ifdef APP
+	@./scripts/app-manager.sh docker $(APP)
+else
+	@./scripts/app-manager.sh docker
+endif
 
-# Lint targets
-lint: lint-hello lint-todo lint-web
+run:
+ifdef APP
+	@./scripts/app-manager.sh run $(APP)
+else
+	@echo "Error: APP parameter required for run command"
+	@echo "Usage: make run APP=<app-name>"
+	@echo "Available apps:"
+	@./scripts/app-manager.sh list
+	@exit 1
+endif
 
-lint-hello:
-	@echo "Running Java linters (Checkstyle, SpotBugs)..."
-	@cd apps/hello-service && ./gradlew checkstyleMain checkstyleTest spotbugsMain
+clean:
+ifdef APP
+	@./scripts/app-manager.sh clean $(APP)
+else
+	@./scripts/app-manager.sh clean
+endif
 
-lint-todo:
-	@echo "Running Go linter (golangci-lint)..."
-	@if command -v golangci-lint >/dev/null 2>&1; then \
-		cd apps/todo-service && golangci-lint run ./...; \
-	else \
-		echo "Warning: golangci-lint not found. Install it from https://golangci-lint.run/usage/install/"; \
-		echo "Falling back to basic go vet..."; \
-		cd apps/todo-service && go vet ./...; \
-	fi
+# Test coverage targets
+test-coverage: test-coverage-hello test-coverage-todo
 
-lint-web:
-	@echo "Running TypeScript linter (ESLint)..."
-	@cd apps/web && npm run lint
+test-coverage-hello:
+	@echo "Running Hello service tests with coverage..."
+	@cd apps/hello-service && ./mvnw test jacoco:report
+	@echo "Coverage report: apps/hello-service/build/reports/jacoco/test/html/index.html"
 
-# Format targets
-format: format-hello format-todo format-web
+test-coverage-todo:
+	@echo "Running TODO service tests with coverage..."
+	@cd apps/todo-service && ./scripts/test-coverage.sh
 
-format-hello:
-	@echo "Formatting Java code..."
-	@echo "Note: Java formatting is enforced by Checkstyle. Run 'make lint-hello' to check."
-	@cd apps/hello-service && ./gradlew checkstyleMain checkstyleTest
+# Verify coverage thresholds (for CI)
+verify-coverage: verify-coverage-hello verify-coverage-todo
 
-format-todo:
-	@echo "Formatting Go code..."
-	@cd apps/todo-service && gofmt -w . && goimports -w .
+verify-coverage-hello:
+	@echo "Verifying Hello service coverage..."
+	@cd apps/hello-service && ./mvnw test jacoco:check
 
-format-web:
-	@echo "Formatting TypeScript code (Prettier)..."
-	@cd apps/web && npm run format
-
-# Docker build targets
-docker-build: docker-build-hello docker-build-todo
-
-docker-build-hello:
-	@echo "Building Hello service Docker image..."
-	@docker build -t hello-service:latest apps/hello-service
-
-docker-build-todo:
-	@echo "Building TODO service Docker image..."
-	@docker build -t todo-service:latest apps/todo-service
+verify-coverage-todo:
+	@echo "Verifying TODO service coverage..."
+	@cd apps/todo-service && ./scripts/test-coverage.sh
 
 # Development mode
 dev:
 	@echo "Starting all services in development mode..."
 	@./scripts/dev.sh
-
-# Clean
-clean:
-	@echo "Cleaning build artifacts..."
-	@rm -rf apps/hello-service/target
-	@rm -rf apps/todo-service/bin
-	@rm -rf apps/web/dist
-	@rm -rf apps/web/node_modules/.vite
-	@echo "Clean complete"

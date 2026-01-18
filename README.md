@@ -209,11 +209,16 @@ npm run dev
 # 构建所有服务
 make build
 
-# 或者单独构建
-make build-hello    # Hello Service
-make build-todo     # TODO Service
-make build-web      # Web Application
+# 构建特定应用（支持简写）
+make build APP=hello            # 等同于 APP=hello-service
+make build APP=todo             # 等同于 APP=todo-service
+make build APP=web
 ```
+
+> 💡 **提示**: 
+> - 支持简写：`hello` → `hello-service`, `todo` → `todo-service`
+> - 不指定 APP 参数时，系统会自动检测并构建变更的应用
+> - 详见 [App Management Guide](docs/APP_MANAGEMENT.md)
 
 ### 测试
 
@@ -221,11 +226,36 @@ make build-web      # Web Application
 # 运行所有测试
 make test
 
-# 或者单独测试
-make test-hello     # Hello Service 测试
-make test-todo      # TODO Service 测试
-make test-web       # Web Application 测试
+# 测试特定应用（支持简写）
+make test APP=hello             # 等同于 APP=hello-service
+make test APP=todo              # 等同于 APP=todo-service
+make test APP=web
 ```
+
+> 💡 **提示**: 新的 APP 参数方式支持自动检测变更的应用。详见 [App Management Guide](docs/APP_MANAGEMENT.md)
+
+### 代码质量检查
+
+```bash
+# 运行 lint 检查
+make lint                       # 检查所有变更的应用
+make lint APP=hello             # 检查特定应用（支持简写）
+
+# 自动修复 lint 错误
+make lint-fix                   # 修复所有变更的应用
+make lint-fix APP=hello         # 修复特定应用（支持简写）
+
+# 格式化代码
+make format                     # 格式化所有变更的应用
+make format APP=hello           # 格式化特定应用（支持简写）
+```
+
+**自动修复内容**:
+- **Java**: Spotless 格式化（导入、空格、换行）
+- **Go**: golangci-lint 可修复问题 + gofmt 格式化
+- **Node.js**: ESLint 可修复问题
+
+> 💡 **提示**: 详见 [Linting Guide](docs/LINTING_GUIDE.md) 和 [Code Quality Guide](docs/CODE_QUALITY.md)
 
 ### Docker 构建
 
@@ -233,17 +263,52 @@ make test-web       # Web Application 测试
 # 构建所有 Docker 镜像
 make docker-build
 
-# 或者单独构建
-make docker-build-hello    # Hello Service 镜像
-make docker-build-todo     # TODO Service 镜像
+# 构建特定应用的镜像
+make docker-build APP=hello-service
+make docker-build APP=todo-service
 ```
 
+> 💡 **提示**: 不指定 APP 参数时，系统会自动检测并构建变更应用的镜像。详见 [App Management Guide](docs/APP_MANAGEMENT.md)
+
 ## 架构说明
+
+### 系统架构图
+
+```mermaid
+graph TB
+    Browser[Browser/React App]
+    
+    subgraph "API Gateway Layer"
+        Higress[Higress Gateway<br/>南北向流量]
+    end
+    
+    subgraph "Service Layer"
+        Hello[Hello Service<br/>Java/Spring Boot<br/>Port: 9090]
+        Todo[TODO Service<br/>Go<br/>Port: 9091]
+    end
+    
+    Browser -->|HTTP/gRPC-Web| Higress
+    Higress -->|gRPC| Hello
+    Higress -->|gRPC| Todo
+    Todo -.->|gRPC 直连<br/>东西向流量| Hello
+    
+    style Browser fill:#e1f5ff
+    style Higress fill:#fff4e6
+    style Hello fill:#e8f5e9
+    style Todo fill:#f3e5f5
+```
 
 ### 通信模式
 
 - **南北向流量** (North-South): 前端 → Higress 网关 → 后端服务
+  - 前端通过 Higress 网关访问所有后端服务
+  - Higress 提供 gRPC-Web 到 gRPC 的协议转换
+  - 统一的入口点，便于实施安全策略和监控
+
 - **东西向流量** (East-West): 服务间直连 gRPC 通信
+  - 服务间直接通过 gRPC 通信，避免网关成为瓶颈
+  - 基于 K8s Service 进行服务发现
+  - 使用共享 Protobuf 定义保证类型安全
 
 详细的前后端通信架构说明请参考：
 - **[apps/web/DEPLOYMENT.md](apps/web/DEPLOYMENT.md)** - 完整的部署和通信架构文档
@@ -265,33 +330,142 @@ make docker-build-todo     # TODO Service 镜像
 
 ## 添加新服务
 
-### 使用 Java 模板
+本项目提供了标准化的服务模板，帮助快速创建新服务。
+
+### 使用 Create 命令（推荐）
+
+最简单的方式是使用 `make create` 命令：
 
 ```bash
-# 复制模板
-cp -r templates/java-service apps/my-new-service
-
-# 修改配置
-cd apps/my-new-service
-# 编辑 pom.xml, application.yml 等
+make create
 ```
+
+这将交互式地提示您输入：
+- 应用类型（java、go 或 node）
+- 应用名称（例如：user-service）
+- 端口号（如果不指定则自动分配）
+- 描述
+- 包名（Java 应用）
+- 模块路径（Go 应用）
+- 团队名称
+
+或者直接使用脚本：
+
+```bash
+# 创建 Java 服务
+./scripts/create-app.sh java user-service --port 9092 --description "用户管理服务"
+
+# 创建 Go 服务
+./scripts/create-app.sh go payment-service --port 9093
+
+# 创建 Node.js 应用
+./scripts/create-app.sh node admin-dashboard
+```
+
+创建后，您的新应用将自动集成：
+- ✅ 应用管理系统（make test/build/lint 等）
+- ✅ 变更自动检测
+- ✅ CI/CD 流水线
+- ✅ 测试框架和覆盖率要求
+- ✅ Docker 构建支持
+- ✅ Kubernetes 部署模板
+
+详细说明请参考 [应用管理指南](docs/APP_MANAGEMENT.md#adding-new-apps)
+
+### 手动使用模板
+
+如果您更喜欢手动创建：
+
+#### 使用 Java 模板
+
+```bash
+# 1. 复制模板
+cp -r templates/java-service apps/my-new-service
+cd apps/my-new-service
+
+# 2. 替换占位符
+# 在所有文件中替换以下占位符：
+# - {{SERVICE_NAME}} → 你的服务名称 (例如: user-service)
+# - {{SERVICE_DESCRIPTION}} → 服务描述
+# - {{GRPC_PORT}} → gRPC 端口号 (例如: 9092)
+# - {{PACKAGE_NAME}} → Java 包名 (例如: com.myorg.user)
+# - {{PROTO_FILE}} → Protobuf 文件名 (例如: user.proto)
+# - {{TEAM_NAME}} → 团队名称 (例如: backend-team)
+
+# 3. 定义 Protobuf API
+# 在 api/v1/ 创建你的 .proto 文件
+
+# 4. 生成代码
+make gen-proto-java
+
+# 5. 实现服务逻辑
+# 编辑 src/main/java/.../service/YourServiceImpl.java
+
+# 6. 构建和测试
+./gradlew build
+./gradlew test
+```
+
+详细说明请参考 [templates/java-service/README.md](templates/java-service/README.md)
 
 ### 使用 Go 模板
 
 ```bash
-# 复制模板
+# 1. 复制模板
 cp -r templates/go-service apps/my-new-service
-
-# 修改配置
 cd apps/my-new-service
-# 编辑 go.mod, main.go 等
+
+# 2. 替换占位符
+# 在所有文件中替换以下占位符：
+# - {{SERVICE_NAME}} → 你的服务名称 (例如: user-service)
+# - {{SERVICE_DESCRIPTION}} → 服务描述
+# - {{GRPC_PORT}} → gRPC 端口号 (例如: 9092)
+# - {{MODULE_PATH}} → Go 模块路径 (例如: github.com/myorg/myrepo/apps/user-service)
+# - {{PROTO_FILE}} → Protobuf 文件名 (例如: user.proto)
+# - {{PROTO_PACKAGE}} → Protobuf 包名 (例如: userpb)
+# - {{TEAM_NAME}} → 团队名称 (例如: backend-team)
+
+# 3. 定义 Protobuf API
+# 在 api/v1/ 创建你的 .proto 文件
+
+# 4. 生成代码
+make gen-proto-go
+
+# 5. 实现服务逻辑
+# 编辑 service/your_service.go 和 storage/memory_store.go
+
+# 6. 构建和测试
+go build .
+go test ./...
 ```
+
+详细说明请参考 [templates/go-service/README.md](templates/go-service/README.md)
 
 ### 添加新 API
 
 1. 在 `api/v1/` 目录创建新的 `.proto` 文件
-2. 运行 `make gen-proto` 生成代码
-3. 在服务中实现接口
+2. 定义服务接口和消息类型
+3. 运行 `make gen-proto` 生成代码
+4. 在服务中实现接口
+5. 更新 Kubernetes 配置和 Backstage catalog
+
+### 集成到构建系统
+
+在根目录 `Makefile` 中添加新服务的构建目标：
+
+```makefile
+build-my-new-service:
+	@echo "Building my-new-service..."
+	cd apps/my-new-service && ./gradlew build  # Java
+	# 或
+	cd apps/my-new-service && go build .       # Go
+
+test-my-new-service:
+	@echo "Testing my-new-service..."
+	cd apps/my-new-service && ./gradlew test   # Java
+	# 或
+	cd apps/my-new-service && go test ./...    # Go
+```
 
 ## 部署
 
@@ -325,10 +499,21 @@ kubectl get ingress
 
 代码所有权定义在 `.github/CODEOWNERS` 文件中：
 
-- API 契约层: @platform-team
-- 前端应用: @frontend-team
-- Java 服务: @backend-java-team
-- Go 服务: @backend-go-team
+- **API 契约层** (`/api/`): @platform-team
+- **前端应用** (`/apps/web/`): @frontend-team
+- **Java 服务** (`/apps/hello-service/`): @backend-java-team
+- **Go 服务** (`/apps/todo-service/`): @backend-go-team
+- **基础设施** (`/tools/`, `/k8s/`, `/scripts/`): @platform-team
+- **文档** (`/docs/`, `README.md`): @platform-team
+
+### Pull Request 审批要求
+
+- 所有 PR 必须通过 CI 检查
+- 需要至少一个 CODEOWNERS 成员审批
+- API 变更需要 @platform-team 审批
+- 跨服务变更需要相关团队共同审批
+
+详细的治理流程请参考 [docs/governance.md](docs/governance.md)
 
 ## 开发规范
 
@@ -378,10 +563,47 @@ cd apps/todo-service && go run .
 
 ## 更多信息
 
-- [API 文档](api/v1/README.md)
-- [架构设计](docs/architecture.md)
-- [开发指南](docs/development.md)
-- [部署指南](docs/deployment.md)
+### 文档
+
+- [快速参考](docs/QUICK_REFERENCE.md) - 常用命令速查
+- [API 文档](api/v1/README.md) - Protobuf API 定义和使用说明
+- [架构设计](docs/ARCHITECTURE.md) - 系统架构和设计决策
+- [快速开始](docs/GETTING_STARTED.md) - 详细的环境设置指南
+- [创建应用](docs/CREATE_APP_GUIDE.md) - 创建新应用的完整指南
+- [应用管理](docs/APP_MANAGEMENT.md) - 应用管理系统使用指南
+- [测试指南](docs/TESTING_GUIDE.md) - 测试编写、运行和覆盖率要求
+- [代码检查指南](docs/LINTING_GUIDE.md) - Linting 配置和使用说明
+- [通信架构](docs/COMMUNICATION.md) - 前后端通信模式
+- [代码质量](docs/CODE_QUALITY.md) - 代码质量工具和规范
+- [基础设施](docs/INFRASTRUCTURE.md) - K8s 和 Higress 配置
+- [治理文档](docs/governance.md) - 代码所有权和 PR 流程
+
+### 服务模板
+
+- [Java 服务模板](templates/java-service/README.md) - 创建新的 Java/Spring Boot 服务
+- [Go 服务模板](templates/go-service/README.md) - 创建新的 Go 服务
+
+### 服务文档
+
+- [Hello Service](apps/hello-service/README.md) - Java/Spring Boot 问候服务
+- [TODO Service](apps/todo-service/README.md) - Go 任务管理服务
+- [Web Application](apps/web/README.md) - React 前端应用
+
+## 贡献指南
+
+欢迎贡献！请遵循以下步骤：
+
+1. Fork 本仓库
+2. 创建功能分支 (`git checkout -b feature/amazing-feature`)
+3. 提交更改 (`git commit -m 'Add amazing feature'`)
+4. 推送到分支 (`git push origin feature/amazing-feature`)
+5. 创建 Pull Request
+
+请确保：
+- 所有测试通过
+- 代码符合格式规范
+- 更新相关文档
+- 遵循代码所有权规则
 
 ## 许可证
 

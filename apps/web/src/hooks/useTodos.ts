@@ -1,11 +1,11 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { todoClient } from "../services/todoClient";
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { todoClient } from '../services/todoClient';
 import {
   ListTodosRequest,
   CreateTodoRequest,
   UpdateTodoRequest,
   DeleteTodoRequest,
-} from "../gen/todo";
+} from '../gen/todo';
 
 export function useTodos() {
   const queryClient = useQueryClient();
@@ -16,7 +16,7 @@ export function useTodos() {
     isLoading,
     error,
   } = useQuery({
-    queryKey: ["todos"],
+    queryKey: ['todos'],
     queryFn: async () => {
       const request: ListTodosRequest = {};
       return todoClient.listTodos(request);
@@ -34,7 +34,7 @@ export function useTodos() {
     },
     onSuccess: () => {
       // Invalidate and refetch todos after creating
-      queryClient.invalidateQueries({ queryKey: ["todos"] });
+      queryClient.invalidateQueries({ queryKey: ['todos'] });
     },
   });
 
@@ -56,7 +56,7 @@ export function useTodos() {
     },
     onSuccess: () => {
       // Invalidate and refetch todos after updating
-      queryClient.invalidateQueries({ queryKey: ["todos"] });
+      queryClient.invalidateQueries({ queryKey: ['todos'] });
     },
   });
 
@@ -68,7 +68,7 @@ export function useTodos() {
     },
     onSuccess: () => {
       // Invalidate and refetch todos after deleting
-      queryClient.invalidateQueries({ queryKey: ["todos"] });
+      queryClient.invalidateQueries({ queryKey: ['todos'] });
     },
   });
 

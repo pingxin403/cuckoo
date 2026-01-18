@@ -1,0 +1,56 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: {{SERVICE_NAME}}
+  description: {{SERVICE_DESCRIPTION}}
+  annotations:
+    github.com/project-slug: myorg/myrepo
+    backstage.io/techdocs-ref: dir:.
+  tags:
+    - go
+    - grpc
+    - backend
+  links:
+    - url: https://api.example.com/api/{{SERVICE_NAME}}
+      title: API Endpoint
+      icon: web
+    - url: https://github.com/myorg/myrepo/tree/main/apps/{{SERVICE_NAME}}
+      title: Source Code
+      icon: github
+spec:
+  type: service
+  lifecycle: production
+  owner: {{TEAM_NAME}}
+  system: monorepo-platform
+  providesApis:
+    - {{SERVICE_NAME}}-api
+  consumesApis: []
+  dependsOn: []
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: {{SERVICE_NAME}}-api
+  description: {{SERVICE_NAME}} gRPC API
+  tags:
+    - grpc
+    - protobuf
+spec:
+  type: grpc
+  lifecycle: production
+  owner: {{TEAM_NAME}}
+  system: monorepo-platform
+  definition: |
+    # {{SERVICE_NAME}} API
+    
+    This API is defined in Protobuf format.
+    
+    **Location**: `api/v1/{{PROTO_FILE}}`
+    
+    ## Service Definition
+    
+    See the Protobuf file for complete API definition.
+    
+    ## Usage
+    
+    [Add usage instructions here]

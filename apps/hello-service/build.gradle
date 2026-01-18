@@ -3,9 +3,9 @@ plugins {
 	id 'org.springframework.boot' version '3.5.0'
 	id 'io.spring.dependency-management' version '1.1.7'
 	id 'com.google.protobuf' version '0.9.4'
-	// Temporarily disabled for initial setup
-	// id 'checkstyle'
-	// id 'com.github.spotbugs' version '6.0.7'
+	id 'jacoco'
+	id 'com.diffplug.spotless' version '6.25.0'
+	id 'com.github.spotbugs' version '6.0.7'
 }
 
 group = 'com.pingxin.cuckoo'
@@ -45,7 +45,73 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+	finalizedBy jacocoTestReport
 }
+
+// JaCoCo configuration for test coverage
+jacoco {
+	toolVersion = "0.8.11"
+}
+
+jacocoTestReport {
+	dependsOn test
+	reports {
+		xml.required = true
+		html.required = true
+		csv.required = false
+	}
+	
+	afterEvaluate {
+		classDirectories.setFrom(files(classDirectories.files.collect {
+			fileTree(dir: it, exclude: [
+				'**/gen/**',
+				'**/generated/**',
+				'**/*Application.class',
+				'**/*Config.class'
+			])
+		}))
+	}
+}
+
+jacocoTestCoverageVerification {
+	violationRules {
+		rule {
+			limit {
+				minimum = 0.80 // 80% coverage requirement
+			}
+		}
+		
+		rule {
+			element = 'CLASS'
+			includes = ['com.pingxin.cuckoo.hello.service.*']
+			
+			limit {
+				counter = 'LINE'
+				value = 'COVEREDRATIO'
+				minimum = 0.90 // 90% coverage for service classes
+			}
+		}
+	}
+	
+	afterEvaluate {
+		classDirectories.setFrom(files(classDirectories.files.collect {
+			fileTree(dir: it, exclude: [
+				'**/gen/**',
+				'**/generated/**',
+				'**/proto/**',
+				'**/*Application.class',
+				'**/*Config.class'
+			])
+		}))
+	}
+	
+	// Ensure test task runs before coverage verification
+	dependsOn test
+}
+
+// Only run coverage verification when explicitly requested or during 'check' task
+// Not during regular 'build'
+check.dependsOn jacocoTestCoverageVerification
 
 sourceSets {
 	main {
@@ -79,31 +145,58 @@ clean {
 	delete 'build/generated'
 }
 
-// Code quality tools temporarily disabled for initial setup
-// Uncomment after verifying basic build works
-/*
-// Checkstyle configuration
-checkstyle {
-	toolVersion = '10.12.5'
-	configFile = file("${rootDir}/config/checkstyle/checkstyle.xml")
-	ignoreFailures = true
-	maxWarnings = 0
-}
+// Checkstyle configuration - disabled for now (too strict for practical use)
+// We rely on Spotless for formatting and SpotBugs for bug detection
+// checkstyle {
+// 	toolVersion = '10.12.5'
+// 	def archive = configurations.checkstyle.resolve().find {
+// 		it.name.startsWith("checkstyle")
+// 	}
+// 	config = resources.text.fromArchiveEntry(archive, "sun_checks.xml")
+// 	ignoreFailures = false
+// 	maxWarnings = 0
+// }
+//
+// checkstyleMain {
+// 	source = 'src/main/java'
+// }
+//
+// checkstyleTest {
+// 	source = 'src/test/java'
+// 	maxWarnings = 10
+// }
 
-checkstyleMain {
-	source = 'src/main/java'
-}
-
-checkstyleTest {
-	source = 'src/test/java'
+// Spotless configuration for code formatting
+spotless {
+	java {
+		target 'src/**/*.java'
+		
+		// Use Google Java Format
+		googleJavaFormat('1.19.2')
+		
+		// Remove unused imports
+		removeUnusedImports()
+		
+		// Trim trailing whitespace
+		trimTrailingWhitespace()
+		
+		// End files with newline
+		endWithNewline()
+		
+		// Custom formatting rules
+		importOrder('java', 'javax', 'org', 'com', '')
+		
+		// Exclude generated code
+		targetExclude 'build/generated/**'
+	}
 }
 
 // SpotBugs configuration
 spotbugs {
-	ignoreFailures = true
+	ignoreFailures = false
 	effort = 'max'
 	reportLevel = 'medium'
-	excludeFilter = file("${rootDir}/config/spotbugs/spotbugs-exclude.xml")
+	excludeFilter = file("${projectDir}/spotbugs-exclude.xml")
 }
 
 spotbugsMain {
@@ -130,8 +223,8 @@ spotbugsTest {
 	}
 }
 
-// Add quality checks to build (optional, won't fail build)
-// check.dependsOn checkstyleMain, checkstyleTest, spotbugsMain
-*/
+// Add quality checks to build (Spotless for formatting, SpotBugs for bug detection)
+check.dependsOn spotlessCheck
+
 
 

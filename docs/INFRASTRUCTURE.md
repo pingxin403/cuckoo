@@ -175,9 +175,9 @@ make lint
 make format
 
 # Run specific linters
-make lint-hello
-make lint-todo
-make lint-web
+make lint APP=hello-service
+make lint APP=todo-service
+make lint APP=web
 ```
 
 ## Architecture Diagrams

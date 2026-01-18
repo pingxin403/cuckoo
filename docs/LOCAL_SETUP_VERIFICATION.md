@@ -1,250 +1,359 @@
-# Local Setup Verification Report
+# Local Setup Verification Guide
 
-**Date**: 2026-01-17  
-**Status**: ✅ PASSED
+This document provides step-by-step instructions for verifying your local development environment for the Monorepo Hello/TODO Services project.
 
-## Executive Summary
+## Prerequisites
 
-The Monorepo Hello/TODO Services project has been successfully verified to run locally. All three services (Hello Service, TODO Service, and Frontend) can be built and started independently. The infrastructure configuration is complete and ready for use.
+Before running the verification, ensure you have the following installed:
 
-## Environment
+- **Java 17+** (for Hello Service)
+- **Go 1.21+** (for TODO Service)
+- **Node.js 18+** (for Frontend)
+- **Protocol Buffers Compiler** (`protoc`)
+- **Envoy Proxy** (optional, for API gateway testing)
+- **grpcurl** (optional, for gRPC testing)
 
-- **OS**: macOS (darwin/arm64)
-- **Java**: OpenJDK 17.0.15 (Corretto)
-- **Go**: 1.25.4
-- **Node.js**: v24.12.0
-- **Envoy**: Not installed (optional for local development)
+## Quick Start
 
-## Verification Results
+### 1. Start All Services
 
-### ✅ Build Tests
-
-All services can be successfully built:
-
-| Service | Build Tool | Status | Notes |
-|---------|-----------|--------|-------|
-| Hello Service | Gradle | ✅ PASS | Built successfully without tests |
-| TODO Service | Go | ✅ PASS | Binary created in `bin/` directory |
-| Frontend | npm/Vite | ✅ PASS | Production bundle created in `dist/` |
-
-### ✅ Runtime Tests
-
-All services can be started and run independently:
-
-| Service | Port | Status | Startup Time |
-|---------|------|--------|--------------|
-| Hello Service | 9090 | ✅ RUNNING | ~1 second |
-| TODO Service | 9091 | ✅ RUNNING | <1 second |
-| Frontend | 5173 | ✅ RUNNING | ~200ms |
-
-### Service Details
-
-#### Hello Service (Java/Spring Boot)
-- **Port**: 9090 (gRPC)
-- **Additional Port**: 8080 (HTTP/Tomcat)
-- **Status**: Successfully started with gRPC server
-- **Registered Services**:
-  - `api.v1.HelloService`
-  - `grpc.health.v1.Health`
-  - `grpc.reflection.v1alpha.ServerReflection`
-
-#### TODO Service (Go)
-- **Port**: 9091 (gRPC)
-- **Status**: Successfully started and listening
-- **Features**:
-  - In-memory store initialized
-  - Ready to accept requests
-  - Can connect to Hello Service at localhost:9090
-
-#### Frontend (React/Vite)
-- **Port**: 5173 (HTTP)
-- **Status**: Successfully serving content
-- **Build**: Optimized production build available
-- **Dev Server**: Hot reload enabled
-
-## Infrastructure Configuration
-
-### ✅ Completed Components
-
-1. **Local Envoy Proxy Configuration** (`tools/envoy/envoy-local.yaml`)
-   - Routes configured for `/api/hello` and `/api/todo`
-   - gRPC-Web filter configured
-   - CORS support enabled
-   - Health checks configured
-
-2. **Development Startup Script** (`scripts/dev.sh`)
-   - Orchestrates all services
-   - Port availability checking
-   - Service health monitoring
-   - Graceful shutdown handling
-   - Centralized logging
-
-3. **Higress Ingress Configuration** (`tools/k8s/ingress.yaml`)
-   - Production-ready Kubernetes ingress
-   - gRPC backend protocol support
-   - TLS/SSL configuration
-   - Rate limiting and security headers
-
-4. **Kustomize Configuration** (`k8s/`)
-   - Base configuration
-   - Development overlay
-   - Production overlay
-   - Resource patches
-
-5. **CI/CD Pipeline** (`.github/workflows/ci.yml`)
-   - 7 comprehensive jobs
-   - Automated testing and building
-   - Docker image building and pushing
-   - Kubernetes deployment
-   - Security scanning
-
-6. **Code Quality Tools**
-   - Java: Checkstyle + SpotBugs (temporarily disabled for initial setup)
-   - Go: golangci-lint configuration
-   - TypeScript: ESLint + Prettier
-   - Pre-commit hooks
-
-## Known Limitations
-
-### 1. Envoy Not Installed
-
-**Impact**: Frontend cannot communicate with backend services without Envoy proxy.
-
-**Workaround**: Services can be tested individually. For full integration:
 ```bash
-# Install Envoy (macOS)
-brew install envoy
-
-# Then run all services with Envoy
+# From the project root
 ./scripts/dev.sh
 ```
 
-**Alternative**: Services can be accessed directly:
-- Hello Service: `localhost:9090` (gRPC)
-- TODO Service: `localhost:9091` (gRPC)
-- Frontend: `http://localhost:5173` (HTTP)
+This script will:
+- Start Hello Service on port 9090
+- Start TODO Service on port 9091
+- Start Envoy Proxy on port 8080 (if installed)
+- Start Frontend on port 5173
 
-### 2. Code Quality Tools Temporarily Disabled
+Wait for all services to start (you'll see "All services are running" message).
 
-**Status**: Checkstyle and SpotBugs plugins are commented out in `build.gradle`
+### 2. Run Automated Tests
 
-**Reason**: Initial configuration needs adjustment for the project structure
+In a new terminal:
 
-**Action Required**: 
-1. Verify Checkstyle configuration file path
-2. Update SpotBugs exclude patterns
-3. Re-enable plugins in `build.gradle`
-
-**Current State**: Build works without quality checks. Quality tools can be enabled later.
-
-## Testing Commands
-
-### Build All Services
-```bash
-# From project root
-make build
-
-# Or individually
-make build-hello
-make build-todo
-make build-web
-```
-
-### Start Services Individually
-
-**Hello Service**:
-```bash
-cd apps/hello-service
-./gradlew bootRun
-```
-
-**TODO Service**:
-```bash
-cd apps/todo-service
-HELLO_SERVICE_ADDR=localhost:9090 go run .
-```
-
-**Frontend**:
-```bash
-cd apps/web
-npm run dev
-```
-
-### Start All Services (with Envoy)
-```bash
-./scripts/dev.sh
-```
-
-### Test Services
 ```bash
 ./scripts/test-services.sh
 ```
 
-## Recommendations
+This will run automated tests for:
+- Service availability
+- Hello Service functionality
+- TODO Service CRUD operations
+- Service-to-service communication
+- Frontend accessibility
 
-### Immediate Actions
+## Manual Testing
 
-1. **Install Envoy** (Optional but recommended for full functionality):
+### Test Hello Service
+
+#### Using grpcurl (Recommended)
+
+```bash
+# Test with a name
+grpcurl -plaintext -d '{"name":"Alice"}' localhost:9090 api.v1.HelloService/SayHello
+
+# Expected output:
+# {
+#   "message": "Hello, Alice!"
+# }
+
+# Test with empty name
+grpcurl -plaintext -d '{"name":""}' localhost:9090 api.v1.HelloService/SayHello
+
+# Expected output:
+# {
+#   "message": "Hello, World!"
+# }
+```
+
+#### Using the Frontend
+
+1. Open http://localhost:5173 in your browser
+2. Enter a name in the Hello form
+3. Click "Say Hello"
+4. Verify the greeting message appears
+
+### Test TODO Service
+
+#### Using grpcurl
+
+```bash
+# Create a TODO
+grpcurl -plaintext -d '{"title":"Buy groceries","description":"Milk, eggs, bread"}' \
+  localhost:9091 api.v1.TodoService/CreateTodo
+
+# Expected output:
+# {
+#   "todo": {
+#     "id": "...",
+#     "title": "Buy groceries",
+#     "description": "Milk, eggs, bread",
+#     "completed": false,
+#     "createdAt": "...",
+#     "updatedAt": "..."
+#   }
+# }
+
+# List all TODOs
+grpcurl -plaintext -d '{}' localhost:9091 api.v1.TodoService/ListTodos
+
+# Update a TODO (replace <id> with actual ID)
+grpcurl -plaintext -d '{"id":"<id>","title":"Buy groceries","description":"Updated","completed":true}' \
+  localhost:9091 api.v1.TodoService/UpdateTodo
+
+# Delete a TODO (replace <id> with actual ID)
+grpcurl -plaintext -d '{"id":"<id>"}' localhost:9091 api.v1.TodoService/DeleteTodo
+```
+
+#### Using the Frontend
+
+1. Open http://localhost:5173 in your browser
+2. Navigate to the TODO section
+3. **Create**: Enter a title and description, click "Add TODO"
+4. **List**: Verify the TODO appears in the list
+5. **Update**: Click "Edit" on a TODO, modify it, and save
+6. **Delete**: Click "Delete" on a TODO and verify it's removed
+
+### Test Service-to-Service Communication
+
+The TODO Service calls the Hello Service when creating TODOs (if implemented).
+
+1. Check the TODO Service logs:
    ```bash
+   tail -f logs/todo-service.log
+   ```
+
+2. Create a TODO via the frontend or grpcurl
+
+3. Look for log entries showing Hello Service calls
+
+### Test API Gateway (Envoy)
+
+If Envoy is running:
+
+1. **Check Envoy Admin Interface**:
+   ```bash
+   curl http://localhost:9901
+   ```
+
+2. **Test Routing**:
+   ```bash
+   # Hello Service through Envoy
+   curl -X POST http://localhost:8080/api/hello/api.v1.HelloService/SayHello \
+     -H "Content-Type: application/grpc-web+proto" \
+     -d '{"name":"Alice"}'
+   
+   # TODO Service through Envoy
+   curl -X POST http://localhost:8080/api/todo/api.v1.TodoService/ListTodos \
+     -H "Content-Type: application/grpc-web+proto" \
+     -d '{}'
+   ```
+
+## Verification Checklist
+
+Use this checklist to verify your local setup:
+
+### Services Running
+
+- [ ] Hello Service is running on port 9090
+- [ ] TODO Service is running on port 9091
+- [ ] Frontend is running on port 5173
+- [ ] Envoy Proxy is running on port 8080 (optional)
+
+### Hello Service
+
+- [ ] Returns greeting with provided name
+- [ ] Returns default greeting for empty name
+- [ ] Responds to gRPC calls
+
+### TODO Service
+
+- [ ] Creates TODO items successfully
+- [ ] Lists all TODO items
+- [ ] Updates TODO items
+- [ ] Deletes TODO items
+- [ ] Validates input (rejects empty titles)
+
+### Frontend
+
+- [ ] Loads successfully in browser
+- [ ] Hello form works correctly
+- [ ] TODO list displays items
+- [ ] Can create new TODOs
+- [ ] Can update existing TODOs
+- [ ] Can delete TODOs
+- [ ] Displays error messages appropriately
+
+### Service-to-Service Communication
+
+- [ ] TODO Service can reach Hello Service
+- [ ] Services use correct addresses (localhost:9090, localhost:9091)
+- [ ] No connection errors in logs
+
+### API Gateway (if using Envoy)
+
+- [ ] Envoy routes requests to correct services
+- [ ] CORS headers are set correctly
+- [ ] gRPC-Web protocol conversion works
+
+## Troubleshooting
+
+### Port Already in Use
+
+If you see "Port already in use" errors:
+
+```bash
+# Find and kill processes using the ports
+lsof -ti:9090 | xargs kill -9  # Hello Service
+lsof -ti:9091 | xargs kill -9  # TODO Service
+lsof -ti:5173 | xargs kill -9  # Frontend
+lsof -ti:8080 | xargs kill -9  # Envoy
+```
+
+### Service Won't Start
+
+1. **Check logs**:
+   ```bash
+   tail -f logs/hello-service.log
+   tail -f logs/todo-service.log
+   tail -f logs/web.log
+   ```
+
+2. **Verify dependencies**:
+   ```bash
+   make check-env
+   ```
+
+3. **Rebuild services**:
+   ```bash
+   make clean
+   make build
+   ```
+
+### gRPC Connection Errors
+
+1. **Verify service is listening**:
+   ```bash
+   lsof -i :9090  # Hello Service
+   lsof -i :9091  # TODO Service
+   ```
+
+2. **Check firewall settings** (macOS):
+   ```bash
+   # Allow incoming connections for Java and Go
+   sudo /usr/libexec/ApplicationFirewall/socketfilterfw --add /usr/bin/java
+   sudo /usr/libexec/ApplicationFirewall/socketfilterfw --add /usr/local/go/bin/go
+   ```
+
+### Frontend Can't Connect to Backend
+
+1. **Check Vite proxy configuration** (`apps/web/vite.config.ts`):
+   ```typescript
+   server: {
+     proxy: {
+       '/api': {
+         target: 'http://localhost:8080',
+         changeOrigin: true,
+       }
+     }
+   }
+   ```
+
+2. **Verify Envoy is running**:
+   ```bash
+   curl http://localhost:8080
+   ```
+
+3. **Check browser console** for CORS or network errors
+
+### Envoy Not Starting
+
+1. **Install Envoy**:
+   ```bash
+   # macOS
    brew install envoy
+   
+   # Linux
+   # See https://www.envoyproxy.io/docs/envoy/latest/start/install
    ```
 
-2. **Test Full Integration**:
+2. **Verify configuration**:
    ```bash
-   ./scripts/dev.sh
+   envoy --mode validate -c tools/envoy/envoy-local.yaml
    ```
-   Then open http://localhost:5173 in browser
 
-3. **Install Git Hooks**:
+### grpcurl Not Found
+
+Install grpcurl for gRPC testing:
+
+```bash
+# macOS
+brew install grpcurl
+
+# Go install
+go install github.com/fullstorydev/grpcurl/cmd/grpcurl@latest
+
+# Verify installation
+grpcurl --version
+```
+
+## Performance Verification
+
+### Response Times
+
+Expected response times for local development:
+
+- **Hello Service**: < 10ms
+- **TODO Service**: < 20ms
+- **Frontend**: < 100ms (initial load), < 50ms (subsequent requests)
+
+### Memory Usage
+
+Expected memory usage:
+
+- **Hello Service**: ~200-300 MB
+- **TODO Service**: ~20-50 MB
+- **Frontend (dev server)**: ~100-200 MB
+- **Envoy**: ~50-100 MB
+
+Monitor with:
+
+```bash
+# macOS
+top -pid $(lsof -ti:9090) -pid $(lsof -ti:9091)
+
+# Linux
+ps aux | grep -E 'java|go|node'
+```
+
+## Next Steps
+
+Once local verification is complete:
+
+1. **Run unit tests**:
    ```bash
-   ./scripts/install-hooks.sh
+   make test
    ```
 
-### Future Improvements
+2. **Run linters**:
+   ```bash
+   make lint
+   ```
 
-1. **Enable Code Quality Tools**:
-   - Fix Checkstyle configuration path
-   - Update SpotBugs exclude patterns
-   - Re-enable plugins in build.gradle
+3. **Build Docker images**:
+   ```bash
+   make docker-build
+   ```
 
-2. **Add Integration Tests**:
-   - Test service-to-service communication
-   - Test frontend-to-backend communication via Envoy
-   - Add end-to-end tests
+4. **Deploy to Kubernetes** (see [DEPLOYMENT.md](./DEPLOYMENT.md))
 
-3. **Documentation**:
-   - Add API documentation
-   - Create developer onboarding guide
-   - Document common troubleshooting scenarios
+## Additional Resources
 
-4. **Monitoring**:
-   - Add Prometheus metrics
-   - Configure logging aggregation
-   - Set up health check dashboards
+- [Getting Started Guide](./GETTING_STARTED.md)
+- [Architecture Documentation](./ARCHITECTURE.md)
+- [API Documentation](../api/v1/README.md)
+- [Troubleshooting Guide](./TROUBLESHOOTING.md)
 
-## Conclusion
-
-✅ **The project is ready for local development!**
-
-All core services can be built and run successfully. The infrastructure configuration is complete and production-ready. The only optional component missing is Envoy, which can be easily installed if needed for full frontend-backend integration.
-
-### Quick Start for New Developers
-
-1. Clone the repository
-2. Ensure Java 17+, Go 1.21+, and Node.js 20+ are installed
-3. Run `make build` to build all services
-4. Run `./scripts/dev.sh` to start all services (or start individually)
-5. Access frontend at http://localhost:5173
-
-### Next Steps
-
-- Install Envoy for full integration testing
-- Enable and configure code quality tools
-- Add comprehensive integration tests
-- Deploy to Kubernetes cluster for production testing
-
----
-
-**Verified by**: Kiro AI Assistant  
-**Verification Method**: Automated build and runtime testing  
-**Confidence Level**: High ✅
