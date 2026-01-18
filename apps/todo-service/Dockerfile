@@ -1,7 +1,7 @@
 # Multi-stage build for TODO service
 
 # Stage 1: Build
-FROM golang:1.21-alpine AS build
+FROM golang:1.23-alpine AS build
 
 WORKDIR /app
 

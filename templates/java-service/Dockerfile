@@ -11,11 +11,12 @@ COPY gradle ./gradle
 # Copy API definitions (for Protobuf generation)
 COPY ../../api/v1 /api/v1
 
-# Copy source code
+# Copy source code (including generated Protobuf code)
 COPY src ./src
 
-# Build application (skip tests for faster builds)
-RUN ./gradlew clean build -x test --no-daemon
+# Build application (skip tests and protobuf generation for faster builds)
+# Use -x generateProto to skip protobuf generation since code is already committed
+RUN ./gradlew clean build -x test -x generateProto --no-daemon
 
 # Stage 2: Runtime stage
 FROM eclipse-temurin:17-jre-alpine
