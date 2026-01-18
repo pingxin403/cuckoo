@@ -1,0 +1,9 @@
+spec:
+  name: web
+  description: A React-based frontend application
+  type: node
+  cd: false
+  codeowners:
+    - "@frontend-team"
+test:
+  coverage: 0

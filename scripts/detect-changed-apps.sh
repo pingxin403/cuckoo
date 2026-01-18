@@ -58,9 +58,18 @@ fi
 # Remove duplicates and trim
 CHANGED_APPS=$(echo "$CHANGED_APPS" | tr ' ' '\n' | sort -u | tr '\n' ' ' | xargs)
 
+# Get list of all apps dynamically
+get_all_apps() {
+    for app_dir in apps/*/; do
+        if [ -d "$app_dir" ]; then
+            basename "$app_dir"
+        fi
+    done | tr '\n' ' ' | xargs
+}
+
 # If no apps changed, return all apps (for safety)
 if [ -z "$CHANGED_APPS" ]; then
-    echo "hello-service todo-service web"
+    echo -n "$(get_all_apps)"
 else
-    echo "$CHANGED_APPS"
+    echo -n "$CHANGED_APPS"
 fi

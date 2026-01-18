@@ -108,7 +108,37 @@ The appropriate template is copied to `apps/<your-app>/`:
 - `templates/go-service/` → Go apps
 - `templates/node-service/` → Node.js/React apps (if exists)
 
-### 2. Placeholder Replacement
+### 2. App Type Metadata
+
+Two metadata files are automatically created:
+
+**`.apptype` file:**
+```
+java  # or go, or node
+```
+
+This file enables automatic app type detection in CI/CD and build scripts.
+
+**`metadata.yaml` file:**
+```yaml
+spec:
+  name: your-app-name
+  description: Your app description
+  type: java  # or go, or node
+  cd: true
+  codeowners:
+    - "@your-team"
+test:
+  coverage: 30  # or 80 for Go
+```
+
+This file provides structured metadata for:
+- Service catalog integration
+- Ownership tracking
+- Test coverage requirements
+- CI/CD configuration
+
+### 3. Placeholder Replacement
 
 All template placeholders are replaced with your values:
 - `{{SERVICE_NAME}}` → your-app-name
@@ -118,7 +148,7 @@ All template placeholders are replaced with your values:
 - `{{MODULE_PATH}}` → Go module (Go only)
 - `{{TEAM_NAME}}` → Team name
 
-### 3. Protobuf File Creation
+### 4. Protobuf File Creation
 
 A basic protobuf file is created at `api/v1/<your-app>.proto`:
 
@@ -137,14 +167,16 @@ message HealthCheckResponse {
 }
 ```
 
-### 4. App Registration
+### 5. App Registration
 
 Your app is automatically registered in `scripts/app-manager.sh`:
 - Added to `get_app_type()` function
 - Added to `get_app_path()` function
 - Added to `get_all_apps()` function
 
-### 5. Port Auto-Assignment
+**Note:** With the new `.apptype` and `metadata.yaml` files, the app-manager.sh can also auto-detect your app without explicit registration.
+
+### 6. Port Auto-Assignment
 
 If you don't specify a port, the script:
 1. Scans existing apps for used ports
