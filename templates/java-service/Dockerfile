@@ -16,8 +16,7 @@ COPY apps/{{SERVICE_NAME}}/gradle ./gradle
 RUN ./gradlew dependencies --no-daemon || true
 
 # Copy source code and pre-generated proto code
-COPY apps/{{SERVICE_NAME}}/src ./src
-COPY apps/{{SERVICE_NAME}}/build/generated ./build/generated
+COPY apps/{{SERVICE_NAME}}/ ./
 
 # Build application (skip proto generation, use pre-generated code)
 RUN ./gradlew build -x test -x generateProto --no-daemon

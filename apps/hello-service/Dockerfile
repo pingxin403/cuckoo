@@ -16,8 +16,7 @@ COPY apps/hello-service/gradle ./gradle
 RUN ./gradlew dependencies --no-daemon || true
 
 # Copy source code and pre-generated proto code
-COPY apps/hello-service/src ./src
-COPY apps/hello-service/build/generated ./build/generated
+COPY apps/hello-service/ ./
 
 # Build application (skip proto generation, use pre-generated code)
 RUN ./gradlew build -x test -x generateProto --no-daemon
