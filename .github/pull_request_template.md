@@ -77,7 +77,7 @@ Related to #
 ### Protobuf Changes (if applicable)
 
 - [ ] I have updated the Protobuf definitions in `api/v1/`
-- [ ] I have run `make gen-proto` to generate code for all languages
+- [ ] I have run `make proto` to generate code for all languages
 - [ ] I have committed the generated code
 - [ ] I have verified that `make verify-proto` passes
 
