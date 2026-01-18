@@ -11,14 +11,12 @@ WORKDIR /app
 COPY apps/{{SERVICE_NAME}}/build.gradle apps/{{SERVICE_NAME}}/settings.gradle apps/{{SERVICE_NAME}}/gradlew ./
 COPY apps/{{SERVICE_NAME}}/gradle ./gradle
 
-# Copy API definitions (for Protobuf generation)
-COPY api/v1 /api/v1
-
-# Copy source code
+# Copy source code and pre-generated Protobuf code
 COPY apps/{{SERVICE_NAME}}/src ./src
+COPY apps/{{SERVICE_NAME}}/build/generated ./build/generated
 
-# Build application (skip tests for faster builds)
-RUN ./gradlew clean build -x test --no-daemon
+# Build application (skip tests and protobuf generation, use committed generated code)
+RUN ./gradlew build -x test -x generateProto --no-daemon
 
 # Stage 2: Runtime stage
 FROM eclipse-temurin:17-jre-alpine

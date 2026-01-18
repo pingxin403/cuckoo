@@ -1,4 +1,7 @@
 # 多阶段构建 Dockerfile for Hello Service
+# NOTE: This Dockerfile should be built from the repository root directory
+# Example: docker build -f apps/hello-service/Dockerfile -t hello-service:latest .
+
 # Stage 1: Build stage
 FROM gradle:8.14.3-jdk17 AS build
 
@@ -8,14 +11,12 @@ WORKDIR /app
 COPY apps/hello-service/build.gradle apps/hello-service/settings.gradle apps/hello-service/gradlew ./
 COPY apps/hello-service/gradle ./gradle
 
-# 复制 API 定义文件（用于 Protobuf 生成）
-COPY api/v1 /api/v1
-
-# 复制源代码
+# 复制源代码和已生成的 Protobuf 代码
 COPY apps/hello-service/src ./src
+COPY apps/hello-service/build/generated ./build/generated
 
-# 构建应用（跳过测试以加快构建速度）
-RUN ./gradlew clean build -x test --no-daemon
+# 构建应用（跳过测试和 protobuf 生成，使用已提交的生成代码）
+RUN ./gradlew build -x test -x generateProto --no-daemon
 
 # Stage 2: Runtime stage
 FROM eclipse-temurin:17-jre-alpine
