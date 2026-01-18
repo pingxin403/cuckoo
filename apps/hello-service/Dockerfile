@@ -15,11 +15,14 @@ COPY apps/hello-service/gradle ./gradle
 # Download dependencies (cached layer)
 RUN ./gradlew dependencies --no-daemon || true
 
+# Copy proto files (needed for Gradle source set configuration)
+COPY api/v1 ../../api/v1
+
 # Copy source code and pre-generated proto code
 COPY apps/hello-service/ ./
 
 # Build application (skip proto generation, use pre-generated code)
-RUN ./gradlew build -x test -x generateProto --no-daemon
+RUN ./gradlew build -x test -x generateProto -x extractProto --no-daemon
 
 # Stage 2: Runtime stage
 FROM eclipse-temurin:17-jre-alpine
