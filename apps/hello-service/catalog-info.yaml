@@ -4,7 +4,7 @@ metadata:
   name: hello-service
   description: Hello greeting service - provides personalized greeting messages via gRPC
   annotations:
-    github.com/project-slug: pingxin/cuckoo
+    github.com/project-slug: pingxin403/cuckoo
     backstage.io/techdocs-ref: dir:.
   tags:
     - java
@@ -15,7 +15,7 @@ metadata:
     - url: https://api.example.com/api/hello
       title: API Endpoint
       icon: web
-    - url: https://github.com/pingxin/cuckoo/tree/main/apps/hello-service
+    - url: https://github.com/pingxin403/cuckoo/tree/main/apps/hello-service
       title: Source Code
       icon: github
 spec:

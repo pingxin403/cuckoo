@@ -109,10 +109,10 @@ create:
 	read -p "Port (default: auto-assign): " port; \
 	read -p "Description: " description; \
 	if [ "$$app_type" = "java" ]; then \
-		read -p "Java package (default: com.pingxin.cuckoo.$$app_name): " package; \
+		read -p "Java package (default: com.pingxin403.cuckoo.$$app_name): " package; \
 	fi; \
 	if [ "$$app_type" = "go" ]; then \
-		read -p "Go module (default: github.com/pingxin/cuckoo/apps/$$app_name): " module; \
+		read -p "Go module (default: github.com/pingxin403/cuckoo/apps/$$app_name): " module; \
 	fi; \
 	read -p "Team name (default: platform-team): " team; \
 	cmd="./scripts/create-app.sh $$app_type $$app_name"; \

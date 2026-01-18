@@ -10,9 +10,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/pingxin/cuckoo/apps/todo-service/gen/todopb"
-	"github.com/pingxin/cuckoo/apps/todo-service/service"
-	"github.com/pingxin/cuckoo/apps/todo-service/storage"
+	"github.com/pingxin403/cuckoo/apps/todo-service/gen/todopb"
+	"github.com/pingxin403/cuckoo/apps/todo-service/service"
+	"github.com/pingxin403/cuckoo/apps/todo-service/storage"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )

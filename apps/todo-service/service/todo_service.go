@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/pingxin/cuckoo/apps/todo-service/gen/todopb"
-	"github.com/pingxin/cuckoo/apps/todo-service/storage"
+	"github.com/pingxin403/cuckoo/apps/todo-service/gen/todopb"
+	"github.com/pingxin403/cuckoo/apps/todo-service/storage"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"

@@ -1,4 +1,4 @@
-module github.com/pingxin/cuckoo/apps/todo-service
+module github.com/pingxin403/cuckoo/apps/todo-service
 
 go 1.24.0
 

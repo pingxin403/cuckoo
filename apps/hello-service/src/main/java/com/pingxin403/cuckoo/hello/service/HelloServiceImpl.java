@@ -1,4 +1,4 @@
-package com.pingxin.cuckoo.hello.service;
+package com.pingxin403.cuckoo.hello.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

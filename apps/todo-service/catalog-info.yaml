@@ -4,7 +4,7 @@ metadata:
   name: todo-service
   description: TODO management service
   annotations:
-    github.com/project-slug: pingxin/cuckoo
+    github.com/project-slug: pingxin403/cuckoo
     backstage.io/techdocs-ref: dir:.
   tags:
     - go
