@@ -20,7 +20,7 @@ Following the principles of modern monorepo design (inspired by Google's Bazel a
 
 ### Local Development
 
-Generated code is created during local builds:
+Generated code is created during local builds and **NOT committed to git**:
 
 ```bash
 # Generate proto code for all services
@@ -32,9 +32,23 @@ make proto
 # - Java: apps/*/build/generated/
 ```
 
+### CI/CD Pipeline
+
+Proto code is generated in CI for testing and Docker builds:
+
+1. **verify-proto job**: Generates proto code and verifies it's up-to-date
+2. **build-* jobs**: Generate proto code before testing
+3. **Docker builds**: 
+   - **Go**: Generate proto inside Docker (self-contained)
+   - **TypeScript**: Generate proto in CI before tests
+   - **Java**: Generate proto in CI, then copy to Docker (avoids Gradle path issues)
+
 ### Docker Builds
 
-Proto code is generated **inside the Docker build** (multi-stage build):
+**Strategy varies by language due to tooling constraints:**
+
+#### Go Services (Self-Contained)
+Proto code is generated **inside the Docker build**:
 
 ```dockerfile
 # Stage 1: Install protoc and generate code
@@ -42,17 +56,28 @@ FROM golang:1.25-alpine AS build
 RUN apk add protoc
 COPY api/v1 /api/v1
 RUN protoc --go_out=. /api/v1/*.proto
-
-# Stage 2: Build application with generated code
 COPY . .
 RUN go build -o app .
 ```
 
-### CI/CD Pipeline
+#### Java Services (Pre-Generated)
+Proto code is generated **in CI before Docker build**:
 
-1. **verify-proto job**: Generates proto code and verifies it's up-to-date
-2. **build-* jobs**: Build services (proto already generated in verify-proto)
-3. **Docker builds**: Generate proto code inside Docker (self-contained)
+```bash
+# In CI
+./gradlew generateProto
+docker build -f apps/hello-service/Dockerfile .
+```
+
+```dockerfile
+# Dockerfile copies pre-generated code
+COPY apps/hello-service/build/generated ./build/generated
+RUN ./gradlew build -x generateProto
+```
+
+**Why different strategies?**
+- Go: protoc works well in Docker
+- Java: Gradle protobuf plugin has path mapping issues in Docker
 
 ## Migration from Old Approach
 

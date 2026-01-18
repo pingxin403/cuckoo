@@ -10,9 +10,9 @@ out/
 *.dylib
 *.dll
 
-# Generated code - DO NOT commit proto-generated code
-# All proto-generated code should be generated during build time
-# This ensures Single Source of Truth (proto files) and prevents sync issues
+# Generated code - DO NOT commit proto-generated code to git
+# Proto code is generated during build time (local dev, CI, Docker)
+# Exception: CI may temporarily generate code for Docker builds
 gen/
 **/gen/
 **/build/generated/
