@@ -172,9 +172,9 @@ fmt.Printf("Deleted: %v\n", resp.Success)
 
 ```bash
 # 生成所有语言的代码
-make gen-proto
+make proto
 
-# 或单独生成
+# 或单独生成（高级用法）
 make gen-proto-go      # Go 代码
 make gen-proto-java    # Java 代码
 make gen-proto-ts      # TypeScript 代码
@@ -189,7 +189,7 @@ make gen-proto-ts      # TypeScript 代码
 ### 修改 API 契约的流程
 
 1. 修改对应的 `.proto` 文件
-2. 运行 `make gen-proto` 重新生成代码
+2. 运行 `make proto` 重新生成代码
 3. 更新服务实现以匹配新的接口
 4. 提交 PR（包含 `.proto` 文件和生成的代码）
 
@@ -241,7 +241,7 @@ grpcurl -plaintext -d '{}' \
 ### Q: 如何添加新的 RPC 方法？
 
 A: 在 `.proto` 文件中添加新方法，然后：
-1. 运行 `make gen-proto` 重新生成代码
+1. 运行 `make proto` 重新生成代码
 2. 在服务实现中添加新方法的实现
 3. 更新测试和文档
 

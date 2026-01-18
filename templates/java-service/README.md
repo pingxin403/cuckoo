@@ -107,6 +107,9 @@ message YourResponse {
 
 ```bash
 # From monorepo root
+make proto  # Generates code for all languages
+
+# Or generate only Java code (advanced)
 make gen-proto-java
 
 # Or from service directory

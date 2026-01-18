@@ -96,7 +96,7 @@ go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 cd apps/web && npm install && cd ../..
 
 # 4. 生成 Protobuf 代码
-make gen-proto
+make proto
 
 # 5. 安装 Git hooks
 ./scripts/install-hooks.sh
@@ -161,9 +161,9 @@ cd apps/web && npm install && cd ../..
 
 ```bash
 # 生成所有语言的代码
-make gen-proto
+make proto
 
-# 或者单独生成
+# 或者单独生成（高级用法）
 make gen-proto-go      # Go
 make gen-proto-java    # Java
 make gen-proto-ts      # TypeScript
@@ -396,7 +396,7 @@ cd apps/my-new-service
 # 在 api/v1/ 创建你的 .proto 文件
 
 # 4. 生成代码
-make gen-proto-java
+make proto
 
 # 5. 实现服务逻辑
 # 编辑 src/main/java/.../service/YourServiceImpl.java
@@ -429,7 +429,7 @@ cd apps/my-new-service
 # 在 api/v1/ 创建你的 .proto 文件
 
 # 4. 生成代码
-make gen-proto-go
+make proto
 
 # 5. 实现服务逻辑
 # 编辑 service/your_service.go 和 storage/memory_store.go
@@ -445,7 +445,7 @@ go test ./...
 
 1. 在 `api/v1/` 目录创建新的 `.proto` 文件
 2. 定义服务接口和消息类型
-3. 运行 `make gen-proto` 生成代码
+3. 运行 `make proto` 生成代码
 4. 在服务中实现接口
 5. 更新 Kubernetes 配置和 Backstage catalog
 

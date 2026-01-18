@@ -127,7 +127,7 @@ kubectl get svc todo-service
 ### 添加新功能
 
 1. 更新 `api/v1/todo.proto` 定义新的消息或方法
-2. 运行 `make gen-proto-go` 重新生成代码
+2. 运行 `make proto` 重新生成代码（或 `make gen-proto-go` 仅生成 Go 代码）
 3. 在 `service/todo_service.go` 中实现新方法
 4. 添加相应的测试
 

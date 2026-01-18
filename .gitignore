@@ -23,6 +23,8 @@ vendor/
 # IDE
 .idea/
 .vscode/
+.kiro/
+!.kiro/specs/
 *.swp
 *.swo
 *~

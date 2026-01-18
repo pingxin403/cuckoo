@@ -29,7 +29,7 @@ if files_changed_in "api"; then
         echo -e "${GREEN}✓ Protobuf verification passed${NC}"
     else
         echo -e "${RED}✗ Protobuf verification failed${NC}"
-        echo -e "${YELLOW}Run 'make gen-proto' to regenerate code${NC}"
+        echo -e "${YELLOW}Run 'make proto' to regenerate code${NC}"
         FAILED=1
     fi
 fi

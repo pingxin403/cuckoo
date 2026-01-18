@@ -51,11 +51,11 @@ jobs:
           cd ../..
 
       - name: Generate Protobuf code
-        run: make gen-proto
+        run: make proto
 
       - name: Verify generated code is up to date
         run: |
-          git diff --exit-code || (echo "Generated code is out of date. Run 'make gen-proto' and commit changes." && exit 1)
+          git diff --exit-code || (echo "Generated code is out of date. Run 'make proto' and commit changes." && exit 1)
 
   # Job 2: Test and build Hello Service (Java)
   build-hello-service:

@@ -1,4 +1,4 @@
-.PHONY: help init check-env gen-proto gen-proto-go gen-proto-java gen-proto-ts verify-proto \
+.PHONY: help init check-env proto gen-proto gen-proto-go gen-proto-java gen-proto-ts verify-proto \
         build test lint lint-fix format docker-build run clean list-apps create \
         test-coverage test-coverage-hello test-coverage-todo verify-coverage verify-coverage-hello verify-coverage-todo \
         dev
@@ -10,10 +10,7 @@ help:
 	@echo "Available targets:"
 	@echo "  init               - Initialize development environment and install dependencies"
 	@echo "  check-env          - Check if all required tools are installed"
-	@echo "  gen-proto          - Generate code from Protobuf definitions (all languages)"
-	@echo "  gen-proto-go       - Generate Go code from Protobuf"
-	@echo "  gen-proto-java     - Generate Java code from Protobuf"
-	@echo "  gen-proto-ts       - Generate TypeScript code from Protobuf"
+	@echo "  proto              - Generate code from Protobuf definitions (all languages)"
 	@echo "  verify-proto       - Verify generated code is up to date (for CI)"
 	@echo ""
 	@echo "  App Management (supports APP=<name> or auto-detects changed apps):"
@@ -32,9 +29,10 @@ help:
 	@echo ""
 	@echo "Examples:"
 	@echo "  make create                    # Interactive app creation"
-	@echo "  make test APP=hello-service    # Test specific app"
+	@echo "  make proto                     # Generate code from Protobuf"
+	@echo "  make test APP=hello            # Test specific app (short name)"
 	@echo "  make test                      # Test changed apps (auto-detect)"
-	@echo "  make build APP=todo-service    # Build specific app"
+	@echo "  make build APP=todo            # Build specific app (short name)"
 	@echo "  make docker-build              # Build images for changed apps"
 
 # Initialization
@@ -47,7 +45,12 @@ check-env:
 	@./scripts/check-env.sh
 
 # Protobuf code generation
-gen-proto: gen-proto-go gen-proto-java gen-proto-ts
+proto: gen-proto-go gen-proto-java gen-proto-ts
+	@echo "✅ Protobuf code generation completed for all languages"
+
+# Legacy alias for backward compatibility
+gen-proto: proto
+	@echo "Note: 'gen-proto' is deprecated. Use 'make proto' instead."
 
 gen-proto-go:
 	@echo "Generating Go code from Protobuf..."
@@ -93,9 +96,9 @@ gen-proto-ts:
 # CI verification
 verify-proto:
 	@echo "Verifying generated code is up to date..."
-	@$(MAKE) gen-proto
+	@$(MAKE) proto
 	@git diff --exit-code apps/*/gen apps/*/src/main/java-gen apps/*/src/gen || \
-	  (echo "Generated code is out of date. Run 'make gen-proto' and commit changes." && exit 1)
+	  (echo "Generated code is out of date. Run 'make proto' and commit changes." && exit 1)
 
 # App management targets (new unified interface)
 list-apps:

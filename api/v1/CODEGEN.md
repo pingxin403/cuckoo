@@ -40,7 +40,7 @@
 ### 生成所有语言的代码
 
 ```bash
-make gen-proto
+make proto
 ```
 
 这会依次执行：
@@ -90,7 +90,7 @@ make verify-proto
 .git/hooks/pre-commit
 
 # 如果生成代码过期，hook 会阻止提交并提示：
-# 1. 运行 make gen-proto
+# 1. 运行 make proto
 # 2. 将生成的文件添加到暂存区
 # 3. 重新提交
 ```
@@ -106,7 +106,7 @@ make verify-proto
 
 2. **重新生成代码**
    ```bash
-   make gen-proto
+   make proto
    ```
 
 3. **检查生成的代码**
@@ -165,7 +165,7 @@ A: 检查以下几点：
 A: 
 1. 在 `api/v1/` 目录创建新的 `.proto` 文件
 2. 更新 Makefile 中的生成命令（如果需要特殊处理）
-3. 运行 `make gen-proto`
+3. 运行 `make proto`
 4. 提交 `.proto` 文件和生成的代码
 
 ## 最佳实践
