@@ -54,7 +54,9 @@ A multi-language monorepo project demonstrating microservices architecture with 
 
 > 📖 **详细指南**: 查看 [Getting Started Guide](docs/GETTING_STARTED.md) 获取完整的设置说明和故障排查。
 > 
-> ⚠️ **重要**: Protobuf 代码生成需要使用特定的工具版本。请参阅 [Protobuf 工具版本要求](docs/PROTO_TOOLS_VERSION.md)。
+> ⚠️ **重要**: 
+> - Protobuf 代码生成需要使用特定的工具版本。请参阅 [Protobuf 工具版本要求](docs/PROTO_TOOLS_VERSION.md)。
+> - 本项目采用统一的 Proto 生成策略。请参阅 [Proto Generation Strategy](docs/PROTO_GENERATION_STRATEGY.md)。
 
 ### 🚀 一键初始化（推荐）
 

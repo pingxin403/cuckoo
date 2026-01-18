@@ -117,11 +117,6 @@ jobs:
           name: hello-service-coverage-report
           path: apps/hello-service/build/reports/jacoco/test/html/
 
-      - name: Generate Protobuf code for Docker build
-        if: github.event_name == 'push'
-        working-directory: apps/hello-service
-        run: ./gradlew generateProto --no-daemon
-
       - name: Build Docker image
         if: github.event_name == 'push'
         run: docker build -f apps/hello-service/Dockerfile -t hello-service:${{ github.sha }} .
