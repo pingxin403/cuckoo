@@ -11,7 +11,7 @@ A multi-language monorepo project demonstrating microservices architecture with 
 - **本地开发**: ✅ 已验证可运行 ([查看验证报告](docs/LOCAL_SETUP_VERIFICATION.md))
 - **构建系统**: ✅ 所有服务可成功构建
 - **基础设施**: ✅ Envoy/Higress 配置完成
-- **CI/CD**: ✅ GitHub Actions 流水线配置完成
+- **CI/CD**: ✅ 动态增量构建 ([查看策略](docs/DYNAMIC_CI_STRATEGY.md))
 - **代码质量**: ✅ Shift-left 实践已实施 ([查看详情](docs/SHIFT_LEFT.md))
 
 ## 项目概述
