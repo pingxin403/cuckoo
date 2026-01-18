@@ -1,7 +1,7 @@
 # Multi-stage Dockerfile for Java/Spring Boot Service
 # NOTE: This Dockerfile should be built from the repository root directory
 # Example: docker build -f apps/hello-service/Dockerfile -t hello-service:latest .
-# IMPORTANT: Proto code must be generated before building Docker image
+# Proto code is generated inside Docker to avoid Gradle path remapping issues
 
 # Stage 1: Build stage
 FROM gradle:8.14.3-jdk17 AS build
@@ -15,14 +15,15 @@ COPY apps/hello-service/gradle ./gradle
 # Download dependencies (cached layer)
 RUN ./gradlew dependencies --no-daemon || true
 
-# Copy proto files (needed for Gradle source set configuration)
-COPY api/v1 ../../api/v1
+# Copy proto files (needed for proto generation)
+RUN mkdir -p /api/v1
+COPY api/v1/ /api/v1/
 
-# Copy source code and pre-generated proto code
+# Copy source code
 COPY apps/hello-service/ ./
 
-# Build application (skip proto generation, use pre-generated code)
-RUN ./gradlew build -x test -x generateProto -x extractProto --no-daemon
+# Build application (generate proto inside Docker to avoid path issues)
+RUN ./gradlew build -x test --no-daemon
 
 # Stage 2: Runtime stage
 FROM eclipse-temurin:17-jre-alpine

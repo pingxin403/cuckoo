@@ -264,13 +264,6 @@ jobs:
       - name: Build Docker image
         if: github.event_name == 'push' && steps.detect-type.outputs.type != 'node'
         run: |
-          # Generate proto for Docker build (Java only)
-          if [ "${{ steps.detect-type.outputs.type }}" = "java" ]; then
-            cd apps/${{ matrix.app }}
-            ./gradlew generateProto --no-daemon
-            cd ../..
-          fi
-          
           # Build Docker image from repository root
           docker build -f apps/${{ matrix.app }}/Dockerfile -t ${{ matrix.app }}:${{ github.sha }} .
 
