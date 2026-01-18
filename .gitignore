@@ -10,11 +10,11 @@ out/
 *.dylib
 *.dll
 
-# Generated code
-gen/
-**/gen/
-**/java-gen/
-**/src/main/java-gen/
+# Generated code (allow proto-generated code to be committed)
+# gen/
+# **/gen/
+# **/java-gen/
+# **/src/main/java-gen/
 
 # Dependencies
 node_modules/
