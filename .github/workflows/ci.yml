@@ -271,13 +271,8 @@ jobs:
             cd ../..
           fi
           
-          # Build Docker image
-          if [ "${{ steps.detect-type.outputs.type }}" = "go" ]; then
-            cd apps/${{ matrix.app }}
-            docker build -t ${{ matrix.app }}:${{ github.sha }} .
-          else
-            docker build -f apps/${{ matrix.app }}/Dockerfile -t ${{ matrix.app }}:${{ github.sha }} .
-          fi
+          # Build Docker image from repository root
+          docker build -f apps/${{ matrix.app }}/Dockerfile -t ${{ matrix.app }}:${{ github.sha }} .
 
       - name: Save Docker image
         if: github.event_name == 'push' && steps.detect-type.outputs.type != 'node'
