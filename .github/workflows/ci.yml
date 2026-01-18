@@ -23,32 +23,46 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Load tool versions
+        id: versions
+        run: |
+          source .tool-versions
+          echo "PROTOC_VERSION=$PROTOC_VERSION" >> $GITHUB_OUTPUT
+          echo "GO_VERSION=$GO_VERSION" >> $GITHUB_OUTPUT
+          echo "NODE_VERSION=$NODE_VERSION" >> $GITHUB_OUTPUT
+          echo "PROTOC_GEN_GO_VERSION=$PROTOC_GEN_GO_VERSION" >> $GITHUB_OUTPUT
+          echo "PROTOC_GEN_GO_GRPC_VERSION=$PROTOC_GEN_GO_GRPC_VERSION" >> $GITHUB_OUTPUT
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: ${{ steps.versions.outputs.GO_VERSION }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ steps.versions.outputs.NODE_VERSION }}
 
       - name: Install Protobuf compiler (specific version)
         run: |
-          # Install protoc 33.1 (v28.3) to match local environment
-          PROTOC_VERSION=28.3
+          # Install protoc from .tool-versions
+          PROTOC_VERSION=${{ steps.versions.outputs.PROTOC_VERSION }}
+          
+          # Download and install specific version
           PROTOC_ZIP=protoc-${PROTOC_VERSION}-linux-x86_64.zip
           curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/${PROTOC_ZIP}
           sudo unzip -o $PROTOC_ZIP -d /usr/local bin/protoc
           sudo unzip -o $PROTOC_ZIP -d /usr/local 'include/*'
           rm -f $PROTOC_ZIP
+          
+          # Verify installation
           protoc --version
 
       - name: Install Protobuf plugins (specific versions)
         run: |
-          # Install specific versions to match local environment
-          go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.6
-          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
+          # Install specific versions from .tool-versions
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@${{ steps.versions.outputs.PROTOC_GEN_GO_VERSION }}
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@${{ steps.versions.outputs.PROTOC_GEN_GO_GRPC_VERSION }}
           
           # TypeScript plugin
           cd apps/web

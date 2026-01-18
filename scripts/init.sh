@@ -14,6 +14,15 @@ NC='\033[0m' # No Color
 
 echo -e "${BLUE}=== Monorepo Hello/TODO Services - Environment Setup ===${NC}\n"
 
+# Load version requirements
+if [ -f ".tool-versions" ]; then
+    source .tool-versions
+    echo -e "${GREEN}✓ Loaded tool version requirements from .tool-versions${NC}\n"
+else
+    echo -e "${RED}✗ .tool-versions file not found${NC}"
+    exit 1
+fi
+
 # Detect OS
 OS="$(uname -s)"
 case "${OS}" in
@@ -43,11 +52,11 @@ check_version() {
 # Check Java
 echo -e "${BLUE}Checking Java...${NC}"
 if command_exists java; then
-    JAVA_VERSION=$(java -version 2>&1 | head -1 | cut -d'"' -f2 | cut -d'.' -f1)
-    if [ "$JAVA_VERSION" -ge 17 ]; then
-        check_version "java -version" "17"
+    JAVA_VERSION_NUM=$(java -version 2>&1 | head -1 | cut -d'"' -f2 | cut -d'.' -f1)
+    if [ "$JAVA_VERSION_NUM" -ge "$JAVA_VERSION" ]; then
+        check_version "java -version" "$JAVA_VERSION"
     else
-        echo -e "${RED}✗ Java version is too old. Need Java 17+${NC}"
+        echo -e "${RED}✗ Java version is too old. Need Java ${JAVA_VERSION}+${NC}"
         echo -e "${YELLOW}  Install: https://adoptium.net/ or use SDKMAN: https://sdkman.io/${NC}"
         ERRORS=$((ERRORS + 1))
     fi
@@ -60,7 +69,7 @@ fi
 # Check Go
 echo -e "\n${BLUE}Checking Go...${NC}"
 if command_exists go; then
-    check_version "go version" "1.21"
+    check_version "go version" "$GO_VERSION"
 else
     echo -e "${RED}✗ Go not found${NC}"
     if [ "$PLATFORM" = "Mac" ]; then
@@ -74,11 +83,11 @@ fi
 # Check Node.js
 echo -e "\n${BLUE}Checking Node.js...${NC}"
 if command_exists node; then
-    NODE_VERSION=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
-    if [ "$NODE_VERSION" -ge 18 ]; then
-        check_version "node -v" "18"
+    NODE_VERSION_NUM=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
+    if [ "$NODE_VERSION_NUM" -ge "$NODE_VERSION" ]; then
+        check_version "node -v" "$NODE_VERSION"
     else
-        echo -e "${RED}✗ Node.js version is too old. Need Node 18+${NC}"
+        echo -e "${RED}✗ Node.js version is too old. Need Node ${NODE_VERSION}+${NC}"
         echo -e "${YELLOW}  Install: https://nodejs.org/ or use nvm: https://github.com/nvm-sh/nvm${NC}"
         ERRORS=$((ERRORS + 1))
     fi
@@ -99,22 +108,42 @@ fi
 # Check protoc
 echo -e "\n${BLUE}Checking Protocol Buffers compiler...${NC}"
 if command_exists protoc; then
-    check_version "protoc --version" "3"
+    INSTALLED_PROTOC=$(protoc --version | grep -oE '[0-9]+\.[0-9]+' | head -1)
+    REQUIRED_PROTOC=$(echo $PROTOC_VERSION | grep -oE '[0-9]+\.[0-9]+')
+    
+    if [ "$INSTALLED_PROTOC" = "$REQUIRED_PROTOC" ]; then
+        check_version "protoc --version" "$PROTOC_VERSION"
+    else
+        echo -e "${YELLOW}⚠ protoc version mismatch: $INSTALLED_PROTOC (required: $REQUIRED_PROTOC)${NC}"
+        echo -e "${YELLOW}  Installing correct version...${NC}"
+        
+        if [ "$PLATFORM" = "Mac" ]; then
+            PROTOC_ZIP=protoc-${PROTOC_VERSION}-osx-x86_64.zip
+        else
+            PROTOC_ZIP=protoc-${PROTOC_VERSION}-linux-x86_64.zip
+        fi
+        
+        curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/${PROTOC_ZIP}
+        sudo unzip -o $PROTOC_ZIP -d /usr/local bin/protoc
+        sudo unzip -o $PROTOC_ZIP -d /usr/local 'include/*'
+        rm -f $PROTOC_ZIP
+        echo -e "${GREEN}✓ protoc ${PROTOC_VERSION} installed${NC}"
+    fi
 else
     echo -e "${YELLOW}⚠ protoc not found${NC}"
+    echo -e "${YELLOW}  Installing protoc ${PROTOC_VERSION}...${NC}"
+    
     if [ "$PLATFORM" = "Mac" ]; then
-        echo -e "${YELLOW}  Installing via Homebrew...${NC}"
-        if command_exists brew; then
-            brew install protobuf
-            echo -e "${GREEN}✓ protoc installed${NC}"
-        else
-            echo -e "${RED}✗ Homebrew not found. Install manually: https://grpc.io/docs/protoc-installation/${NC}"
-            ERRORS=$((ERRORS + 1))
-        fi
+        PROTOC_ZIP=protoc-${PROTOC_VERSION}-osx-x86_64.zip
     else
-        echo -e "${YELLOW}  Install: https://grpc.io/docs/protoc-installation/${NC}"
-        ERRORS=$((ERRORS + 1))
+        PROTOC_ZIP=protoc-${PROTOC_VERSION}-linux-x86_64.zip
     fi
+    
+    curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/${PROTOC_ZIP}
+    sudo unzip -o $PROTOC_ZIP -d /usr/local bin/protoc
+    sudo unzip -o $PROTOC_ZIP -d /usr/local 'include/*'
+    rm -f $PROTOC_ZIP
+    echo -e "${GREEN}✓ protoc ${PROTOC_VERSION} installed${NC}"
 fi
 
 # Check Envoy (optional)
@@ -138,15 +167,15 @@ if [ $ERRORS -gt 0 ]; then
 fi
 
 # Install Go tools
-echo -e "\n${BLUE}Installing Go tools...${NC}"
+echo -e "\n${BLUE}Installing Go tools (specific versions)...${NC}"
 if command_exists go; then
-    echo -e "${YELLOW}Installing protoc-gen-go...${NC}"
-    go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-    echo -e "${GREEN}✓ protoc-gen-go installed${NC}"
+    echo -e "${YELLOW}Installing protoc-gen-go@${PROTOC_GEN_GO_VERSION}...${NC}"
+    go install google.golang.org/protobuf/cmd/protoc-gen-go@${PROTOC_GEN_GO_VERSION}
+    echo -e "${GREEN}✓ protoc-gen-go@${PROTOC_GEN_GO_VERSION} installed${NC}"
     
-    echo -e "${YELLOW}Installing protoc-gen-go-grpc...${NC}"
-    go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
-    echo -e "${GREEN}✓ protoc-gen-go-grpc installed${NC}"
+    echo -e "${YELLOW}Installing protoc-gen-go-grpc@${PROTOC_GEN_GO_GRPC_VERSION}...${NC}"
+    go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@${PROTOC_GEN_GO_GRPC_VERSION}
+    echo -e "${GREEN}✓ protoc-gen-go-grpc@${PROTOC_GEN_GO_GRPC_VERSION} installed${NC}"
     
     # Optional: golangci-lint
     if ! command_exists golangci-lint; then
@@ -172,11 +201,21 @@ fi
 # Generate Protobuf code
 echo -e "\n${BLUE}Generating Protobuf code...${NC}"
 if command_exists protoc; then
-    make gen-proto 2>/dev/null || {
-        echo -e "${YELLOW}⚠ Protobuf generation failed. You may need to run 'make gen-proto' manually.${NC}"
+    make proto 2>/dev/null || {
+        echo -e "${YELLOW}⚠ Protobuf generation failed. You may need to run 'make proto' manually.${NC}"
     }
 else
     echo -e "${YELLOW}⚠ Skipping Protobuf generation (protoc not found)${NC}"
+fi
+
+# Run version check
+echo -e "\n${BLUE}Verifying tool versions...${NC}"
+if [ -f "scripts/check-versions.sh" ]; then
+    ./scripts/check-versions.sh || {
+        echo -e "\n${YELLOW}⚠ Some tool versions don't match requirements${NC}"
+        echo -e "${YELLOW}  This may cause issues with CI or other developers${NC}"
+        echo -e "${YELLOW}  See docs/PROTO_TOOLS_VERSION.md for details${NC}"
+    }
 fi
 
 # Install Git hooks

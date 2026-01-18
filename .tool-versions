@@ -1,0 +1,25 @@
+# Tool Versions Configuration
+# This file defines the exact versions of tools used in this project
+# Both local development and CI should use these versions
+
+# Protobuf Compiler (libprotoc 33.1 = v33.1 release)
+PROTOC_VERSION=33.1
+
+# Go
+GO_VERSION=1.21
+
+# Go Protobuf Plugins
+PROTOC_GEN_GO_VERSION=v1.36.6
+PROTOC_GEN_GO_GRPC_VERSION=v1.5.1
+
+# Node.js
+NODE_VERSION=20
+
+# Java
+JAVA_VERSION=17
+
+# Gradle (managed by gradle wrapper in each service)
+# See apps/hello-service/gradle/wrapper/gradle-wrapper.properties
+
+# Docker
+DOCKER_COMPOSE_VERSION=2.20.0
