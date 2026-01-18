@@ -60,6 +60,11 @@ proto: gen-proto-go gen-proto-java gen-proto-ts
 gen-proto: proto
 	@echo "Note: 'gen-proto' is deprecated. Use 'make proto' instead."
 
+# Convenience aliases for CI (without gen- prefix)
+proto-go: gen-proto-go
+proto-java: gen-proto-java
+proto-ts: gen-proto-ts
+
 gen-proto-go:
 	@echo "Generating Go code from Protobuf..."
 	@mkdir -p apps/todo-service/gen/hellopb

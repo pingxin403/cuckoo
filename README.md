@@ -168,6 +168,11 @@ cd apps/web && npm install && cd ../..
 make proto
 
 # 或者单独生成（高级用法）
+make proto-go      # Go (alias for gen-proto-go)
+make proto-java    # Java (alias for gen-proto-java)
+make proto-ts      # TypeScript (alias for gen-proto-ts)
+
+# 或使用完整命令名
 make gen-proto-go      # Go
 make gen-proto-java    # Java
 make gen-proto-ts      # TypeScript
