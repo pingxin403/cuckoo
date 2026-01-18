@@ -139,12 +139,12 @@ fi
 
 # Set default package for Java
 if [ -z "$PACKAGE" ] && [ "$APP_TYPE" = "java" ]; then
-    PACKAGE="com.pingxin.cuckoo.$(echo $APP_NAME | tr '-' '.')"
+    PACKAGE="com.pingxin403.cuckoo.$(echo $APP_NAME | tr '-' '.')"
 fi
 
 # Set default module for Go
 if [ -z "$MODULE" ] && [ "$APP_TYPE" = "go" ]; then
-    MODULE="github.com/pingxin/cuckoo/apps/$APP_NAME"
+    MODULE="github.com/pingxin403/cuckoo/apps/$APP_NAME"
 fi
 
 log_info "========================================="
@@ -246,7 +246,7 @@ syntax = "proto3";
 
 package ${PROTO_FILE}pb;
 
-option go_package = "github.com/pingxin/cuckoo/apps/$APP_NAME/gen/${PROTO_FILE}pb";
+option go_package = "github.com/pingxin403/cuckoo/apps/$APP_NAME/gen/${PROTO_FILE}pb";
 option java_package = "$PACKAGE.proto";
 option java_multiple_files = true;
 

@@ -9,4 +9,4 @@ spring:
 logging:
   level:
     root: INFO
-    com.pingxin.cuckoo: DEBUG
+    com.pingxin403.cuckoo: DEBUG

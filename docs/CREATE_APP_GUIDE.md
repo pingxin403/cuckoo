@@ -53,7 +53,7 @@ For automation or when you know all parameters:
 ./scripts/create-app.sh java user-service \
   --port 9092 \
   --description "User management and authentication service" \
-  --package com.pingxin.cuckoo.user \
+  --package com.pingxin403.cuckoo.user \
   --team backend-team
 ```
 
@@ -70,7 +70,7 @@ This creates:
 ./scripts/create-app.sh go payment-service \
   --port 9093 \
   --description "Payment processing and billing service" \
-  --module github.com/pingxin/cuckoo/apps/payment-service \
+  --module github.com/pingxin403/cuckoo/apps/payment-service \
   --team payment-team
 ```
 
@@ -366,8 +366,8 @@ If tests fail after creation:
 
 - **App names**: Use kebab-case (e.g., `user-service`, `payment-gateway`)
 - **Proto files**: Use snake_case (e.g., `user_service.proto`)
-- **Java packages**: Use dot notation (e.g., `com.pingxin.cuckoo.user`)
-- **Go modules**: Use full path (e.g., `github.com/pingxin/cuckoo/apps/user-service`)
+- **Java packages**: Use dot notation (e.g., `com.pingxin403.cuckoo.user`)
+- **Go modules**: Use full path (e.g., `github.com/pingxin403/cuckoo/apps/user-service`)
 
 ### Port Assignment
 

@@ -254,14 +254,14 @@ Options:
 ./scripts/create-app.sh java user-service \
   --port 9092 \
   --description "User management service" \
-  --package com.pingxin.cuckoo.user \
+  --package com.pingxin403.cuckoo.user \
   --team backend-team
 
 # Create a Go service
 ./scripts/create-app.sh go payment-service \
   --port 9093 \
   --description "Payment processing service" \
-  --module github.com/pingxin/cuckoo/apps/payment-service \
+  --module github.com/pingxin403/cuckoo/apps/payment-service \
   --team payment-team
 
 # Create a Node.js app

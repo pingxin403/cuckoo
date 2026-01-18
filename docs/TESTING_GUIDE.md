@@ -205,7 +205,7 @@ jacocoTestCoverageVerification {
         }
         rule {
             element = 'CLASS'
-            includes = ['com.pingxin.cuckoo.*.service.*']
+            includes = ['com.pingxin403.cuckoo.*.service.*']
             limit {
                 minimum = 0.90  // 90% for service classes
             }

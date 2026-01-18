@@ -1,4 +1,4 @@
-package com.pingxin.cuckoo.hello.service;
+package com.pingxin403.cuckoo.hello.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;

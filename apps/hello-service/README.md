@@ -17,7 +17,7 @@ hello-service/
 ├── src/
 │   ├── main/
 │   │   ├── java/
-│   │   │   └── com/pingxin/cuckoo/hello/
+│   │   │   └── com/pingxin403/cuckoo/hello/
 │   │   │       ├── HelloServiceApplication.java    # 主应用类
 │   │   │       └── service/
 │   │   │           └── HelloServiceImpl.java       # gRPC 服务实现
@@ -163,7 +163,7 @@ spring:
 logging:
   level:
     root: INFO
-    com.pingxin.cuckoo: DEBUG
+    com.pingxin403.cuckoo: DEBUG
 ```
 
 ### 环境变量
