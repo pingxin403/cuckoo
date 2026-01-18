@@ -13,6 +13,7 @@ COPY ../../api/v1 /api/v1
 
 # Copy source code (including generated Protobuf code)
 COPY src ./src
+COPY build/generated ./build/generated
 
 # Build application (skip tests and protobuf generation for faster builds)
 # Use -x generateProto to skip protobuf generation since code is already committed
