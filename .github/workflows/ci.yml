@@ -33,17 +33,22 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Protobuf compiler
+      - name: Install Protobuf compiler (specific version)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
+          # Install protoc 33.1 (v28.3) to match local environment
+          PROTOC_VERSION=28.3
+          PROTOC_ZIP=protoc-${PROTOC_VERSION}-linux-x86_64.zip
+          curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/${PROTOC_ZIP}
+          sudo unzip -o $PROTOC_ZIP -d /usr/local bin/protoc
+          sudo unzip -o $PROTOC_ZIP -d /usr/local 'include/*'
+          rm -f $PROTOC_ZIP
           protoc --version
 
-      - name: Install Protobuf plugins
+      - name: Install Protobuf plugins (specific versions)
         run: |
-          # Go plugins
-          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+          # Install specific versions to match local environment
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.6
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
           
           # TypeScript plugin
           cd apps/web

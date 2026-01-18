@@ -53,6 +53,8 @@ A multi-language monorepo project demonstrating microservices architecture with 
 ## 快速开始
 
 > 📖 **详细指南**: 查看 [Getting Started Guide](docs/GETTING_STARTED.md) 获取完整的设置说明和故障排查。
+> 
+> ⚠️ **重要**: Protobuf 代码生成需要使用特定的工具版本。请参阅 [Protobuf 工具版本要求](docs/PROTO_TOOLS_VERSION.md)。
 
 ### 🚀 一键初始化（推荐）
 
@@ -88,9 +90,9 @@ make init
 # macOS
 brew install protobuf go node
 
-# 2. 安装 Go 工具
-go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+# 2. 安装 Go 工具（使用指定版本）
+go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.6
+go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.5.1
 
 # 3. 安装前端依赖
 cd apps/web && npm install && cd ../..
