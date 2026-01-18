@@ -56,7 +56,7 @@ A multi-language monorepo project demonstrating microservices architecture with 
 > 
 > ⚠️ **重要**: 
 > - Protobuf 代码生成需要使用特定的工具版本。请参阅 [Protobuf 工具版本要求](docs/PROTO_TOOLS_VERSION.md)。
-> - 本项目采用统一的 Proto 生成策略。请参阅 [Proto Generation Strategy](docs/PROTO_GENERATION_STRATEGY.md)。
+> - 本项目采用混合的 Proto 生成策略（务实方案）。请参阅 [Proto Hybrid Strategy](docs/PROTO_HYBRID_STRATEGY.md)。
 
 ### 🚀 一键初始化（推荐）
 

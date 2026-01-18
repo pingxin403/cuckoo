@@ -95,6 +95,10 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x apps/hello-service/gradlew
 
+      - name: Generate Protobuf code
+        working-directory: apps/hello-service
+        run: ./gradlew generateProto --no-daemon
+
       - name: Build with Gradle
         working-directory: apps/hello-service
         run: ./gradlew build --no-daemon
@@ -148,12 +152,32 @@ jobs:
         run: |
           source .tool-versions
           echo "GO_VERSION=$GO_VERSION" >> $GITHUB_OUTPUT
+          echo "PROTOC_VERSION=$PROTOC_VERSION" >> $GITHUB_OUTPUT
+          echo "PROTOC_GEN_GO_VERSION=$PROTOC_GEN_GO_VERSION" >> $GITHUB_OUTPUT
+          echo "PROTOC_GEN_GO_GRPC_VERSION=$PROTOC_GEN_GO_GRPC_VERSION" >> $GITHUB_OUTPUT
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: ${{ steps.versions.outputs.GO_VERSION }}
           cache-dependency-path: apps/todo-service/go.sum
+
+      - name: Install Protobuf compiler
+        run: |
+          PROTOC_VERSION=${{ steps.versions.outputs.PROTOC_VERSION }}
+          PROTOC_ZIP=protoc-${PROTOC_VERSION}-linux-x86_64.zip
+          curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/${PROTOC_ZIP}
+          sudo unzip -o $PROTOC_ZIP -d /usr/local bin/protoc
+          sudo unzip -o $PROTOC_ZIP -d /usr/local 'include/*'
+          rm -f $PROTOC_ZIP
+
+      - name: Install Protobuf plugins
+        run: |
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@${{ steps.versions.outputs.PROTOC_GEN_GO_VERSION }}
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@${{ steps.versions.outputs.PROTOC_GEN_GO_GRPC_VERSION }}
+
+      - name: Generate Protobuf code for Go
+        run: make proto-go
 
       - name: Download dependencies
         working-directory: apps/todo-service
@@ -214,9 +238,27 @@ jobs:
           cache: 'npm'
           cache-dependency-path: apps/web/package-lock.json
 
+      - name: Load tool versions
+        id: versions
+        run: |
+          source .tool-versions
+          echo "PROTOC_VERSION=$PROTOC_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Install Protobuf compiler
+        run: |
+          PROTOC_VERSION=${{ steps.versions.outputs.PROTOC_VERSION }}
+          PROTOC_ZIP=protoc-${PROTOC_VERSION}-linux-x86_64.zip
+          curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/${PROTOC_ZIP}
+          sudo unzip -o $PROTOC_ZIP -d /usr/local bin/protoc
+          sudo unzip -o $PROTOC_ZIP -d /usr/local 'include/*'
+          rm -f $PROTOC_ZIP
+
       - name: Install dependencies
         working-directory: apps/web
         run: npm ci
+
+      - name: Generate Protobuf code for TypeScript
+        run: make proto-ts
 
       - name: Run linter
         working-directory: apps/web
