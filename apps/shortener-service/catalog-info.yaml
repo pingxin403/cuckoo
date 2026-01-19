@@ -1,0 +1,56 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: shortener-service
+  description: High-performance URL shortening service
+  annotations:
+    github.com/project-slug: myorg/myrepo
+    backstage.io/techdocs-ref: dir:.
+  tags:
+    - go
+    - grpc
+    - backend
+  links:
+    - url: https://api.example.com/api/shortener-service
+      title: API Endpoint
+      icon: web
+    - url: https://github.com/myorg/myrepo/tree/main/apps/shortener-service
+      title: Source Code
+      icon: github
+spec:
+  type: service
+  lifecycle: production
+  owner: backend-go-team
+  system: monorepo-platform
+  providesApis:
+    - shortener-service-api
+  consumesApis: []
+  dependsOn: []
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: shortener-service-api
+  description: shortener-service gRPC API
+  tags:
+    - grpc
+    - protobuf
+spec:
+  type: grpc
+  lifecycle: production
+  owner: backend-go-team
+  system: monorepo-platform
+  definition: |
+    # shortener-service API
+    
+    This API is defined in Protobuf format.
+    
+    **Location**: `api/v1/shortener_service`
+    
+    ## Service Definition
+    
+    See the Protobuf file for complete API definition.
+    
+    ## Usage
+    
+    [Add usage instructions here]

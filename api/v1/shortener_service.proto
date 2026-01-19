@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package shortener_servicepb;
+
+option go_package = "github.com/pingxin403/cuckoo/apps/shortener-service/gen/shortener_servicepb";
+option java_package = ".proto";
+option java_multiple_files = true;
+
+// High-performance URL shortening service
+service UshortenerUserviceService {
+  // Add your RPC methods here
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message HealthCheckRequest {}
+
+message HealthCheckResponse {
+  string status = 1;
+}
