@@ -13,9 +13,10 @@ import (
 // Requirements: 4.6
 func TestProperty_CacheInvalidationOnDeletion(t *testing.T) {
 	// Check if Redis is available
+	// Test config for local Redis (no auth required)
 	config := L2CacheConfig{
 		Addrs:    []string{"localhost:6379"},
-		Password: "",
+		Password: "", // Empty password for local test Redis instance
 		DB:       0,
 	}
 
@@ -79,9 +80,10 @@ func TestProperty_CacheInvalidationOnDeletion(t *testing.T) {
 // TestProperty_L2CacheConsistency verifies L2 cache operations are consistent
 func TestProperty_L2CacheConsistency(t *testing.T) {
 	// Check if Redis is available
+	// Test config for local Redis (no auth required)
 	config := L2CacheConfig{
 		Addrs:    []string{"localhost:6379"},
-		Password: "",
+		Password: "", // Empty password for local test Redis instance
 		DB:       0,
 	}
 
@@ -132,9 +134,10 @@ func TestProperty_L2CacheConsistency(t *testing.T) {
 // TestProperty_BatchOperationsConsistency verifies batch operations are consistent
 func TestProperty_BatchOperationsConsistency(t *testing.T) {
 	// Check if Redis is available
+	// Test config for local Redis (no auth required)
 	config := L2CacheConfig{
 		Addrs:    []string{"localhost:6379"},
-		Password: "",
+		Password: "", // Empty password for local test Redis instance
 		DB:       0,
 	}
 
@@ -219,9 +222,10 @@ func TestProperty_BatchOperationsConsistency(t *testing.T) {
 // TestProperty_TTLJitter verifies TTL jitter is applied
 func TestProperty_TTLJitter(t *testing.T) {
 	// Check if Redis is available
+	// Test config for local Redis (no auth required)
 	config := L2CacheConfig{
 		Addrs:    []string{"localhost:6379"},
-		Password: "",
+		Password: "", // Empty password for local test Redis instance
 		DB:       0,
 	}
 

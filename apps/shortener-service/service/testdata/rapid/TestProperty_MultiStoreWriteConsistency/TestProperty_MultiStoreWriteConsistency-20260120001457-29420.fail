@@ -1,0 +1,41 @@
+# 2026/01/20 00:14:57.502775 [TestProperty_MultiStoreWriteConsistency] [rapid] draw domain: "09q"
+# 2026/01/20 00:14:57.502784 [TestProperty_MultiStoreWriteConsistency] [rapid] draw path: "/5"
+# 2026/01/20 00:14:57.502813 [TestProperty_MultiStoreWriteConsistency] 
+# 	Error Trace:	/Users/hanyunpeng/Projects/cuckoo/apps/shortener-service/service/shortener_service_property_test.go:76
+# 	            				/Users/hanyunpeng/go/pkg/mod/pgregory.net/rapid@v1.2.0/engine.go:371
+# 	            				/Users/hanyunpeng/go/pkg/mod/pgregory.net/rapid@v1.2.0/engine.go:380
+# 	            				/Users/hanyunpeng/go/pkg/mod/pgregory.net/rapid@v1.2.0/engine.go:205
+# 	            				/Users/hanyunpeng/go/pkg/mod/pgregory.net/rapid@v1.2.0/engine.go:120
+# 	            				/Users/hanyunpeng/Projects/cuckoo/apps/shortener-service/service/shortener_service_property_test.go:25
+# 	            				/opt/homebrew/Cellar/go/1.25.4/libexec/src/runtime/asm_arm64.s:1268
+# 	Error:      	Expected value not to be nil.
+# 	Test:       	TestProperty_MultiStoreWriteConsistency
+# 	Messages:   	mapping should exist in L1 cache
+# 
+v0.4.8#10358203093112549889
+0x0
+0x9ea5993e5f07d
+0x0
+0x389da7ae907ac
+0x1
+0x607514daba195
+0x0
+0x101a6269f901b2
+0xa
+0x15dd8c776a75ff
+0x0
+0x19ee646581be53
+0x1b
+0x1322c6dc229df
+0x0
+0x0
+0x18096693cb60c9
+0x0
+0x65b6547e1f0e7
+0x1
+0x153c81841f6b12
+0x0
+0x11aa0e950e9ad6
+0x7
+0x14172e74a78f
+0x0
