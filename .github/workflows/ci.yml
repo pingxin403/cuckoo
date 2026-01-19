@@ -455,16 +455,16 @@ jobs:
             echo "Creating placeholder manifests..."
             
             # Create a placeholder manifest
-            cat > k8s-manifests.yaml << 'EOF'
-# Placeholder Kubernetes Manifests
-# Generated because kustomize build failed
-#
-# To create actual manifests:
-# 1. Ensure all k8s resource files exist in apps/*/k8s/
-# 2. Run: kustomize build k8s/overlays/production
-#
-# For now, here are the Docker images that were built:
-EOF
+            cat > k8s-manifests.yaml << 'EOFMARKER'
+          # Placeholder Kubernetes Manifests
+          # Generated because kustomize build failed
+          #
+          # To create actual manifests:
+          # 1. Ensure all k8s resource files exist in apps/*/k8s/
+          # 2. Run: kustomize build k8s/overlays/production
+          #
+          # For now, here are the Docker images that were built:
+          EOFMARKER
             
             CHANGED_APPS="${{ needs.detect-changes.outputs.apps }}"
             for app in $CHANGED_APPS; do
