@@ -192,14 +192,14 @@ func NewTodoServiceServer(store storage.TodoStore) *TodoServiceServer <span clas
 }</span>
 
 // CreateTodo creates a new TODO item
-func (s *TodoServiceServer) CreateTodo(ctx context.Context, req *todopb.CreateTodoRequest) (*todopb.CreateTodoResponse, error) <span class="cov10" title="2817">{
+func (s *TodoServiceServer) CreateTodo(ctx context.Context, req *todopb.CreateTodoRequest) (*todopb.CreateTodoResponse, error) <span class="cov10" title="2946">{
         // Validate input
         if req.Title == "" || strings.TrimSpace(req.Title) == "" </span><span class="cov1" title="2">{
                 return nil, status.Error(codes.InvalidArgument, "title is required and cannot be empty")
         }</span>
 
         // Generate unique ID
-        <span class="cov9" title="2815">id := uuid.New().String()
+        <span class="cov9" title="2944">id := uuid.New().String()
 
         // Create TODO
         now := timestamppb.Now()
@@ -217,7 +217,7 @@ func (s *TodoServiceServer) CreateTodo(ctx context.Context, req *todopb.CreateTo
                 return nil, status.Errorf(codes.Internal, "failed to create todo: %v", err)
         }</span>
 
-        <span class="cov9" title="2815">return &amp;todopb.CreateTodoResponse{
+        <span class="cov9" title="2944">return &amp;todopb.CreateTodoResponse{
                 Todo: todo,
         }, nil</span>
 }
@@ -235,24 +235,24 @@ func (s *TodoServiceServer) ListTodos(ctx context.Context, req *todopb.ListTodos
 }
 
 // UpdateTodo updates an existing TODO item
-func (s *TodoServiceServer) UpdateTodo(ctx context.Context, req *todopb.UpdateTodoRequest) (*todopb.UpdateTodoResponse, error) <span class="cov8" title="614">{
+func (s *TodoServiceServer) UpdateTodo(ctx context.Context, req *todopb.UpdateTodoRequest) (*todopb.UpdateTodoResponse, error) <span class="cov8" title="582">{
         // Validate input
         if req.Id == "" </span><span class="cov1" title="1">{
                 return nil, status.Error(codes.InvalidArgument, "id is required")
         }</span>
 
-        <span class="cov8" title="613">if req.Title == "" || strings.TrimSpace(req.Title) == "" </span><span class="cov1" title="1">{
+        <span class="cov8" title="581">if req.Title == "" || strings.TrimSpace(req.Title) == "" </span><span class="cov1" title="1">{
                 return nil, status.Error(codes.InvalidArgument, "title is required and cannot be empty")
         }</span>
 
         // Get existing TODO
-        <span class="cov8" title="612">existingTodo, err := s.store.Get(req.Id)
+        <span class="cov8" title="580">existingTodo, err := s.store.Get(req.Id)
         if err != nil </span><span class="cov1" title="1">{
                 return nil, status.Error(codes.NotFound, "todo not found")
         }</span>
 
         // Update fields
-        <span class="cov8" title="611">existingTodo.Title = req.Title
+        <span class="cov8" title="579">existingTodo.Title = req.Title
         existingTodo.Description = req.Description
         existingTodo.Completed = req.Completed
         existingTodo.UpdatedAt = timestamppb.Now()
@@ -262,20 +262,20 @@ func (s *TodoServiceServer) UpdateTodo(ctx context.Context, req *todopb.UpdateTo
                 return nil, status.Errorf(codes.Internal, "failed to update todo: %v", err)
         }</span>
 
-        <span class="cov8" title="611">return &amp;todopb.UpdateTodoResponse{
+        <span class="cov8" title="579">return &amp;todopb.UpdateTodoResponse{
                 Todo: existingTodo,
         }, nil</span>
 }
 
 // DeleteTodo deletes a TODO item
-func (s *TodoServiceServer) DeleteTodo(ctx context.Context, req *todopb.DeleteTodoRequest) (*todopb.DeleteTodoResponse, error) <span class="cov7" title="205">{
+func (s *TodoServiceServer) DeleteTodo(ctx context.Context, req *todopb.DeleteTodoRequest) (*todopb.DeleteTodoResponse, error) <span class="cov6" title="205">{
         // Validate input
         if req.Id == "" </span><span class="cov1" title="1">{
                 return nil, status.Error(codes.InvalidArgument, "id is required")
         }</span>
 
         // Delete TODO
-        <span class="cov7" title="204">if err := s.store.Delete(req.Id); err != nil </span><span class="cov6" title="101">{
+        <span class="cov6" title="204">if err := s.store.Delete(req.Id); err != nil </span><span class="cov6" title="101">{
                 return nil, status.Error(codes.NotFound, "todo not found")
         }</span>
 

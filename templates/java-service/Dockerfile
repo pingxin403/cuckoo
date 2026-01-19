@@ -22,12 +22,13 @@ COPY apps/{{SERVICE_NAME}}/ ./
 RUN ./gradlew build -x test -x generateProto --no-daemon
 
 # Stage 2: Runtime stage
-FROM eclipse-temurin:17-jre-alpine
+# Use multi-arch base image that works on both ARM64 (local dev) and AMD64 (production)
+FROM eclipse-temurin:17-jre-jammy
 
 WORKDIR /app
 
 # Create non-root user
-RUN addgroup -S spring && adduser -S spring -G spring
+RUN groupadd -r spring && useradd -r -g spring spring
 USER spring:spring
 
 # Copy JAR file from build stage

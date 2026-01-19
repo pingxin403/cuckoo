@@ -1,44 +1,39 @@
 # Multi-stage Dockerfile for Java/Spring Boot Service
 # NOTE: This Dockerfile should be built from the repository root directory
 # Example: docker build -f apps/hello-service/Dockerfile -t hello-service:latest .
-# Proto code is generated inside Docker to avoid Gradle path remapping issues
 
 # Stage 1: Build stage
 FROM gradle:8.14.3-jdk17 AS build
 
-WORKDIR /app
+WORKDIR /workspace
 
-# Copy Gradle configuration files
-COPY apps/hello-service/build.gradle apps/hello-service/settings.gradle apps/hello-service/gradlew ./
-COPY apps/hello-service/gradle ./gradle
+# Copy proto files (Single Source of Truth)
+COPY api/v1 ./api/v1
+
+# Copy hello-service
+COPY apps/hello-service ./apps/hello-service
+
+# Build from the service directory
+WORKDIR /workspace/apps/hello-service
 
 # Download dependencies (cached layer)
 RUN ./gradlew dependencies --no-daemon || true
 
-# Copy source code first
-COPY apps/hello-service/ ./
-
-# Copy proto files into project directory (avoid cross-directory references)
-RUN mkdir -p src/main/proto
-COPY api/v1/hello.proto src/main/proto/
-
-# Temporarily modify build.gradle to use local proto path
-RUN sed -i "s|srcDir '../../api/v1'|srcDir 'src/main/proto'|g" build.gradle
-
-# Build application
+# Build application (proto generation happens automatically)
 RUN ./gradlew build -x test --no-daemon --no-configuration-cache
 
 # Stage 2: Runtime stage
-FROM eclipse-temurin:17-jre-alpine
+# Use multi-arch base image that works on both ARM64 (local dev) and AMD64 (production)
+FROM eclipse-temurin:17-jre-jammy
 
 WORKDIR /app
 
 # Create non-root user
-RUN addgroup -S spring && adduser -S spring -G spring
+RUN groupadd -r spring && useradd -r -g spring spring
 USER spring:spring
 
 # Copy JAR file from build stage
-COPY --from=build /app/build/libs/*.jar app.jar
+COPY --from=build /workspace/apps/hello-service/build/libs/*.jar app.jar
 
 # Expose gRPC port
 EXPOSE 9090

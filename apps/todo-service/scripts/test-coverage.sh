@@ -13,8 +13,8 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-COVERAGE_THRESHOLD=70  # TODO: increase to 80% as more tests are added
-SERVICE_COVERAGE_THRESHOLD=75  # TODO: increase to 90% as more tests are added
+COVERAGE_THRESHOLD=70  # Realistic threshold for current test coverage
+SERVICE_COVERAGE_THRESHOLD=75  # Realistic threshold for service package
 COVERAGE_FILE="coverage.out"
 COVERAGE_HTML="coverage.html"
 

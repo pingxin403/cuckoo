@@ -8,7 +8,7 @@ FROM golang:1.25-alpine AS build
 WORKDIR /app
 
 # Install protoc and required tools
-ARG PROTOC_VERSION=28.3
+ARG PROTOC_VERSION=33.1
 ARG PROTOC_GEN_GO_VERSION=v1.36.6
 ARG PROTOC_GEN_GO_GRPC_VERSION=v1.5.1
 
