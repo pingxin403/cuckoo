@@ -1,0 +1,157 @@
+# 2026/01/19 22:49:19.476264 [TestProperty_SingleflightRequestCoalescing] [rapid] draw shortCode: "-2wkEQC1T9w-22dt4E"
+# 2026/01/19 22:49:19.476276 [TestProperty_SingleflightRequestCoalescing] [rapid] draw longURL: "https://4q11-0.gc/-Xp"
+# 2026/01/19 22:49:19.476279 [TestProperty_SingleflightRequestCoalescing] [rapid] draw numRequests: 46
+# 2026/01/19 22:49:19.476482 [TestProperty_SingleflightRequestCoalescing] 
+# 	Error Trace:	/Users/hanyunpeng/Projects/cuckoo/apps/shortener-service/cache/cache_manager_property_test.go:126
+# 	            				/Users/hanyunpeng/go/pkg/mod/pgregory.net/rapid@v1.2.0/engine.go:371
+# 	            				/Users/hanyunpeng/go/pkg/mod/pgregory.net/rapid@v1.2.0/engine.go:380
+# 	            				/Users/hanyunpeng/go/pkg/mod/pgregory.net/rapid@v1.2.0/engine.go:205
+# 	            				/Users/hanyunpeng/go/pkg/mod/pgregory.net/rapid@v1.2.0/engine.go:120
+# 	            				/Users/hanyunpeng/Projects/cuckoo/apps/shortener-service/cache/cache_manager_property_test.go:71
+# 	            				/opt/homebrew/Cellar/go/1.25.4/libexec/src/runtime/asm_arm64.s:1268
+# 	Error:      	Not equal: 
+# 	            	expected: 1
+# 	            	actual  : 2
+# 	Test:       	TestProperty_SingleflightRequestCoalescing
+# 	Messages:   	Singleflight should coalesce 46 concurrent requests into 1 DB query, got 2
+# 
+v0.4.8#17469517490056697385
+0x0
+0x1c9cc60b661aa4
+0x0
+0x424871eab9dac
+0x0
+0x529686b3b9693
+0x0
+0x5da3eede9ff9f
+0x3
+0x19578cc884a0b7
+0x0
+0x1ab9c42d954f1c
+0x3b
+0x10d08629c503d1
+0x0
+0x195822bfacfe2b
+0x2f
+0x17527ae5255abf
+0x0
+0xdefd47a7bdb6e
+0xf
+0x1ed1a3138dfb79
+0x0
+0x1a696925fbeda6
+0x1b
+0x16099b813c7d0b
+0x0
+0x1559334429c14f
+0xd
+0x1d2247e0e7ced0
+0x0
+0x65067533b9037
+0x2
+0x6b650a0b3668d
+0x0
+0xfe1144da7175c
+0x1e
+0x137849035c8e97
+0x0
+0xa6bf9ce97a99c
+0xa
+0x18c52110e29e34
+0x0
+0x1bff0b75cb4e89
+0x3b
+0x5689a39c607a9
+0x0
+0x9851a1cb59ae7
+0x0
+0x1cd0962bbb2849
+0x0
+0x52879bf5d3607
+0x3
+0xa85b69bc669c6
+0x0
+0x3b61380a2775d
+0x3
+0x16b99d65cdb142
+0x0
+0x1663af046c767e
+0x28
+0x1c87f312ceecf0
+0x0
+0x1b8f60d46e0a70
+0x38
+0x16a55be56228e2
+0x0
+0x79eec38b53266
+0x5
+0x1228b3e5489516
+0x0
+0x13ffca37e09a3f
+0xf
+0x15b5b2c34c8e6
+0x0
+0x0
+0x0
+0x1e4f006fb5c82d
+0x0
+0x16ebffa1daffc
+0x0
+0xbaa4608678f58
+0x0
+0xa7c9b8997829f
+0x5
+0xb6def908a657f
+0x0
+0x1b655329747dc6
+0x3e
+0x1b
+0x873a4a9b8da26
+0x0
+0x60922fb91b332
+0x2
+0x112446b2621e53
+0x0
+0x1a41c81e3c2ebd
+0x2
+0x1f196ce6189292
+0x0
+0xb8188379af76
+0x0
+0x100f3945248b64
+0x0
+0x33bc3f1d7c9b
+0x1
+0x4230569a98620
+0x0
+0x370a08b5855f1
+0x0
+0xea85233eb2f60
+0x6
+0x1b02e0296c7c80
+0x0
+0x4d5be577206ba
+0x2
+0x9e828c8b7c97c
+0x1ea11562ae287a
+0x0
+0x5f37abe9d0e52
+0x0
+0x1eb95e3d68502
+0x0
+0xa73e38179621e
+0x0
+0x1cd4df61269cbe
+0x23
+0x13c4ae888eb0f5
+0x0
+0x19d834de767263
+0x6a
+0x36
+0x50822a5eba03f
+0x1857485f968cc4
+0x0
+0x1b988ab42cb477
+0x11e2157f0ace02
+0x3d
+0x24
