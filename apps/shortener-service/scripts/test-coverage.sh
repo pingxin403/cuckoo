@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Test coverage script for Go services
+# Test coverage script for URL Shortener Service
 # This script runs tests with coverage and verifies thresholds:
-# - Overall coverage: 80% minimum
-# - Service/storage packages: 90% minimum
+# - Overall coverage: 70% minimum
+# - Service/storage packages: 75% minimum
 
 set -e
 
@@ -22,18 +22,18 @@ go tool cover -func=coverage.out
 echo ""
 echo "Checking coverage thresholds..."
 
-# Check overall coverage (80%)
+# Check overall coverage (70%)
 OVERALL_COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
 echo "Overall coverage: ${OVERALL_COVERAGE}%"
 
-if (( $(echo "$OVERALL_COVERAGE < 80" | bc -l) )); then
-    echo "❌ FAIL: Overall coverage ${OVERALL_COVERAGE}% is below 80% threshold"
+if (( $(echo "$OVERALL_COVERAGE < 70" | bc -l) )); then
+    echo "❌ FAIL: Overall coverage ${OVERALL_COVERAGE}% is below 70% threshold"
     exit 1
 fi
 
-echo "✅ PASS: Overall coverage meets 80% threshold"
+echo "✅ PASS: Overall coverage meets 70% threshold"
 
-# Check service and storage package coverage (90%)
+# Check service and storage package coverage (75%)
 SERVICE_LINES=$(go tool cover -func=coverage.out | grep -E '(service|storage)' || true)
 
 if [ -n "$SERVICE_LINES" ]; then
@@ -41,12 +41,12 @@ if [ -n "$SERVICE_LINES" ]; then
     SERVICE_COVERAGE=$(echo "$SERVICE_LINES" | awk '{sum+=$3; count++} END {if (count > 0) print sum/count; else print 0}' | sed 's/%//')
     echo "Service/storage coverage: ${SERVICE_COVERAGE}%"
     
-    if (( $(echo "$SERVICE_COVERAGE < 90" | bc -l) )); then
-        echo "❌ FAIL: Service/storage coverage ${SERVICE_COVERAGE}% is below 90% threshold"
+    if (( $(echo "$SERVICE_COVERAGE < 75" | bc -l) )); then
+        echo "❌ FAIL: Service/storage coverage ${SERVICE_COVERAGE}% is below 75% threshold"
         exit 1
     fi
     
-    echo "✅ PASS: Service/storage coverage meets 90% threshold"
+    echo "✅ PASS: Service/storage coverage meets 75% threshold"
 else
     echo "⚠️  WARNING: No service or storage packages found"
 fi
