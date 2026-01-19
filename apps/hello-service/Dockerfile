@@ -15,15 +15,18 @@ COPY apps/hello-service/gradle ./gradle
 # Download dependencies (cached layer)
 RUN ./gradlew dependencies --no-daemon || true
 
-# Copy proto files (needed for proto generation)
-RUN mkdir -p /api/v1
-COPY api/v1/ /api/v1/
-
-# Copy source code
+# Copy source code first
 COPY apps/hello-service/ ./
 
-# Build application (generate proto inside Docker to avoid path issues)
-RUN ./gradlew build -x test --no-daemon
+# Copy proto files into project directory (avoid cross-directory references)
+RUN mkdir -p src/main/proto
+COPY api/v1/hello.proto src/main/proto/
+
+# Temporarily modify build.gradle to use local proto path
+RUN sed -i "s|srcDir '../../api/v1'|srcDir 'src/main/proto'|g" build.gradle
+
+# Build application
+RUN ./gradlew build -x test --no-daemon --no-configuration-cache
 
 # Stage 2: Runtime stage
 FROM eclipse-temurin:17-jre-alpine
