@@ -1,7 +1,9 @@
 spec:
   name: shortener-service
+  short_name: shortener  # Short name for CLI convenience
   description: High-performance URL shortening service
   type: go
+  port: 9092
   cd: true
   codeowners:
     - "@backend-go-team"

@@ -30,18 +30,26 @@ func main() {
 		log.Fatalf("Failed to listen on port %s: %v", port, err)
 	}
 
-	// Initialize storage
-	store := storage.NewMemoryStore()
-	log.Println("Initialized in-memory store")
+	// Initialize MySQL storage
+	store, err := storage.NewMySQLStore()
+	if err != nil {
+		log.Fatalf("Failed to initialize MySQL store: %v", err)
+	}
+	defer func() {
+		if err := store.Close(); err != nil {
+			log.Printf("Error closing store: %v", err)
+		}
+	}()
+	log.Println("Initialized MySQL store")
 
 	// Create service
-	svc := service.NewUshortenerUserviceServiceServer(store)
+	svc := service.NewShortenerServiceImpl(store)
 
 	// Create gRPC server
 	grpcServer := grpc.NewServer()
 
 	// Register service
-	shortener_servicepb.RegisterUshortenerUserviceServiceServer(grpcServer, svc)
+	shortener_servicepb.RegisterShortenerServiceServer(grpcServer, svc)
 
 	// Register reflection service for debugging (e.g., with grpcurl)
 	reflection.Register(grpcServer)

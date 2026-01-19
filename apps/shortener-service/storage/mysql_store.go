@@ -203,7 +203,11 @@ func (s *MySQLStore) GetExpired(ctx context.Context, limit int) ([]*URLMapping, 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get expired mappings: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		if err := rows.Close(); err != nil {
+			// Log error but don't fail the operation
+		}
+	}()
 
 	var mappings []*URLMapping
 	for rows.Next() {
