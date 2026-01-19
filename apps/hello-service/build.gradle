@@ -67,7 +67,7 @@ jacocoTestReport {
 				'**/gen/**',
 				'**/generated/**',
 				'**/proto/**',
-				'**/com/myorg/**',  // Exclude generated protobuf code
+				'com/myorg/**',  // Exclude generated protobuf code (no leading **)
 				'**/*Application.class',
 				'**/*Config.class',
 				'**/*Configuration.class'
@@ -77,6 +77,9 @@ jacocoTestReport {
 }
 
 jacocoTestCoverageVerification {
+	// Declare explicit dependencies to avoid Gradle warnings
+	dependsOn test, generateProto, compileJava, processResources
+	
 	violationRules {
 		rule {
 			limit {
@@ -102,16 +105,13 @@ jacocoTestCoverageVerification {
 				'**/gen/**',
 				'**/generated/**',
 				'**/proto/**',
-				'**/com/myorg/**',  // Exclude generated protobuf code
+				'com/myorg/**',  // Exclude generated protobuf code (no leading **)
 				'**/*Application.class',
 				'**/*Config.class',
 				'**/*Configuration.class'
 			])
 		}))
 	}
-	
-	// Ensure test task runs before coverage verification
-	dependsOn test
 }
 
 // Only run coverage verification when explicitly requested or during 'check' task
