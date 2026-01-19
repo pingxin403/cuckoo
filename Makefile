@@ -1,7 +1,7 @@
 .PHONY: help init check-env check-versions proto gen-proto gen-proto-go gen-proto-java gen-proto-ts verify-proto \
         build test lint lint-fix format docker-build run clean list-apps create \
         test-coverage test-coverage-hello test-coverage-todo verify-coverage verify-coverage-hello verify-coverage-todo \
-        dev pre-commit verify-auto-detection
+        dev pre-commit verify-auto-detection prepare-k8s-resources
 
 # Default target
 help:
@@ -22,6 +22,9 @@ help:
 	@echo "  format [APP=name]  - Format code for app(s)"
 	@echo "  test [APP=name]    - Run tests for app(s)"
 	@echo "  test-coverage      - Run tests with coverage for all services"
+	@echo ""
+	@echo "  Kubernetes:"
+	@echo "  prepare-k8s-resources - Prepare K8s resources for Kustomize build"
 	@echo ""
 	@echo "  App Management (supports APP=<name> or auto-detects changed apps):"
 	@echo "  list-apps          - List all available apps"
@@ -236,3 +239,8 @@ dev:
 pre-commit:
 	@echo "Running pre-commit checks..."
 	@./scripts/pre-commit-checks.sh
+
+# Kubernetes resource preparation
+prepare-k8s-resources:
+	@echo "Preparing K8s resources for Kustomize..."
+	@./scripts/prepare-k8s-resources.sh

@@ -8,22 +8,23 @@ metadata:
     description: "Production overlay for Monorepo Hello/TODO Services"
 
 # Base configuration
-bases:
+resources:
   - ../../base
 
 # Override namespace for production
 namespace: production
-
-# Production-specific labels
-commonLabels:
-  environment: production
-  tier: production
 
 # Production-specific annotations
 commonAnnotations:
   deployment.kubernetes.io/revision: "1"
   monitoring: "enabled"
   alerting: "enabled"
+
+# Production-specific labels
+labels:
+  - pairs:
+      environment: production
+      tier: production
 
 # Override replicas for production
 replicas:
@@ -51,10 +52,10 @@ configMapGenerator:
       - ENABLE_METRICS=true
       - ENABLE_TRACING=true
 
-# Strategic merge patches for production-specific changes
-patchesStrategicMerge:
-  - resources-patch.yaml
-  - ingress-patch.yaml
+# Patches for production-specific changes
+patches:
+  - path: resources-patch.yaml
+  - path: ingress-patch.yaml
 
 # JSON patches for fine-grained changes (optional)
 # patchesJson6902:

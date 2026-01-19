@@ -10,30 +10,21 @@ metadata:
 # Namespace for all resources
 namespace: default
 
-# Common labels applied to all resources
-commonLabels:
-  project: monorepo-platform
-  managed-by: kustomize
-  environment: base
-
 # Common annotations applied to all resources
 commonAnnotations:
   documentation: "https://github.com/myorg/myrepo"
   contact: "platform-team@example.com"
 
 # Resources to include
+# Note: Kustomize requires all resources to be within or below the kustomization directory
+# We'll use a different approach - create symlinks or copy files to k8s/base/resources/
 resources:
-  # Hello Service resources
-  - ../../apps/hello-service/k8s/deployment.yaml
-  - ../../apps/hello-service/k8s/service.yaml
-  - ../../apps/hello-service/k8s/configmap.yaml
-  
-  # TODO Service resources
-  - ../../apps/todo-service/k8s/deployment.yaml
-  - ../../apps/todo-service/k8s/service.yaml
-  
-  # Ingress configuration
-  - ../../tools/k8s/ingress.yaml
+  - hello-service-deployment.yaml
+  - hello-service-service.yaml
+  - hello-service-configmap.yaml
+  - todo-service-deployment.yaml
+  - todo-service-service.yaml
+  - ingress.yaml
 
 # Images (can be overridden in overlays)
 images:
@@ -74,5 +65,8 @@ replicas:
 # Labels to add to all resources
 labels:
   - pairs:
+      project: monorepo-platform
+      managed-by: kustomize
+      environment: base
       app.kubernetes.io/part-of: monorepo-platform
       app.kubernetes.io/managed-by: kustomize
