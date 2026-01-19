@@ -162,9 +162,8 @@ log_info "========================================="
 log_info "Copying template..."
 cp -r "templates/${APP_TYPE}-service" "apps/$APP_NAME"
 
-# Create .apptype file
-log_info "Creating .apptype file..."
-echo "$APP_TYPE" > "apps/$APP_NAME/.apptype"
+# Generate short name (remove -service suffix if present)
+SHORT_NAME=$(echo "$APP_NAME" | sed 's/-service$//')
 
 # Convert app name to different formats (needed for file renaming)
 APP_NAME_UPPER=$(echo "$APP_NAME" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
@@ -195,11 +194,13 @@ replace_in_file() {
         
         sed -i.bak \
             -e "s/{{SERVICE_NAME}}/$APP_NAME/g" \
+            -e "s/{{SHORT_NAME}}/$SHORT_NAME/g" \
             -e "s/{{SERVICE_NAME_UPPER}}/$APP_NAME_UPPER/g" \
             -e "s/{{SERVICE_NAME_CAMEL}}/$APP_NAME_CAMEL/g" \
             -e "s/{{SERVICE_NAME_SNAKE}}/$APP_NAME_SNAKE/g" \
             -e "s/{{ServiceName}}/$APP_NAME_CAMEL/g" \
             -e "s/{{SERVICE_DESCRIPTION}}/$DESC_ESC/g" \
+            -e "s/{{PORT}}/$PORT/g" \
             -e "s/{{GRPC_PORT}}/$PORT/g" \
             -e "s/{{PACKAGE_NAME}}/$PACKAGE_ESC/g" \
             -e "s/{{MODULE_PATH}}/$MODULE_ESC/g" \
@@ -213,9 +214,10 @@ replace_in_file() {
     fi
 }
 
-# Replace in all files (including .apptype and metadata.yaml)
+# Replace in all files (including metadata.yaml)
+# Note: .apptype is now deprecated in favor of metadata.yaml
 find "apps/$APP_NAME" -type f | while read file; do
-    # Skip .git files but include .apptype
+    # Skip .git files
     if [[ ! "$file" =~ \.git/ ]]; then
         replace_in_file "$file"
     fi

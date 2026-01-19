@@ -1,7 +1,9 @@
 spec:
   name: web
+  short_name: web  # Short name for CLI convenience
   description: A React-based frontend application
   type: node
+  port: 5173
   cd: false
   codeowners:
     - "@frontend-team"

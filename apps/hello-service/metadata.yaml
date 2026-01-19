@@ -1,7 +1,9 @@
 spec:
   name: hello-service
+  short_name: hello  # Short name for CLI convenience
   description: A gRPC service providing greeting functionality
   type: java
+  port: 9090
   cd: true
   codeowners:
     - "@backend-java-team"

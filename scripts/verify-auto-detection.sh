@@ -22,7 +22,17 @@ detect_app_type() {
     local app_dir=$1
     local app_type=""
     
-    # Priority 1: Check .apptype file
+    # Priority 1: Check metadata.yaml (preferred)
+    if [ -f "$app_dir/metadata.yaml" ]; then
+        app_type=$(grep "^  type:" "$app_dir/metadata.yaml" | awk '{print $2}' | tr -d '[:space:]')
+        if [ -n "$app_type" ]; then
+            echo "detected_via=metadata.yaml"
+            echo "type=$app_type"
+            return
+        fi
+    fi
+    
+    # Priority 2: Check .apptype file (legacy support)
     if [ -f "$app_dir/.apptype" ]; then
         app_type=$(cat "$app_dir/.apptype" | tr -d '[:space:]')
         echo "detected_via=.apptype"
@@ -96,11 +106,21 @@ for template in templates/*-service; do
     template_name=$(basename "$template")
     echo -e "${YELLOW}Testing template: $template_name${NC}"
     
-    if [ -f "$template/.apptype" ]; then
+    # Check for metadata.yaml (preferred) or .apptype (legacy)
+    if [ -f "$template/metadata.yaml" ]; then
+        app_type=$(grep "^  type:" "$template/metadata.yaml" | awk '{print $2}' | tr -d '[:space:]')
+        if [ -n "$app_type" ]; then
+            echo -e "${GREEN}✅ PASS${NC}: Template has metadata.yaml with type '$app_type'"
+        else
+            echo -e "${RED}❌ FAIL${NC}: Template metadata.yaml missing type field"
+            exit 1
+        fi
+    elif [ -f "$template/.apptype" ]; then
         app_type=$(cat "$template/.apptype" | tr -d '[:space:]')
-        echo -e "${GREEN}✅ PASS${NC}: Template has .apptype file with type '$app_type'"
+        echo -e "${YELLOW}⚠️  WARN${NC}: Template uses legacy .apptype file with type '$app_type'"
+        echo -e "${YELLOW}    Consider migrating to metadata.yaml${NC}"
     else
-        echo -e "${RED}❌ FAIL${NC}: Template missing .apptype file"
+        echo -e "${RED}❌ FAIL${NC}: Template missing metadata.yaml or .apptype file"
         exit 1
     fi
     

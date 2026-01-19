@@ -1,7 +1,9 @@
 spec:
   name: todo-service
+  short_name: todo  # Short name for CLI convenience
   description: A gRPC service providing task management functionality
   type: go
+  port: 9091
   cd: true
   codeowners:
     - "@backend-go-team"

@@ -138,12 +138,12 @@ jobs:
         run: |
           APP_DIR="apps/${{ matrix.app }}"
           
-          # Priority 1: Check .apptype file
-          if [ -f "$APP_DIR/.apptype" ]; then
-            APP_TYPE=$(cat "$APP_DIR/.apptype" | tr -d '[:space:]')
-          # Priority 2: Check metadata.yaml
-          elif [ -f "$APP_DIR/metadata.yaml" ]; then
+          # Priority 1: Check metadata.yaml (preferred)
+          if [ -f "$APP_DIR/metadata.yaml" ]; then
             APP_TYPE=$(grep "^  type:" "$APP_DIR/metadata.yaml" | awk '{print $2}' | tr -d '[:space:]')
+          # Priority 2: Check .apptype file (legacy support)
+          elif [ -f "$APP_DIR/.apptype" ]; then
+            APP_TYPE=$(cat "$APP_DIR/.apptype" | tr -d '[:space:]')
           # Priority 3: Detect by file characteristics
           elif [ -f "$APP_DIR/build.gradle" ] || [ -f "$APP_DIR/pom.xml" ]; then
             APP_TYPE="java"
@@ -302,12 +302,12 @@ jobs:
         run: |
           APP_DIR="apps/${{ matrix.app }}"
           
-          # Priority 1: Check .apptype file
-          if [ -f "$APP_DIR/.apptype" ]; then
-            APP_TYPE=$(cat "$APP_DIR/.apptype" | tr -d '[:space:]')
-          # Priority 2: Check metadata.yaml
-          elif [ -f "$APP_DIR/metadata.yaml" ]; then
+          # Priority 1: Check metadata.yaml (preferred)
+          if [ -f "$APP_DIR/metadata.yaml" ]; then
             APP_TYPE=$(grep "^  type:" "$APP_DIR/metadata.yaml" | awk '{print $2}' | tr -d '[:space:]')
+          # Priority 2: Check .apptype file (legacy support)
+          elif [ -f "$APP_DIR/.apptype" ]; then
+            APP_TYPE=$(cat "$APP_DIR/.apptype" | tr -d '[:space:]')
           # Priority 3: Detect by file characteristics
           elif [ -f "$APP_DIR/build.gradle" ] || [ -f "$APP_DIR/pom.xml" ]; then
             APP_TYPE="java"
@@ -566,12 +566,12 @@ jobs:
         run: |
           APP_DIR="apps/${{ matrix.app }}"
           
-          # Priority 1: Check .apptype file
-          if [ -f "$APP_DIR/.apptype" ]; then
-            APP_TYPE=$(cat "$APP_DIR/.apptype" | tr -d '[:space:]')
-          # Priority 2: Check metadata.yaml
-          elif [ -f "$APP_DIR/metadata.yaml" ]; then
+          # Priority 1: Check metadata.yaml (preferred)
+          if [ -f "$APP_DIR/metadata.yaml" ]; then
             APP_TYPE=$(grep "^  type:" "$APP_DIR/metadata.yaml" | awk '{print $2}' | tr -d '[:space:]')
+          # Priority 2: Check .apptype file (legacy support)
+          elif [ -f "$APP_DIR/.apptype" ]; then
+            APP_TYPE=$(cat "$APP_DIR/.apptype" | tr -d '[:space:]')
           # Priority 3: Detect by file characteristics
           elif [ -f "$APP_DIR/build.gradle" ] || [ -f "$APP_DIR/pom.xml" ]; then
             APP_TYPE="java"
