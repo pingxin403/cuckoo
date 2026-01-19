@@ -1,0 +1,10 @@
+spec:
+  name: shortener-service
+  description: High-performance URL shortening service
+  type: go
+  cd: true
+  codeowners:
+    - "@backend-go-team"
+test:
+  coverage: 70
+  service_coverage: 75
