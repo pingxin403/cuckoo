@@ -3,11 +3,17 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+)
+
+var (
+	// ErrNotFound is returned when a mapping is not found
+	ErrNotFound = errors.New("mapping not found")
 )
 
 // URLMapping represents a URL mapping entity
@@ -139,7 +145,7 @@ func (s *MySQLStore) Get(ctx context.Context, shortCode string) (*URLMapping, er
 	)
 
 	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("mapping not found for short code: %s", shortCode)
+		return nil, ErrNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get mapping: %w", err)
@@ -183,7 +189,7 @@ func (s *MySQLStore) Delete(ctx context.Context, shortCode string) error {
 	}
 
 	if rowsAffected == 0 {
-		return fmt.Errorf("mapping not found for short code: %s", shortCode)
+		return ErrNotFound
 	}
 
 	return nil
