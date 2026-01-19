@@ -96,6 +96,11 @@ Desktop.ini
 # Docker
 .dockerignore
 
+# Kubernetes
+# Generated K8s resources (copied from apps/*/k8s/ to k8s/base/)
+k8s/base/*.yaml
+!k8s/base/kustomization.yaml
+
 # Logs
 logs/
 *.log.*
