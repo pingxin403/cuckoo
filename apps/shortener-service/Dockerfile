@@ -32,16 +32,12 @@ RUN go mod download
 # Copy proto files (Single Source of Truth)
 COPY api/v1 /api/v1
 
-# Generate proto code (adjust proto file names as needed)
-RUN mkdir -p gen/hellopb gen/todopb && \
+# Generate proto code for shortener service
+RUN mkdir -p gen/shortener_servicepb && \
     protoc --proto_path=/api/v1 \
-           --go_out=./gen/hellopb --go_opt=paths=source_relative \
-           --go-grpc_out=./gen/hellopb --go-grpc_opt=paths=source_relative \
-           /api/v1/hello.proto && \
-    protoc --proto_path=/api/v1 \
-           --go_out=./gen/todopb --go_opt=paths=source_relative \
-           --go-grpc_out=./gen/todopb --go-grpc_opt=paths=source_relative \
-           /api/v1/todo.proto
+           --go_out=./gen/shortener_servicepb --go_opt=paths=source_relative \
+           --go-grpc_out=./gen/shortener_servicepb --go-grpc_opt=paths=source_relative \
+           /api/v1/shortener_service.proto
 
 # Copy source code
 COPY apps/shortener-service/ ./
@@ -60,8 +56,8 @@ RUN apk --no-cache add ca-certificates
 # Copy binary from build stage
 COPY --from=build /app/shortener-service .
 
-# Expose gRPC port
-EXPOSE 9092
+# Expose ports
+EXPOSE 9092 8080 9090
 
 # Run the service
 ENTRYPOINT ["./shortener-service"]

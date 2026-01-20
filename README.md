@@ -21,6 +21,7 @@ A multi-language monorepo project demonstrating microservices architecture with 
 
 - **Hello Service** (Java/Spring Boot) - 提供问候功能的 gRPC 服务
 - **TODO Service** (Go) - 提供任务管理功能的 gRPC 服务
+- **Shortener Service** (Go) - 高性能 URL 短链接服务，支持自定义短码和多级缓存
 - **Web Application** (React/TypeScript) - 前端单页应用
 
 所有服务通过 Protobuf 定义统一的 API 契约，使用 gRPC 进行通信。
@@ -32,10 +33,12 @@ A multi-language monorepo project demonstrating microservices architecture with 
 ├── api/                    # API 契约层 (Protobuf 定义)
 │   └── v1/
 │       ├── hello.proto
-│       └── todo.proto
+│       ├── todo.proto
+│       └── shortener.proto
 ├── apps/                   # 应用服务
 │   ├── hello-service/      # Java/Spring Boot 服务
 │   ├── todo-service/       # Go 服务
+│   ├── shortener-service/  # Go URL 短链接服务
 │   └── web/                # React 前端应用
 ├── libs/                   # 共享库
 ├── tools/                  # 构建工具和配置
@@ -333,11 +336,13 @@ graph TB
 
 - `hello.proto` - Hello 服务接口
 - `todo.proto` - TODO 服务接口
+- `shortener.proto` - URL 短链接服务接口
 
 ### 服务端口
 
 - Hello Service: 9090 (gRPC)
 - TODO Service: 9091 (gRPC)
+- Shortener Service: 9092 (gRPC), 8080 (HTTP Redirect)
 - Web Application: 5173 (开发模式)
 - Envoy Proxy: 8080 (HTTP/gRPC-Web)
 
@@ -612,6 +617,7 @@ cd apps/todo-service && go run .
 
 - [Hello Service](apps/hello-service/README.md) - Java/Spring Boot 问候服务
 - [TODO Service](apps/todo-service/README.md) - Go 任务管理服务
+- [Shortener Service](apps/shortener-service/README.md) - Go URL 短链接服务
 - [Web Application](apps/web/README.md) - React 前端应用
 
 ## 贡献指南
