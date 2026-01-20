@@ -1,160 +1,48 @@
-# CI Fix Quick Reference
+# CI 修复快速参考
 
-## What Was Fixed
+## 修复内容
 
-### 1. Security Scan ✅
-- **Issue**: Permission denied for SARIF upload
-- **Fix**: Added `security-events: write` permission
-- **File**: `.github/workflows/ci.yml`
+### ✅ 修复 1: Hello Service 测试覆盖率
+- **问题**: CI 中测试未运行，导致 0% 覆盖率
+- **原因**: Gradle `build` 任务不包含 `test`
+- **修复**: 在 CI 中显式添加 `test` 任务
 
-### 2. Kustomize Build ✅
-- **Issues**: 
-  - Deprecated fields warnings
-  - Path outside directory errors
-- **Fixes**:
-  - Updated field names: `bases`→`resources`, `commonLabels`→`labels`, `patchesStrategicMerge`→`patches`
-  - Created resource preparation script
-  - Copy resources to base directory before build
-- **Files**: 
-  - `k8s/base/kustomization.yaml`
-  - `k8s/overlays/production/kustomization.yaml`
-  - `scripts/prepare-k8s-resources.sh` (new)
+### ✅ 修复 2: Shortener Service Proto 生成
+- **问题**: CI 中缺少 shortener-service 的 protobuf 代码
+- **原因**: Makefile 只为 todo-service 生成代码
+- **修复**: 在 Makefile 中添加 shortener-service 的 proto 生成
 
-### 3. K8s Deployment ✅
-- **Issue**: Fails when no cluster configured
-- **Fix**: Conditional deployment based on KUBECONFIG
-- **Behavior**:
-  - Always generate manifests
-  - Always upload artifacts
-  - Deploy only if KUBECONFIG exists
-  - Show instructions if skipped
-- **File**: `.github/workflows/ci.yml`
+## 修改的文件
 
-## Quick Commands
+1. `.github/workflows/ci.yml` - 添加显式 `test` 任务
+2. `Makefile` - 添加 shortener-service proto 生成
+
+## 本地验证
 
 ```bash
-# Prepare K8s resources for Kustomize
-make prepare-k8s-resources
+# 验证 Hello Service
+cd apps/hello-service
+./gradlew clean generateProto test jacocoTestReport
+# ✅ 应该看到测试运行并生成覆盖率报告
 
-# Build manifests locally
-kustomize build k8s/overlays/production > manifests.yaml
+# 验证 Shortener Service
+make proto-go
+cd apps/shortener-service
+go test ./...
+# ✅ 应该看到所有测试通过
 
-# Validate manifests
-kubectl apply --dry-run=client -f manifests.yaml
-
-# Deploy manually
-kubectl apply -f manifests.yaml
+# 验证 Proto 生成
+ls -la apps/shortener-service/gen/shortener_servicepb/
+# ✅ 应该看到生成的 .pb.go 文件
 ```
 
-## CI Pipeline Flow
+## CI 预期结果
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│ 1. Build & Test Apps                                        │
-│    ├─ Detect changes                                        │
-│    ├─ Build Docker images                                   │
-│    └─ Run security scan ✅ (with proper permissions)        │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│ 2. Push Images (if main/develop)                            │
-│    └─ Push to container registry                            │
-└─────────────────────────────────────────────────────────────┘
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│ 3. Deploy to Kubernetes (if main)                           │
-│    ├─ Check KUBECONFIG                                      │
-│    ├─ Prepare K8s resources ✅ (new step)                   │
-│    ├─ Generate manifests ✅ (with error handling)           │
-│    ├─ Upload artifacts (always)                             │
-│    ├─ Deploy (if KUBECONFIG exists) ✅ (conditional)        │
-│    └─ Show instructions (if no KUBECONFIG) ✅ (helpful)     │
-└─────────────────────────────────────────────────────────────┘
-```
+提交后，CI 应该:
+- ✅ Hello Service: 测试运行，覆盖率 > 30%
+- ✅ Shortener Service: Proto 生成成功，所有测试通过
+- ✅ 所有构建步骤成功
 
-## Kustomize Field Updates
+## 详细文档
 
-| Old (Deprecated) | New (Current) |
-|-----------------|---------------|
-| `bases` | `resources` |
-| `commonLabels` | `labels` |
-| `patchesStrategicMerge` | `patches` |
-
-## Files Modified
-
-- ✅ `.github/workflows/ci.yml` - Security permissions, resource prep, conditional deploy
-- ✅ `k8s/base/kustomization.yaml` - Field updates, local resource paths
-- ✅ `k8s/overlays/production/kustomization.yaml` - Field updates
-- ✅ `scripts/prepare-k8s-resources.sh` - New resource preparation script
-- ✅ `Makefile` - Added `prepare-k8s-resources` target
-- ✅ `.gitignore` - Ignore generated k8s/base/*.yaml files
-
-## Testing
-
-```bash
-# Local test
-make prepare-k8s-resources
-kustomize build k8s/overlays/production > test.yaml
-kubectl apply --dry-run=client -f test.yaml
-
-# Expected: No errors, 407 lines generated
-```
-
-## Enable Auto-Deployment
-
-To enable automatic deployment to Kubernetes:
-
-1. Get your kubeconfig:
-   ```bash
-   cat ~/.kube/config | base64
-   ```
-
-2. Add to GitHub repository secrets:
-   - Name: `KUBECONFIG`
-   - Value: `<base64 output from step 1>`
-
-3. Push to main branch - deployment will happen automatically
-
-## Manual Deployment
-
-If KUBECONFIG is not configured:
-
-1. Go to GitHub Actions run
-2. Download `k8s-manifests` artifact
-3. Extract and apply:
-   ```bash
-   kubectl apply -f k8s-manifests.yaml
-   ```
-
-## Troubleshooting
-
-### Kustomize build fails
-```bash
-# Run preparation script first
-make prepare-k8s-resources
-
-# Then try build again
-kustomize build k8s/overlays/production
-```
-
-### Deprecated field warnings
-- All deprecated fields have been updated
-- If you see warnings, check you're using the latest kustomization.yaml files
-
-### Path errors
-- Resources must be in or below the kustomization directory
-- Use `prepare-k8s-resources` to copy files to correct location
-
-## Documentation
-
-- [Complete Fix Details](./CI_SECURITY_K8S_FIX.md)
-- [Complete Summary](./CI_FIX_COMPLETE_SUMMARY.md)
-- [Kubernetes Deployment Guide](./KUBERNETES_DEPLOYMENT.md)
-
-## Status
-
-✅ All issues resolved
-✅ CI pipeline working
-✅ Local development workflow matches CI
-✅ Manual deployment supported
-✅ Auto-deployment ready (when KUBECONFIG configured)
+参见 `docs/CI_FIX_SUMMARY.md` 了解完整的问题分析和解决方案。

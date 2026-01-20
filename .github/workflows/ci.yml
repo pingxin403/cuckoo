@@ -201,7 +201,7 @@ jobs:
         run: |
           chmod +x apps/${{ matrix.app }}/gradlew
           cd apps/${{ matrix.app }}
-          ./gradlew generateProto build jacocoTestReport jacocoTestCoverageVerification --no-daemon
+          ./gradlew generateProto test jacocoTestReport jacocoTestCoverageVerification build --no-daemon
 
       - name: Upload Java test results
         if: steps.detect-type.outputs.type == 'java' && always()

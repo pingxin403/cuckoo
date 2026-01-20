@@ -7,6 +7,8 @@ spec:
   cd: true
   codeowners:
     - "@backend-go-team"
+  proto_files:
+    - shortener_service.proto
 test:
   coverage: 70
   service_coverage: 75
