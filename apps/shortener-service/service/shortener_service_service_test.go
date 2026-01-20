@@ -12,8 +12,16 @@ import (
 	"github.com/pingxin403/cuckoo/apps/shortener-service/cache"
 	pb "github.com/pingxin403/cuckoo/apps/shortener-service/gen/shortener_servicepb"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/idgen"
+	"github.com/pingxin403/cuckoo/apps/shortener-service/logger"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/storage"
 )
+
+// TestMain initializes the logger for all tests
+func TestMain(m *testing.M) {
+	// Initialize logger for tests
+	_ = logger.InitLogger(true) // development mode
+	m.Run()
+}
 
 // MockStorage implements storage.Storage for testing
 type MockStorage struct {

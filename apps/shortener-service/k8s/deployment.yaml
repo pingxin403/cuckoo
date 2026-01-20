@@ -8,7 +8,7 @@ metadata:
     version: v1
     component: backend
 spec:
-  replicas: 2
+  replicas: 3
   selector:
     matchLabels:
       app: shortener-service
@@ -27,29 +27,77 @@ spec:
         - name: grpc
           containerPort: 9092
           protocol: TCP
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
         env:
         - name: PORT
           value: "9092"
+        - name: HTTP_PORT
+          value: "8080"
+        - name: METRICS_PORT
+          value: "9090"
+        - name: ENVIRONMENT
+          value: "production"
+        - name: BASE_URL
+          value: "https://ex.co"
+        - name: MYSQL_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: shortener-config
+              key: mysql_host
+        - name: MYSQL_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: shortener-config
+              key: mysql_port
+        - name: MYSQL_DATABASE
+          valueFrom:
+            configMapKeyRef:
+              name: shortener-config
+              key: mysql_database
+        - name: MYSQL_USER
+          valueFrom:
+            secretKeyRef:
+              name: shortener-secrets
+              key: mysql_user
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: shortener-secrets
+              key: mysql_password
+        - name: REDIS_ADDR
+          valueFrom:
+            configMapKeyRef:
+              name: shortener-config
+              key: redis_addr
+              optional: true
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
-          limits:
             memory: "256Mi"
             cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
         livenessProbe:
-          grpc:
-            port: 9092
+          httpGet:
+            path: /health
+            port: 8080
           initialDelaySeconds: 15
           periodSeconds: 10
           timeoutSeconds: 5
           failureThreshold: 3
         readinessProbe:
-          grpc:
-            port: 9092
+          httpGet:
+            path: /ready
+            port: 8080
           initialDelaySeconds: 5
           periodSeconds: 5
           timeoutSeconds: 3
           failureThreshold: 3
       restartPolicy: Always
       terminationGracePeriodSeconds: 30
+

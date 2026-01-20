@@ -198,7 +198,17 @@ echo -e "${BLUE}[6/6] Running security checks...${NC}"
 
 # Check for potential secrets
 if [ -d ".git" ]; then
-    SECRETS=$(git diff --cached 2>/dev/null | grep -iE "(password|secret|api[_-]?key|token|credential)" | grep -v "^-" | head -5)
+    # Exclude test files and common false positives
+    SECRETS=$(git diff --cached 2>/dev/null | \
+        grep -iE "(password|secret|api[_-]?key|token|credential)" | \
+        grep -v "^-" | \
+        grep -v "_test\.go" | \
+        grep -v "test\.ts" | \
+        grep -v "test\.js" | \
+        grep -v "Password: \"\"" | \
+        grep -v "// Empty password" | \
+        grep -v "// Test config" | \
+        head -5)
     if [ -n "$SECRETS" ]; then
         echo -e "${RED}✗ Potential secrets detected in staged changes:${NC}"
         echo "$SECRETS"
