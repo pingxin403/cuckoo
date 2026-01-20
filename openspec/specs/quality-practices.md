@@ -179,9 +179,10 @@ make lint-fix APP=web
 - Tools: jqwik (Java), rapid (Go), fast-check (TypeScript)
 
 **3. Integration Tests**:
-- Test service interactions
-- Use real dependencies where possible
-- Test API contracts
+- Test service interactions with real dependencies
+- Use actual databases, caches, and services
+- Run in Docker containers
+- See [Integration Testing Strategy](./integration-testing.md)
 
 **4. E2E Tests**:
 - Test complete user flows
@@ -370,5 +371,6 @@ git commit --no-verify
 
 - [Shift-Left Documentation](../../docs/SHIFT_LEFT.md)
 - [Testing Guide](../../docs/TESTING_GUIDE.md)
+- [Integration Testing Strategy](./integration-testing.md)
 - [Linting Guide](../../docs/LINTING_GUIDE.md)
 - [Lint Fix Guide](../../docs/LINT_FIX_GUIDE.md)

@@ -219,47 +219,47 @@ make docker-build APP=shortener
 # Check if ports are in use
 lsof -i :9092  # gRPC
 lsof -i :8081  # HTTP
-lsof -i :3307  # MySQL
-lsof -i :6380  # Redis
+lsof -i :3306  # MySQL
+lsof -i :6379  # Redis
 
 # Check Docker logs
-docker compose -f docker-compose.test.yml logs
+docker compose logs shortener-service
 ```
 
 ### Tests failing
 
 ```bash
 # Ensure services are healthy
-docker compose -f docker-compose.test.yml ps
+docker compose ps
 
 # Check service logs
-docker compose -f docker-compose.test.yml logs shortener-service-test
+docker compose logs shortener-service
 
 # Restart services
-docker compose -f docker-compose.test.yml restart
+docker compose restart shortener-service
 ```
 
 ### Database connection issues
 
 ```bash
 # Check MySQL is running
-docker compose -f docker-compose.test.yml ps mysql-test
+docker compose ps mysql
 
 # Test MySQL connection
-docker exec -it shortener-mysql-test mysql -uroot -ptest_root_password -e "SHOW DATABASES;"
+docker exec -it shortener-mysql mysql -uroot -proot_password -e "SHOW DATABASES;"
 
 # Check migrations
-docker exec -it shortener-mysql-test mysql -ushortener_user -pshortener_password shortener_test -e "SHOW TABLES;"
+docker exec -it shortener-mysql mysql -ushortener_user -pshortener_password shortener -e "SHOW TABLES;"
 ```
 
 ### Redis connection issues
 
 ```bash
 # Check Redis is running
-docker compose -f docker-compose.test.yml ps redis-test
+docker compose ps redis
 
 # Test Redis connection
-docker exec -it shortener-redis-test redis-cli ping
+docker exec -it shortener-redis redis-cli ping
 ```
 
 ## 🎯 Next Steps

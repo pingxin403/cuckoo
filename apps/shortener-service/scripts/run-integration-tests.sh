@@ -1,23 +1,25 @@
 #!/bin/bash
 
-# Script to run integration tests for the URL Shortener Service
-# This script starts the test environment with Docker Compose and runs integration tests
+# URL Shortener Service - Integration Test Runner
+# This script runs end-to-end integration tests with real MySQL and Redis
+# Uses the root docker-compose.yml for service orchestration
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-
-echo "=========================================="
-echo "URL Shortener Service - Integration Tests"
-echo "=========================================="
-echo ""
+PROJECT_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+echo -e "${BLUE}========================================${NC}"
+echo -e "${BLUE}URL Shortener - Integration Tests${NC}"
+echo -e "${BLUE}========================================${NC}"
+echo ""
 
 # Function to print colored output
 print_info() {
@@ -34,16 +36,16 @@ print_warning() {
 
 # Function to cleanup
 cleanup() {
-    print_info "Cleaning up test environment..."
+    print_info "Stopping shortener-service..."
     cd "$PROJECT_DIR"
-    docker compose -f docker-compose.test.yml down -v
+    docker compose stop shortener-service 2>/dev/null || true
     print_info "Cleanup complete"
 }
 
 # Trap to ensure cleanup on exit
 trap cleanup EXIT
 
-# Change to project directory
+# Change to project root directory
 cd "$PROJECT_DIR"
 
 # Check if Docker is running
@@ -58,55 +60,84 @@ if ! docker compose version &> /dev/null; then
     exit 1
 fi
 
-# Stop any existing test containers
-print_info "Stopping any existing test containers..."
-docker compose -f docker-compose.test.yml down -v 2>/dev/null || true
+# Step 1: Build the service
+print_info "Building shortener-service..."
+docker compose build shortener-service
+echo ""
 
-# Build the service image
-print_info "Building service image..."
-docker compose -f docker-compose.test.yml build shortener-service-test
+# Step 2: Start dependencies
+print_info "Starting MySQL and Redis..."
+docker compose up -d mysql redis
 
-# Start the test environment
-print_info "Starting test environment (MySQL, Redis, Service)..."
-docker compose -f docker-compose.test.yml up -d
-
-# Wait for services to be healthy
-print_info "Waiting for services to be healthy..."
+# Wait for MySQL to be healthy
+print_warning "Waiting for MySQL to be ready..."
 MAX_WAIT=60
 WAIT_COUNT=0
-
 while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
-    # Check MySQL health
-    MYSQL_HEALTH=$(docker inspect --format='{{.State.Health.Status}}' shortener-mysql-test 2>/dev/null || echo "not_found")
-    
-    # Check Redis health
-    REDIS_HEALTH=$(docker inspect --format='{{.State.Health.Status}}' shortener-redis-test 2>/dev/null || echo "not_found")
-    
-    # Check Service health
-    SERVICE_HEALTH=$(docker inspect --format='{{.State.Health.Status}}' shortener-service-test 2>/dev/null || echo "not_found")
-    
-    if [ "$MYSQL_HEALTH" = "healthy" ] && [ "$REDIS_HEALTH" = "healthy" ] && [ "$SERVICE_HEALTH" = "healthy" ]; then
-        print_info "All services are healthy!"
+    if docker compose exec mysql mysqladmin ping -h localhost -uroot -proot_password --silent 2>/dev/null; then
+        print_info "MySQL is ready"
         break
     fi
-    
-    echo "Waiting for services... MySQL: $MYSQL_HEALTH, Redis: $REDIS_HEALTH, Service: $SERVICE_HEALTH"
-    sleep 2
+    sleep 1
     WAIT_COUNT=$((WAIT_COUNT + 1))
 done
 
 if [ $WAIT_COUNT -eq $MAX_WAIT ]; then
-    print_error "Services did not become healthy in time"
-    print_info "Showing service logs:"
-    docker-compose -f docker-compose.test.yml logs
+    print_error "MySQL failed to start"
+    docker compose logs mysql
     exit 1
 fi
 
-# Show service status
-print_info "Service status:"
-docker compose -f docker-compose.test.yml ps
+# Wait for Redis to be healthy
+print_warning "Waiting for Redis to be ready..."
+WAIT_COUNT=0
+while [ $WAIT_COUNT -lt 30 ]; do
+    if docker compose exec redis redis-cli ping 2>/dev/null | grep -q PONG; then
+        print_info "Redis is ready"
+        break
+    fi
+    sleep 1
+    WAIT_COUNT=$((WAIT_COUNT + 1))
+done
 
-# Run integration tests
+if [ $WAIT_COUNT -eq 30 ]; then
+    print_error "Redis failed to start"
+    docker compose logs redis
+    exit 1
+fi
+
+echo ""
+
+# Step 3: Start shortener service
+print_info "Starting shortener-service..."
+docker compose up -d shortener-service
+
+# Wait for service to be healthy
+print_warning "Waiting for shortener-service to be ready..."
+WAIT_COUNT=0
+while [ $WAIT_COUNT -lt 60 ]; do
+    if curl -sf http://localhost:8081/health > /dev/null 2>&1; then
+        print_info "Shortener service is ready"
+        break
+    fi
+    sleep 1
+    WAIT_COUNT=$((WAIT_COUNT + 1))
+done
+
+if [ $WAIT_COUNT -eq 60 ]; then
+    print_error "Shortener service failed to start"
+    docker compose logs shortener-service
+    exit 1
+fi
+
+echo ""
+
+# Step 4: Show service status
+print_info "Service status:"
+docker compose ps mysql redis shortener-service
+echo ""
+
+# Step 5: Run integration tests
 print_info "Running integration tests..."
 echo ""
 
@@ -114,22 +145,23 @@ echo ""
 export GRPC_ADDR="localhost:9092"
 export BASE_URL="http://localhost:8081"
 
-# Run tests with integration tag
-cd "$PROJECT_DIR"
-go test -v -tags=integration ./integration_test/... -timeout 5m
+# Run tests
+cd "$PROJECT_DIR/apps/shortener-service"
+go test -v ./integration_test/... -count=1 -timeout 5m
 
 TEST_EXIT_CODE=$?
 
 # Show service logs if tests failed
 if [ $TEST_EXIT_CODE -ne 0 ]; then
+    echo ""
     print_error "Integration tests failed!"
     print_info "Showing service logs:"
-    docker compose -f docker-compose.test.yml logs shortener-service-test
+    docker compose logs shortener-service
     exit $TEST_EXIT_CODE
 fi
 
-print_info "Integration tests passed!"
 echo ""
-print_info "Test environment will be cleaned up automatically"
+print_info "✓ All integration tests passed!"
+echo ""
 
 exit 0
