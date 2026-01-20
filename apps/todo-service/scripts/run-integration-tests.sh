@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Hello Service - Integration Test Runner
+# TODO Service - Integration Test Runner
 # This script runs integration tests with the service running in Docker
 
 set -e
@@ -16,7 +16,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}Hello Service - Integration Tests${NC}"
+echo -e "${BLUE}TODO Service - Integration Tests${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 
@@ -35,9 +35,9 @@ print_warning() {
 
 # Function to cleanup
 cleanup() {
-    print_info "Stopping hello-service..."
+    print_info "Stopping services..."
     cd "$PROJECT_DIR"
-    docker compose stop hello-service 2>/dev/null || true
+    docker compose stop todo-service hello-service 2>/dev/null || true
     print_info "Cleanup complete"
 }
 
@@ -59,16 +59,16 @@ if ! docker compose version &> /dev/null; then
     exit 1
 fi
 
-# Step 1: Build the service
-print_info "Building hello-service..."
-docker compose build hello-service
+# Step 1: Build the services
+print_info "Building hello-service and todo-service..."
+docker compose build hello-service todo-service
 echo ""
 
-# Step 2: Start hello-service
+# Step 2: Start hello-service first (dependency)
 print_info "Starting hello-service..."
 docker compose up -d hello-service
 
-# Wait for service to be healthy
+# Wait for hello-service to be healthy
 print_warning "Waiting for hello-service to be ready..."
 MAX_WAIT=60
 WAIT_COUNT=0
@@ -89,22 +89,45 @@ fi
 
 echo ""
 
-# Step 3: Show service status
-print_info "Service status:"
-docker compose ps hello-service
+# Step 3: Start todo-service
+print_info "Starting todo-service..."
+docker compose up -d todo-service
+
+# Wait for todo-service to be healthy
+print_warning "Waiting for todo-service to be ready..."
+WAIT_COUNT=0
+while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
+    if docker compose ps todo-service | grep -q "healthy"; then
+        print_info "TODO service is ready"
+        break
+    fi
+    sleep 1
+    WAIT_COUNT=$((WAIT_COUNT + 1))
+done
+
+if [ $WAIT_COUNT -eq $MAX_WAIT ]; then
+    print_error "TODO service failed to start"
+    docker compose logs todo-service
+    exit 1
+fi
+
 echo ""
 
-# Step 4: Run integration tests
+# Step 4: Show service status
+print_info "Service status:"
+docker compose ps hello-service todo-service
+echo ""
+
+# Step 5: Run integration tests
 print_info "Running integration tests..."
 echo ""
 
 # Set environment variables for tests
-export GRPC_HOST="localhost"
-export GRPC_PORT="9090"
+export GRPC_ADDR="localhost:9091"
 
-# Run tests from hello-service directory
-cd "$PROJECT_DIR/apps/hello-service"
-./gradlew integrationTest --info
+# Run tests from todo-service directory
+cd "$PROJECT_DIR/apps/todo-service"
+go test -v -tags=integration ./integration_test/... -count=1 -timeout 5m
 
 TEST_EXIT_CODE=$?
 
@@ -113,6 +136,7 @@ if [ $TEST_EXIT_CODE -ne 0 ]; then
     echo ""
     print_error "Integration tests failed!"
     print_info "Showing service logs:"
+    docker compose logs todo-service
     docker compose logs hello-service
     exit $TEST_EXIT_CODE
 fi

@@ -150,13 +150,15 @@ Tests health endpoints:
 
 ### Docker Compose Configuration
 
+Uses the root `docker-compose.yml` for service orchestration.
+
 **Services**:
-- **MySQL 8.0**: Port 3307 (test database)
-- **Redis 7.2**: Port 6380 (test cache)
+- **MySQL 8.0**: Port 3306 (shared database)
+- **Redis 7.2**: Port 6379 (shared cache)
 - **Shortener Service**:
   - gRPC: Port 9092
   - HTTP: Port 8081
-  - Metrics: Port 9091
+  - Metrics: Port 9090
 
 **Health Checks**:
 - All services have health checks configured
@@ -171,41 +173,49 @@ Tests health endpoints:
 ```
 
 This script:
-1. Stops any existing test containers
-2. Builds the service image
-3. Starts MySQL, Redis, and the service
-4. Waits for all services to be healthy
+1. Builds the service image
+2. Starts MySQL and Redis from root docker-compose.yml
+3. Waits for all services to be healthy
+4. Starts the shortener-service
 5. Runs integration tests
 6. Shows logs if tests fail
 7. Cleans up automatically
 
 #### Manual Execution
 ```bash
-# Start environment
-docker compose -f docker-compose.test.yml up -d
+# From project root directory
+cd /path/to/project/root
+
+# Start MySQL and Redis
+docker compose up -d mysql redis
+
+# Start shortener service
+docker compose up -d shortener-service
 
 # Wait for healthy status
-docker compose -f docker-compose.test.yml ps
+docker compose ps mysql redis shortener-service
 
 # Run tests
+cd apps/shortener-service
 GRPC_ADDR="localhost:9092" BASE_URL="http://localhost:8081" \
-  go test -v -tags=integration ./integration_test/... -timeout 5m
+  go test -v ./integration_test/... -count=1 -timeout 5m
 
 # Cleanup
-docker compose -f docker-compose.test.yml down -v
+cd /path/to/project/root
+docker compose stop shortener-service
 ```
 
 ## Files Created
 
 ### Test Files
 - `integration_test/integration_test.go` - Integration test suite
-- `docker-compose.test.yml` - Test environment configuration
 - `scripts/run-integration-tests.sh` - Automated test runner
 
 ### Updated Files
 - `README.md` - Added integration test documentation
 - `Dockerfile` - Updated to generate shortener proto code
 - `tasks.md` - Marked Task 26 as complete
+- Root `docker-compose.yml` - Added MySQL, Redis, and shortener-service
 
 ## Benefits of Integration Tests
 

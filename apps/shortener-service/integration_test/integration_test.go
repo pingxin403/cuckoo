@@ -80,7 +80,9 @@ func setup() error {
 
 func teardown() {
 	if grpcConn != nil {
-		grpcConn.Close()
+		if err := grpcConn.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to close gRPC connection: %v\n", err)
+		}
 	}
 }
 
