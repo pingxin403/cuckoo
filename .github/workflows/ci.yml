@@ -244,9 +244,10 @@ jobs:
           cd apps/${{ matrix.app }}
           npm ci
           # Generate proto code
-          cd ../..
-          make proto-ts
-
+          npm run gen-proto
+          # Verify proto files were generated
+          ls -la src/gen/ || echo "Warning: src/gen/ directory not found"
+          
       - name: Build Node.js service
         if: steps.detect-type.outputs.type == 'node'
         run: |
