@@ -28,12 +28,13 @@ echo "Checking coverage thresholds..."
 OVERALL_COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
 echo "Overall coverage: ${OVERALL_COVERAGE}%"
 
-# Check core business logic packages (cache, errors, idgen, service) - 70% minimum
+# Check core business logic packages (analytics, cache, errors, idgen, service) - 70% minimum
 # Note: We exclude logger, main, and storage from threshold checks because:
 # - logger: initialization code, tested in integration tests
 # - main: application bootstrap, tested in integration tests  
 # - storage: database operations, tested in integration tests with real DB
-CORE_LINES=$(go tool cover -func=coverage.out | grep -E 'github.com/pingxin403/cuckoo/apps/shortener-service/(cache|errors|idgen|service)/' || true)
+# - cache/l2_cache.go: Redis operations, tested in integration tests
+CORE_LINES=$(go tool cover -func=coverage.out | grep -E 'github.com/pingxin403/cuckoo/apps/shortener-service/(analytics|cache|errors|idgen|service)/' | grep -v 'l2_cache.go' || true)
 
 if [ -n "$CORE_LINES" ]; then
     # Calculate average coverage for core packages

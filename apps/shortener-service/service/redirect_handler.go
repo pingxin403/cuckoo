@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/pingxin403/cuckoo/apps/shortener-service/analytics"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/cache"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/metrics"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/storage"
@@ -16,15 +17,17 @@ import (
 // RedirectHandler handles HTTP redirect requests
 // Requirements: 3.1, 3.5, 5.2, 14.4
 type RedirectHandler struct {
-	cacheManager *cache.CacheManager
-	storage      storage.Storage
+	cacheManager    *cache.CacheManager
+	storage         storage.Storage
+	analyticsWriter *analytics.AnalyticsWriter
 }
 
 // NewRedirectHandler creates a new RedirectHandler
-func NewRedirectHandler(cacheManager *cache.CacheManager, storage storage.Storage) *RedirectHandler {
+func NewRedirectHandler(cacheManager *cache.CacheManager, storage storage.Storage, analyticsWriter *analytics.AnalyticsWriter) *RedirectHandler {
 	return &RedirectHandler{
-		cacheManager: cacheManager,
-		storage:      storage,
+		cacheManager:    cacheManager,
+		storage:         storage,
+		analyticsWriter: analyticsWriter,
 	}
 }
 
@@ -84,6 +87,21 @@ func (h *RedirectHandler) HandleRedirect(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Log click event asynchronously
+	// Requirements: 7.1, 7.2 - Async click logging
+	if h.analyticsWriter != nil {
+		go func() {
+			event := analytics.ClickEvent{
+				ShortCode: shortCode,
+				Timestamp: time.Now(),
+				SourceIP:  extractIPFromRequest(r),
+				UserAgent: r.UserAgent(),
+				Referer:   r.Referer(),
+			}
+			h.analyticsWriter.LogClick(event)
+		}()
+	}
+
 	// Set security headers
 	// Requirements: 14.4 - Set security headers
 	w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -95,6 +113,22 @@ func (h *RedirectHandler) HandleRedirect(w http.ResponseWriter, r *http.Request)
 	// Requirements: 3.1 - Return HTTP 302 redirect
 	metrics.RedirectsTotal.Inc()
 	http.Redirect(w, r, mapping.LongURL, http.StatusFound)
+}
+
+// extractIPFromRequest extracts the client IP from HTTP request
+func extractIPFromRequest(r *http.Request) string {
+	// Try X-Forwarded-For header first (for proxied requests)
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		return xff
+	}
+
+	// Try X-Real-IP header
+	if xri := r.Header.Get("X-Real-IP"); xri != "" {
+		return xri
+	}
+
+	// Fall back to RemoteAddr
+	return r.RemoteAddr
 }
 
 // HealthCheck handles liveness probe

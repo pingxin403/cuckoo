@@ -50,28 +50,76 @@ Shift-left quality practices ensuring code quality, consistency, and security be
 
 ## Test Coverage
 
+### Coverage Philosophy
+
+**Core Principle**: "使用集成测试提高测试覆盖率并不合理"
+
+Test coverage should reflect **unit test** coverage of core business logic, not be inflated by integration tests. Coverage metrics should accurately represent code quality, not be gamed by running tests against external dependencies.
+
 ### Coverage Requirements
 
 **Go Services**:
-- Overall: 70%
-- Service layer: 75%
-- Excludes: generated code, main.go
+- **Core packages**: 70% minimum
+  - Includes: business logic packages (service, cache, errors, idgen, analytics, etc.)
+  - Excludes: packages requiring external dependencies
+- **Overall coverage**: Reference only, not a hard requirement
+- **Excludes**: 
+  - Generated code (`gen/`, `*_pb.go`)
+  - Infrastructure code (`main.go`, `logger/`)
+  - External dependency wrappers (`storage/`, `cache/l2_cache.go`)
 
 **Java Services**:
 - Overall: 30%
 - Service layer: 50%
 - Excludes: generated code, configuration classes
 
+### Package Classification
+
+**Core Business Logic Packages** (must meet coverage threshold):
+- Pure business logic that can be unit tested without external dependencies
+- Examples: validation, ID generation, error handling, service layer logic
+- Use mocks for external dependencies in tests
+
+**Infrastructure Packages** (excluded from threshold):
+- Require real external services (databases, caches, message queues)
+- Tested in integration tests with Docker Compose
+- Examples: database operations, Redis operations, Kafka producers
+- Low unit test coverage is expected and acceptable
+
 ### Coverage Scripts
 
-**Go** (`apps/todo-service/scripts/test-coverage.sh`):
+**Go** (`apps/shortener-service/scripts/test-coverage.sh`):
 ```bash
 #!/bin/bash
-go test -coverprofile=coverage.out \
-  -coverpkg=./service,./storage \
-  ./...
+set -e
 
-go tool cover -func=coverage.out
+echo "Running tests with coverage..."
+# Exclude integration tests (they require external dependencies)
+go test -v -race -coverprofile=coverage.out \
+  $(go list ./... | grep -v '/integration_test')
+
+echo "Checking coverage thresholds..."
+OVERALL_COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
+echo "Overall coverage: ${OVERALL_COVERAGE}%"
+
+# Check core business logic packages only
+CORE_LINES=$(go tool cover -func=coverage.out | \
+  grep -E 'github.com/pingxin403/cuckoo/apps/shortener-service/(analytics|cache|errors|idgen|service)/' | \
+  grep -v 'l2_cache.go' || true)
+
+if [ -n "$CORE_LINES" ]; then
+    CORE_COVERAGE=$(echo "$CORE_LINES" | \
+      awk '{sum+=$3; count++} END {if (count > 0) print sum/count; else print 0}' | \
+      sed 's/%//')
+    echo "Core packages coverage: ${CORE_COVERAGE}%"
+    
+    if (( $(echo "$CORE_COVERAGE < 70" | bc -l) )); then
+        echo "❌ FAIL: Core packages coverage ${CORE_COVERAGE}% is below 70% threshold"
+        exit 1
+    fi
+    
+    echo "✅ PASS: Core packages coverage meets 70% threshold"
+fi
 ```
 
 **Java** (Gradle configuration):
@@ -94,6 +142,21 @@ jacocoTestCoverageVerification {
 }
 ```
 
+### Coverage Strategy by Service
+
+**shortener-service** (Go):
+- Core packages: 88.0% ✅ (target: 70%)
+- Overall: 50.7% (reference only)
+- See: `docs/COVERAGE_STRATEGY_SUMMARY.md`
+
+**todo-service** (Go):
+- Overall: 70%
+- Service layer: 75%
+
+**hello-service** (Java):
+- Overall: 30%
+- Service layer: 50%
+
 ### Excluded from Coverage
 
 **Generated Code**:
@@ -101,10 +164,42 @@ jacocoTestCoverageVerification {
 - `*_pb.go` files
 - `*Grpc.java` files
 
-**Non-Business Logic**:
-- `main.go` / `Application.java`
+**Infrastructure Code**:
+- `main.go` / `Application.java` - Application bootstrap
+- `logger/` - Logging initialization
 - Configuration classes
 - DTOs and models
+
+**External Dependency Wrappers**:
+- `storage/` - Database operations (tested in integration tests)
+- `cache/l2_cache.go` - Redis operations (tested in integration tests)
+- Message queue producers/consumers (tested in integration tests)
+
+### Testing Strategy
+
+**Unit Tests**:
+- Test core business logic in isolation
+- Use mocks for external dependencies
+- Fast execution (seconds)
+- Run in CI on every commit
+- **Purpose**: Verify business logic correctness
+
+**Integration Tests**:
+- Test service interactions with real dependencies
+- Use Docker Compose for dependencies
+- Slower execution (minutes)
+- Run locally or in dedicated test environments
+- **Purpose**: Verify integration with external services
+- **Not used for coverage metrics**
+
+### Best Practices
+
+1. **Write unit tests for core logic** - Focus on business logic that doesn't require external services
+2. **Use mocks appropriately** - Mock external dependencies in unit tests
+3. **Don't game coverage** - Don't use integration tests to inflate coverage numbers
+4. **Separate concerns** - Keep business logic separate from infrastructure code
+5. **Property-based testing** - Use property tests for universal correctness properties
+6. **Integration tests complement** - Use integration tests to verify real-world behavior, not coverage
 
 ## Linting
 
@@ -372,5 +467,6 @@ git commit --no-verify
 - [Shift-Left Documentation](../../docs/SHIFT_LEFT.md)
 - [Testing Guide](../../docs/TESTING_GUIDE.md)
 - [Integration Testing Strategy](./integration-testing.md)
+- [Coverage Strategy Summary](../../docs/COVERAGE_STRATEGY_SUMMARY.md)
 - [Linting Guide](../../docs/LINTING_GUIDE.md)
 - [Lint Fix Guide](../../docs/LINT_FIX_GUIDE.md)

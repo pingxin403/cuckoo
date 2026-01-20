@@ -83,4 +83,13 @@ var (
 			Help: "Total number of short links deleted",
 		},
 	)
+
+	// ClickEventsLogged counts click events logged to Kafka
+	// Requirements: 7.1, 7.2
+	ClickEventsLogged = promauto.NewCounter(
+		prometheus.CounterOpts{
+			Name: "shortener_click_events_logged_total",
+			Help: "Total number of click events logged to Kafka",
+		},
+	)
 )

@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/pingxin403/cuckoo/apps/shortener-service/analytics"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/cache"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/gen/shortener_servicepb"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/idgen"
@@ -101,15 +102,49 @@ func main() {
 	cacheManager := cache.NewCacheManager(l1Cache, l2Cache, &cacheStorageAdapter{store: store})
 	logger.Log.Info("Initialized cache manager")
 
+	// Initialize analytics writer (Kafka) - optional
+	// Requirements: 7.1, 7.2
+	var analyticsWriter *analytics.AnalyticsWriter
+	kafkaBrokers := os.Getenv("KAFKA_BROKERS")
+	if kafkaBrokers != "" {
+		analyticsConfig := analytics.Config{
+			KafkaBrokers: []string{kafkaBrokers},
+			Topic:        "url-clicks",
+			NumWorkers:   4,
+			BufferSize:   10000,
+		}
+		analyticsWriter = analytics.NewAnalyticsWriter(analyticsConfig)
+		logger.Log.Info("Initialized analytics writer", zap.String("brokers", kafkaBrokers))
+	} else {
+		logger.Log.Info("Kafka not configured, running without analytics")
+	}
+
 	// Create gRPC service
 	svc := service.NewShortenerServiceImpl(store, idGenerator, urlValidator, cacheManager)
 
+	// Initialize rate limiter (100 requests per minute per IP)
+	// Requirements: 6.1, 6.2
+	rateLimiter := service.NewRateLimiter(100)
+	logger.Log.Info("Initialized rate limiter", zap.Int("requests_per_minute", 100))
+
+	// Start rate limiter cleanup goroutine
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	rateLimiter.StartCleanup(ctx)
+
 	// Create HTTP redirect handler
-	redirectHandler := service.NewRedirectHandler(cacheManager, store)
+	redirectHandler := service.NewRedirectHandler(cacheManager, store, analyticsWriter)
 	httpRouter := redirectHandler.SetupRouter()
 
-	// Create gRPC server
-	grpcServer := grpc.NewServer()
+	// Wrap HTTP router with rate limiter middleware
+	// Requirements: 6.1, 6.2, 6.5
+	httpRouterWithRateLimit := rateLimiter.HTTPMiddleware(httpRouter)
+
+	// Create gRPC server with rate limiter interceptor
+	// Requirements: 6.1, 6.2, 6.5
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(rateLimiter.UnaryServerInterceptor()),
+	)
 
 	// Register gRPC service
 	shortener_servicepb.RegisterShortenerServiceServer(grpcServer, svc)
@@ -120,7 +155,7 @@ func main() {
 	// Create HTTP server
 	httpServer := &http.Server{
 		Addr:         fmt.Sprintf(":%s", httpPort),
-		Handler:      httpRouter,
+		Handler:      httpRouterWithRateLimit,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  60 * time.Second,
@@ -174,9 +209,12 @@ func main() {
 	sig := <-sigChan
 	logger.Log.Info("Received shutdown signal, initiating graceful shutdown", zap.String("signal", sig.String()))
 
+	// Cancel rate limiter cleanup context
+	cancel()
+
 	// Graceful shutdown with timeout
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
 
 	// Shutdown HTTP server
 	if err := httpServer.Shutdown(shutdownCtx); err != nil {
@@ -201,6 +239,13 @@ func main() {
 	case <-shutdownCtx.Done():
 		logger.Log.Warn("Shutdown timeout exceeded, forcing stop")
 		grpcServer.Stop()
+	}
+
+	// Close analytics writer if initialized
+	if analyticsWriter != nil {
+		if err := analyticsWriter.Close(); err != nil {
+			logger.Log.Error("Analytics writer shutdown error", zap.Error(err))
+		}
 	}
 
 	logger.Log.Info("shortener-service shutdown complete")
