@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pingxin403/cuckoo/apps/shortener-service/metrics"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -65,17 +66,21 @@ func (cm *CacheManager) Get(ctx context.Context, shortCode string) (*URLMapping,
 func (cm *CacheManager) getWithFallback(ctx context.Context, shortCode string) (*URLMapping, error) {
 	// Try L1 cache first
 	if mapping := cm.l1.Get(shortCode); mapping != nil {
+		metrics.CacheHits.WithLabelValues("L1").Inc()
 		return mapping, nil
 	}
+	metrics.CacheMisses.WithLabelValues("L1").Inc()
 
 	// Try L2 cache
 	if cm.l2 != nil {
 		mapping, err := cm.l2.Get(ctx, shortCode)
 		if err == nil && mapping != nil {
+			metrics.CacheHits.WithLabelValues("L2").Inc()
 			// Backfill L1 cache
 			cm.l1.Set(mapping.ShortCode, mapping.LongURL, mapping.CreatedAt)
 			return mapping, nil
 		}
+		metrics.CacheMisses.WithLabelValues("L2").Inc()
 		// Continue to DB on L2 miss or error (graceful degradation)
 	}
 

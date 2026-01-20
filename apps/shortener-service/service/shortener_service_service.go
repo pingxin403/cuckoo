@@ -11,7 +11,10 @@ import (
 	"github.com/pingxin403/cuckoo/apps/shortener-service/cache"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/gen/shortener_servicepb"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/idgen"
+	"github.com/pingxin403/cuckoo/apps/shortener-service/logger"
+	"github.com/pingxin403/cuckoo/apps/shortener-service/metrics"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/storage"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
@@ -115,17 +118,31 @@ func (s *ShortenerServiceImpl) CreateShortLink(
 	// Write to MySQL (synchronous - wait for confirmation)
 	// Requirements: 2.1, 13.2
 	if err := s.storage.Create(ctx, mapping); err != nil {
+		metrics.ErrorsTotal.WithLabelValues("storage_create").Inc()
 		if strings.Contains(err.Error(), "Duplicate entry") {
 			return nil, status.Errorf(codes.AlreadyExists, "Short code already exists: %s", shortCode)
 		}
 		return nil, status.Errorf(codes.Internal, "Failed to create mapping: %v", err)
 	}
 
+	// Audit log: Log creation request with source IP
+	// Requirements: 14.5
+	logger.Log.Info("Short link created",
+		zap.String("short_code", shortCode),
+		zap.String("long_url", sanitizedURL),
+		zap.String("creator_ip", creatorIP),
+		zap.Time("created_at", now),
+	)
+
 	// Preheat cache (Redis) - best effort, don't fail if cache write fails
 	// Requirements: 4.3
 	if s.cacheManager != nil {
 		_ = s.cacheManager.Set(ctx, shortCode, sanitizedURL, now)
 	}
+
+	// Record metrics
+	metrics.LinksCreated.Inc()
+	metrics.RequestsTotal.WithLabelValues("CreateShortLink", "success").Inc()
 
 	// Build response
 	response := &shortener_servicepb.CreateShortLinkResponse{
@@ -190,6 +207,7 @@ func (s *ShortenerServiceImpl) DeleteShortLink(
 
 	// Soft delete in MySQL
 	if err := s.storage.Delete(ctx, req.ShortCode); err != nil {
+		metrics.ErrorsTotal.WithLabelValues("storage_delete").Inc()
 		if strings.Contains(err.Error(), "not found") {
 			return nil, status.Errorf(codes.NotFound, "Short code not found: %s", req.ShortCode)
 		}
@@ -201,6 +219,10 @@ func (s *ShortenerServiceImpl) DeleteShortLink(
 	if s.cacheManager != nil {
 		_ = s.cacheManager.Delete(ctx, req.ShortCode)
 	}
+
+	// Record metrics
+	metrics.LinksDeleted.Inc()
+	metrics.RequestsTotal.WithLabelValues("DeleteShortLink", "success").Inc()
 
 	return &shortener_servicepb.DeleteShortLinkResponse{
 		Success: true,
