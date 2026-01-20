@@ -184,9 +184,8 @@ jobs:
           cache: 'npm'
           cache-dependency-path: apps/${{ matrix.app }}/package-lock.json
 
-      # Install protoc for proto generation
+      # Install protoc for proto generation (for all types)
       - name: Install Protobuf compiler
-        if: steps.detect-type.outputs.type != 'java'
         run: |
           PROTOC_VERSION=${{ steps.versions.outputs.PROTOC_VERSION }}
           PROTOC_ZIP=protoc-${PROTOC_VERSION}-linux-x86_64.zip
@@ -201,7 +200,8 @@ jobs:
         run: |
           chmod +x apps/${{ matrix.app }}/gradlew
           cd apps/${{ matrix.app }}
-          ./gradlew generateProto test jacocoTestReport jacocoTestCoverageVerification build --no-daemon
+          # Run all tasks in sequence: generate proto, test, coverage report, verify coverage, build
+          ./gradlew clean generateProto test jacocoTestReport jacocoTestCoverageVerification build -x test --no-daemon --info
 
       - name: Upload Java test results
         if: steps.detect-type.outputs.type == 'java' && always()
@@ -240,8 +240,10 @@ jobs:
       - name: Generate proto for TypeScript
         if: steps.detect-type.outputs.type == 'node'
         run: |
+          # Install dependencies first
           cd apps/${{ matrix.app }}
           npm ci
+          # Generate proto code
           cd ../..
           make proto-ts
 
