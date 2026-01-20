@@ -228,7 +228,8 @@ if [ -d ".git" ]; then
                 grep -v "example.com" | \
                 grep -v "localhost")
             if [ -n "$FILE_SECRETS" ]; then
-                SECRETS="$SECRETS$FILE_SECRETS"$'\n'
+                SECRETS="${SECRETS}
+${FILE_SECRETS}"
             fi
         done
         
@@ -246,6 +247,8 @@ if [ -d ".git" ]; then
     else
         echo -e "${GREEN}✓ No code files changed (skipping secret scan)${NC}"
     fi
+else
+    echo -e "${GREEN}✓ Not a git repository (skipping secret scan)${NC}"
 fi
 
 echo ""
