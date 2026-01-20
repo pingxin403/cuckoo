@@ -7,5 +7,8 @@ spec:
   cd: true
   codeowners:
     - "@backend-go-team"
+  proto_files:
+    - hello.proto
+    - todo.proto
 test:
   coverage: 70

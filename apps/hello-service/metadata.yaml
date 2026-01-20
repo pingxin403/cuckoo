@@ -7,5 +7,7 @@ spec:
   cd: true
   codeowners:
     - "@backend-java-team"
+  proto_files:
+    - hello.proto
 test:
   coverage: 30
