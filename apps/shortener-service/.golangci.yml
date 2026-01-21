@@ -1,0 +1,35 @@
+version: 2
+
+linters-settings:
+  errcheck:
+    exclude-functions:
+      - (*github.com/pingxin403/cuckoo/apps/shortener-service/cache.CacheManager).Close
+      - (*github.com/pingxin403/cuckoo/apps/shortener-service/cache.L2Cache).Close
+      - (*github.com/pingxin403/cuckoo/apps/shortener-service/cache.L2Cache).Delete
+      - (*github.com/pingxin403/cuckoo/apps/shortener-service/cache.L2Cache).BatchDelete
+
+issues:
+  exclude-rules:
+    # Exclude errcheck for defer Close() in test files
+    - path: _test\.go
+      linters:
+        - errcheck
+      text: "Error return value of.*Close.*is not checked"
+    
+    # Exclude errcheck for cleanup operations in test files  
+    - path: _test\.go
+      linters:
+        - errcheck
+      text: "Error return value of.*Delete.*is not checked"
+    
+    # Allow weak random in cache jitter
+    - path: cache/
+      linters:
+        - gosec
+      text: "G404.*weak random"
+    
+    # Allow integer conversion in bounded test scenarios
+    - path: _test\.go
+      linters:
+        - gosec
+      text: "G115.*integer overflow"

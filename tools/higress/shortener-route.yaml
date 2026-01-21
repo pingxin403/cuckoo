@@ -1,0 +1,117 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: shortener-service-ingress
+  namespace: default
+  annotations:
+    # Higress annotations for advanced routing
+    higress.io/backend-protocol: "GRPC"
+    higress.io/destination: "shortener-service.default.svc.cluster.local"
+    # Enable CORS for gRPC-Web
+    higress.io/cors-allow-origin: "*"
+    higress.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
+    higress.io/cors-allow-headers: "content-type,x-grpc-web,x-user-agent,grpc-timeout"
+    higress.io/cors-expose-headers: "grpc-status,grpc-message,grpc-status-details-bin"
+    higress.io/cors-max-age: "86400"
+spec:
+  ingressClassName: higress
+  rules:
+  # gRPC API routing
+  - host: api.example.com  # Replace with your domain
+    http:
+      paths:
+      - path: /api/shortener
+        pathType: Prefix
+        backend:
+          service:
+            name: shortener-service
+            port:
+              number: 9092
+  # HTTP redirect routing (for short codes)
+  - host: short.example.com  # Replace with your short domain
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: shortener-service
+            port:
+              number: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shortener-service
+  namespace: default
+  labels:
+    app: shortener-service
+spec:
+  type: ClusterIP
+  ports:
+  - name: grpc
+    port: 9092
+    targetPort: 9092
+    protocol: TCP
+  - name: http
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  - name: metrics
+    port: 9090
+    targetPort: 9090
+    protocol: TCP
+  selector:
+    app: shortener-service
+---
+# Optional: Rate limiting configuration for Higress
+apiVersion: networking.higress.io/v1
+kind: WasmPlugin
+metadata:
+  name: shortener-rate-limit
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: shortener-service
+  url: oci://higress-registry.cn-hangzhou.cr.aliyuncs.com/plugins/rate-limit:1.0.0
+  phase: AUTHN
+  priority: 100
+  config:
+    # Rate limit: 100 requests per minute per IP
+    rules:
+    - match:
+        path:
+          prefix: /api/shortener
+      limit:
+        requests_per_unit: 100
+        unit: minute
+    - match:
+        path:
+          prefix: /
+      limit:
+        requests_per_unit: 1000
+        unit: minute
+---
+# Optional: Circuit breaker configuration
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: shortener-service-circuit-breaker
+  namespace: default
+spec:
+  host: shortener-service.default.svc.cluster.local
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 100
+      http:
+        http1MaxPendingRequests: 50
+        http2MaxRequests: 100
+        maxRequestsPerConnection: 2
+    outlierDetection:
+      consecutiveErrors: 5
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+      minHealthPercent: 40

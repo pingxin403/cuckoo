@@ -4,6 +4,9 @@
     <Match>
         <Class name="~com\.myorg\.api\.v1\..*"/>
     </Match>
+    <Match>
+        <Class name="~com\.pingxin403\.api\.v1\..*"/>
+    </Match>
     
     <!-- Exclude generated code -->
     <Match>

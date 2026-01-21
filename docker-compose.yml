@@ -4,8 +4,8 @@ services:
   # Hello Service (Java/Spring Boot)
   hello-service:
     build:
-      context: ./apps/hello-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/hello-service/Dockerfile
     image: hello-service:latest
     container_name: hello-service
     ports:
@@ -26,8 +26,8 @@ services:
   # TODO Service (Go)
   todo-service:
     build:
-      context: ./apps/todo-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/todo-service/Dockerfile
     image: todo-service:latest
     container_name: todo-service
     ports:
@@ -48,6 +48,90 @@ services:
       - monorepo-network
     restart: unless-stopped
 
+  # MySQL Database for Shortener Service
+  mysql:
+    image: mysql:8.0
+    container_name: shortener-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: shortener
+      MYSQL_USER: shortener_user
+      MYSQL_PASSWORD: shortener_password
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./apps/shortener-service/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_password"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    networks:
+      - monorepo-network
+    command: --default-authentication-plugin=mysql_native_password
+
+  # Redis Cache for Shortener Service
+  redis:
+    image: redis:7.2-alpine
+    container_name: shortener-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    networks:
+      - monorepo-network
+    command: redis-server --appendonly yes
+
+  # Shortener Service (Go)
+  shortener-service:
+    build:
+      context: .
+      dockerfile: apps/shortener-service/Dockerfile
+    image: shortener-service:latest
+    container_name: shortener-service
+    ports:
+      - "9092:9092"  # gRPC
+      - "8081:8080"  # HTTP redirect
+      - "9090:9090"  # Metrics
+    environment:
+      # MySQL Configuration
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=shortener
+      - MYSQL_USER=shortener_user
+      - MYSQL_PASSWORD=shortener_password
+      # Redis Configuration
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=
+      - REDIS_DB=0
+      # Service Configuration
+      - BASE_URL=http://localhost:8080
+      - GRPC_PORT=9092
+      - HTTP_PORT=8080
+      - METRICS_PORT=9090
+      - LOG_LEVEL=info
+      - ENVIRONMENT=production
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+    networks:
+      - monorepo-network
+    restart: unless-stopped
+
   # Envoy Proxy (API Gateway)
   envoy:
     image: envoyproxy/envoy:v1.30-latest
@@ -59,8 +143,7 @@ services:
       - ./tools/envoy/envoy-docker.yaml:/etc/envoy/envoy.yaml:ro
     command: ["-c", "/etc/envoy/envoy.yaml"]
     depends_on:
-      - hello-service
-      - todo-service
+      - shortener-service
     networks:
       - monorepo-network
     restart: unless-stopped
@@ -69,4 +152,8 @@ networks:
   monorepo-network:
     driver: bridge
     name: monorepo-network
+
+volumes:
+  mysql-data:
+    name: shortener-mysql-data
 
