@@ -138,12 +138,12 @@ jobs:
         run: |
           APP_DIR="apps/${{ matrix.app }}"
           
-          # Priority 1: Check .apptype file
-          if [ -f "$APP_DIR/.apptype" ]; then
-            APP_TYPE=$(cat "$APP_DIR/.apptype" | tr -d '[:space:]')
-          # Priority 2: Check metadata.yaml
-          elif [ -f "$APP_DIR/metadata.yaml" ]; then
+          # Priority 1: Check metadata.yaml (preferred)
+          if [ -f "$APP_DIR/metadata.yaml" ]; then
             APP_TYPE=$(grep "^  type:" "$APP_DIR/metadata.yaml" | awk '{print $2}' | tr -d '[:space:]')
+          # Priority 2: Check .apptype file (legacy support)
+          elif [ -f "$APP_DIR/.apptype" ]; then
+            APP_TYPE=$(cat "$APP_DIR/.apptype" | tr -d '[:space:]')
           # Priority 3: Detect by file characteristics
           elif [ -f "$APP_DIR/build.gradle" ] || [ -f "$APP_DIR/pom.xml" ]; then
             APP_TYPE="java"
@@ -184,9 +184,8 @@ jobs:
           cache: 'npm'
           cache-dependency-path: apps/${{ matrix.app }}/package-lock.json
 
-      # Install protoc for proto generation
+      # Install protoc for proto generation (for all types)
       - name: Install Protobuf compiler
-        if: steps.detect-type.outputs.type != 'java'
         run: |
           PROTOC_VERSION=${{ steps.versions.outputs.PROTOC_VERSION }}
           PROTOC_ZIP=protoc-${PROTOC_VERSION}-linux-x86_64.zip
@@ -201,7 +200,8 @@ jobs:
         run: |
           chmod +x apps/${{ matrix.app }}/gradlew
           cd apps/${{ matrix.app }}
-          ./gradlew generateProto build jacocoTestReport jacocoTestCoverageVerification --no-daemon
+          # Run all tasks in sequence: generate proto, test, coverage report, verify coverage, build
+          ./gradlew clean generateProto test jacocoTestReport jacocoTestCoverageVerification build -x test --no-daemon --info
 
       - name: Upload Java test results
         if: steps.detect-type.outputs.type == 'java' && always()
@@ -240,11 +240,14 @@ jobs:
       - name: Generate proto for TypeScript
         if: steps.detect-type.outputs.type == 'node'
         run: |
+          # Install dependencies first
           cd apps/${{ matrix.app }}
           npm ci
-          cd ../..
-          make proto-ts
-
+          # Generate proto code
+          npm run gen-proto
+          # Verify proto files were generated
+          ls -la src/gen/ || echo "Warning: src/gen/ directory not found"
+          
       - name: Build Node.js service
         if: steps.detect-type.outputs.type == 'node'
         run: |
@@ -302,12 +305,12 @@ jobs:
         run: |
           APP_DIR="apps/${{ matrix.app }}"
           
-          # Priority 1: Check .apptype file
-          if [ -f "$APP_DIR/.apptype" ]; then
-            APP_TYPE=$(cat "$APP_DIR/.apptype" | tr -d '[:space:]')
-          # Priority 2: Check metadata.yaml
-          elif [ -f "$APP_DIR/metadata.yaml" ]; then
+          # Priority 1: Check metadata.yaml (preferred)
+          if [ -f "$APP_DIR/metadata.yaml" ]; then
             APP_TYPE=$(grep "^  type:" "$APP_DIR/metadata.yaml" | awk '{print $2}' | tr -d '[:space:]')
+          # Priority 2: Check .apptype file (legacy support)
+          elif [ -f "$APP_DIR/.apptype" ]; then
+            APP_TYPE=$(cat "$APP_DIR/.apptype" | tr -d '[:space:]')
           # Priority 3: Detect by file characteristics
           elif [ -f "$APP_DIR/build.gradle" ] || [ -f "$APP_DIR/pom.xml" ]; then
             APP_TYPE="java"
@@ -566,12 +569,12 @@ jobs:
         run: |
           APP_DIR="apps/${{ matrix.app }}"
           
-          # Priority 1: Check .apptype file
-          if [ -f "$APP_DIR/.apptype" ]; then
-            APP_TYPE=$(cat "$APP_DIR/.apptype" | tr -d '[:space:]')
-          # Priority 2: Check metadata.yaml
-          elif [ -f "$APP_DIR/metadata.yaml" ]; then
+          # Priority 1: Check metadata.yaml (preferred)
+          if [ -f "$APP_DIR/metadata.yaml" ]; then
             APP_TYPE=$(grep "^  type:" "$APP_DIR/metadata.yaml" | awk '{print $2}' | tr -d '[:space:]')
+          # Priority 2: Check .apptype file (legacy support)
+          elif [ -f "$APP_DIR/.apptype" ]; then
+            APP_TYPE=$(cat "$APP_DIR/.apptype" | tr -d '[:space:]')
           # Priority 3: Detect by file characteristics
           elif [ -f "$APP_DIR/build.gradle" ] || [ -f "$APP_DIR/pom.xml" ]; then
             APP_TYPE="java"

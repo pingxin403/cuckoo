@@ -1,7 +1,9 @@
 spec:
   name: {{SERVICE_NAME}}
+  short_name: {{SHORT_NAME}}  # Short name for CLI convenience (e.g., 'myapp' for 'myapp-service')
   description: {{SERVICE_DESCRIPTION}}
   type: go
+  port: {{PORT}}
   cd: true
   codeowners:
     - "@{{TEAM_NAME}}"

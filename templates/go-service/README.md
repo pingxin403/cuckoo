@@ -400,6 +400,121 @@ func TestYourProperty(t *testing.T) {
 
 ### Integration Tests
 
+Integration tests verify the service running in a real environment with Docker:
+
+```bash
+# Run integration tests (uses root docker-compose.yml)
+./scripts/run-integration-tests.sh
+```
+
+The integration test script:
+1. Builds the service Docker image
+2. Starts required dependencies (databases, caches, etc.)
+3. Starts the service container
+4. Waits for all services to be healthy
+5. Runs integration tests against the running service
+6. Cleans up containers automatically
+
+Example integration test:
+
+```go
+package integration_test
+
+import (
+    "context"
+    "os"
+    "testing"
+    "time"
+
+    yourpb "{{MODULE_PATH}}/gen/{{PROTO_PACKAGE}}"
+    "google.golang.org/grpc"
+    "google.golang.org/grpc/credentials/insecure"
+)
+
+var grpcAddr = getEnv("GRPC_ADDR", "localhost:{{GRPC_PORT}}")
+
+func getEnv(key, defaultValue string) string {
+    if value := os.Getenv(key); value != "" {
+        return value
+    }
+    return defaultValue
+}
+
+func setupClient(t *testing.T) (yourpb.YourServiceClient, *grpc.ClientConn) {
+    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+    defer cancel()
+
+    conn, err := grpc.DialContext(ctx, grpcAddr,
+        grpc.WithTransportCredentials(insecure.NewCredentials()),
+        grpc.WithBlock(),
+    )
+    if err != nil {
+        t.Fatalf("Failed to connect: %v", err)
+    }
+
+    return yourpb.NewYourServiceClient(conn), conn
+}
+
+func TestEndToEndFlow(t *testing.T) {
+    client, conn := setupClient(t)
+    defer func() {
+        if err := conn.Close(); err != nil {
+            t.Logf("Failed to close connection: %v", err)
+        }
+    }()
+
+    ctx := context.Background()
+
+    // Test your service end-to-end
+    resp, err := client.YourMethod(ctx, &yourpb.YourRequest{
+        Field: "test-value",
+    })
+
+    if err != nil {
+        t.Fatalf("YourMethod failed: %v", err)
+    }
+
+    if resp.Result != "expected-result" {
+        t.Errorf("Expected 'expected-result', got '%s'", resp.Result)
+    }
+}
+```
+
+Create the test runner script at `scripts/run-integration-tests.sh`:
+
+```bash
+#!/bin/bash
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
+
+cd "$PROJECT_DIR"
+
+# Build and start service
+docker compose build {{SERVICE_NAME}}
+docker compose up -d {{SERVICE_NAME}}
+
+# Wait for service to be healthy
+echo "Waiting for service to be ready..."
+sleep 5
+
+# Run tests
+cd "apps/{{SERVICE_NAME}}"
+GRPC_ADDR="localhost:{{GRPC_PORT}}" go test -v ./integration_test/... -count=1 -timeout 5m
+
+# Cleanup
+cd "$PROJECT_DIR"
+docker compose stop {{SERVICE_NAME}}
+```
+
+Make the script executable:
+```bash
+chmod +x scripts/run-integration-tests.sh
+```
+
+### Integration Tests
+
 ```bash
 go test -tags=integration ./...
 ```

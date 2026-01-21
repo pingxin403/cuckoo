@@ -47,31 +47,49 @@ log_warning() {
 }
 
 # Normalize app name (support short names like "hello" -> "hello-service")
+# Now reads from metadata.yaml instead of hardcoded mappings
 normalize_app_name() {
-    case "$1" in
-        hello) echo "hello-service" ;;
-        todo) echo "todo-service" ;;
-        *) echo "$1" ;;
-    esac
-}
-
-# Auto-detect app type based on files
-detect_app_type() {
-    local app_dir="$1"
+    local input_name="$1"
     
-    # Priority 1: Check .apptype file
-    if [ -f "$app_dir/.apptype" ]; then
-        cat "$app_dir/.apptype" | tr -d '[:space:]'
+    # First check if it's already a full app name
+    if [ -d "apps/$input_name" ]; then
+        echo "$input_name"
         return
     fi
     
-    # Priority 2: Check metadata.yaml
+    # Search for app with matching short_name in metadata.yaml
+    for app_dir in apps/*/; do
+        if [ -f "$app_dir/metadata.yaml" ]; then
+            local short_name=$(grep "^  short_name:" "$app_dir/metadata.yaml" | awk '{print $2}' | tr -d '[:space:]')
+            if [ "$short_name" = "$input_name" ]; then
+                basename "$app_dir"
+                return
+            fi
+        fi
+    done
+    
+    # If no match found, return the input as-is
+    echo "$input_name"
+}
+
+# Auto-detect app type based on files
+# Priority: metadata.yaml > .apptype (legacy) > file detection
+detect_app_type() {
+    local app_dir="$1"
+    
+    # Priority 1: Check metadata.yaml (preferred)
     if [ -f "$app_dir/metadata.yaml" ]; then
         local type=$(grep "^  type:" "$app_dir/metadata.yaml" | awk '{print $2}' | tr -d '[:space:]')
         if [ -n "$type" ]; then
             echo "$type"
             return
         fi
+    fi
+    
+    # Priority 2: Check .apptype file (legacy support)
+    if [ -f "$app_dir/.apptype" ]; then
+        cat "$app_dir/.apptype" | tr -d '[:space:]'
+        return
     fi
     
     # Priority 3: Detect by file characteristics
@@ -129,7 +147,20 @@ get_apps() {
         if [ -z "$app_type" ]; then
             log_error "Unknown app: $APP_NAME" >&2
             log_info "Available apps: $(get_all_apps)" >&2
-            log_info "Short names: hello, todo" >&2
+            
+            # Show available short names
+            local short_names=""
+            for app_dir in apps/*/; do
+                if [ -f "$app_dir/metadata.yaml" ]; then
+                    local short_name=$(grep "^  short_name:" "$app_dir/metadata.yaml" | awk '{print $2}' | tr -d '[:space:]')
+                    if [ -n "$short_name" ]; then
+                        short_names="$short_names $short_name"
+                    fi
+                fi
+            done
+            if [ -n "$short_names" ]; then
+                log_info "Short names:$short_names" >&2
+            fi
             exit 1
         fi
         echo "$normalized_app"

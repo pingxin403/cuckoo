@@ -30,10 +30,30 @@ static_resources:
                 route:
                   cluster: todo_service
                   timeout: 30s
-              # CORS preflight handling
+              # Shortener Service gRPC API routing
+              - match:
+                  prefix: "/api/shortener"
+                route:
+                  cluster: shortener_service_grpc
+                  timeout: 30s
+              # Shortener Service HTTP redirect routing (catch-all for short codes)
+              # This should be last to avoid matching other API routes
+              - match:
+                  prefix: "/"
+                  headers:
+                  - name: ":path"
+                    string_match:
+                      safe_regex:
+                        google_re2: {}
+                        regex: "^/[a-zA-Z0-9-]{4,20}$"
+                route:
+                  cluster: shortener_service_http
+                  timeout: 5s
+              # CORS configuration
               cors:
                 allow_origin_string_match:
                 - safe_regex:
+                    google_re2: {}
                     regex: ".*"
                 allow_methods: "GET, POST, PUT, DELETE, OPTIONS"
                 allow_headers: "content-type,x-grpc-web,x-user-agent,grpc-timeout"
@@ -105,6 +125,54 @@ static_resources:
       unhealthy_threshold: 2
       healthy_threshold: 2
       grpc_health_check: {}
+
+  # Shortener Service gRPC cluster
+  - name: shortener_service_grpc
+    type: LOGICAL_DNS
+    lb_policy: ROUND_ROBIN
+    dns_lookup_family: V4_ONLY
+    typed_extension_protocol_options:
+      envoy.extensions.upstreams.http.v3.HttpProtocolOptions:
+        "@type": type.googleapis.com/envoy.extensions.upstreams.http.v3.HttpProtocolOptions
+        explicit_http_config:
+          http2_protocol_options: {}
+    load_assignment:
+      cluster_name: shortener_service_grpc
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: localhost
+                port_value: 9092
+    health_checks:
+    - timeout: 1s
+      interval: 10s
+      unhealthy_threshold: 2
+      healthy_threshold: 2
+      grpc_health_check: {}
+
+  # Shortener Service HTTP redirect cluster
+  - name: shortener_service_http
+    type: LOGICAL_DNS
+    lb_policy: ROUND_ROBIN
+    dns_lookup_family: V4_ONLY
+    load_assignment:
+      cluster_name: shortener_service_http
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: localhost
+                port_value: 8080
+    health_checks:
+    - timeout: 1s
+      interval: 10s
+      unhealthy_threshold: 2
+      healthy_threshold: 2
+      http_health_check:
+        path: /health
 
 admin:
   address:

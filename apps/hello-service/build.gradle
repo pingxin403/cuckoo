@@ -44,8 +44,24 @@ dependencies {
 }
 
 tasks.named('test') {
-	useJUnitPlatform()
+	useJUnitPlatform {
+		excludeTags 'integration'
+	}
 	finalizedBy jacocoTestReport
+}
+
+// Integration test task
+tasks.register('integrationTest', Test) {
+	description = 'Runs integration tests'
+	group = 'verification'
+	
+	useJUnitPlatform {
+		includeTags 'integration'
+	}
+	
+	// Integration tests should not be included in coverage reports
+	// as they test the running service, not the code directly
+	shouldRunAfter test
 }
 
 // JaCoCo configuration for test coverage
