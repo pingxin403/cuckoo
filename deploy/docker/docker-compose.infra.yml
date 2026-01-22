@@ -1,0 +1,201 @@
+# Infrastructure Components for Local Development
+# Simplified for local development: single instances of etcd and Kafka, shared MySQL and Redis
+# Usage: docker compose -f deploy/docker/docker-compose.infra.yml up -d
+
+version: '3.8'
+
+services:
+  # ===== Shared Infrastructure =====
+  
+  # Shared MySQL Database (for both Shortener and IM services)
+  mysql:
+    image: mysql:8.0
+    container_name: shared-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      # Create multiple databases
+      MYSQL_DATABASE: shortener
+    volumes:
+      - mysql-data:/var/lib/mysql
+      # Initialize both databases
+      - ./init-mysql.sh:/docker-entrypoint-initdb.d/01-init-databases.sh:ro
+      - ../../apps/shortener-service/migrations:/docker-entrypoint-initdb.d/shortener:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot_password"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+    networks:
+      - monorepo-network
+    command: --default-authentication-plugin=mysql_native_password --max-connections=500
+    restart: unless-stopped
+
+  # Shared Redis (for both Shortener and IM services)
+  redis:
+    image: redis:7.2-alpine
+    container_name: shared-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    networks:
+      - monorepo-network
+    command: redis-server --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+
+  # ===== IM Chat System Infrastructure =====
+  
+  # Single etcd instance for local development
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.11
+    container_name: im-etcd
+    ports:
+      - "2379:2379"
+      - "2380:2380"
+    environment:
+      - ETCD_NAME=etcd
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
+      - ETCD_LISTEN_PEER_URLS=http://0.0.0.0:2380
+      - ETCD_INITIAL_ADVERTISE_PEER_URLS=http://etcd:2380
+      - ETCD_INITIAL_CLUSTER=etcd=http://etcd:2380
+      - ETCD_INITIAL_CLUSTER_STATE=new
+      - ETCD_INITIAL_CLUSTER_TOKEN=im-etcd-cluster
+    volumes:
+      - etcd-data:/etcd-data
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - monorepo-network
+    restart: unless-stopped
+
+  # Single Kafka instance for local development (KRaft mode - no Zookeeper)
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: im-kafka
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:19093
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:19093,PLAINTEXT_HOST://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
+      KAFKA_MIN_INSYNC_REPLICAS: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 40s
+    networks:
+      - monorepo-network
+    restart: unless-stopped
+
+  # Kafka Topic Initialization
+  kafka-init:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: im-kafka-init
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo 'Waiting for Kafka to be ready...'
+        sleep 10
+        
+        echo 'Creating Kafka topics...'
+        
+        # Create group_msg topic (8 partitions for local dev, replication factor 1)
+        kafka-topics --create --if-not-exists \
+          --bootstrap-server kafka:9092 \
+          --topic group_msg \
+          --partitions 8 \
+          --replication-factor 1 \
+          --config retention.ms=3600000
+        
+        # Create offline_msg topic (8 partitions for local dev, replication factor 1)
+        kafka-topics --create --if-not-exists \
+          --bootstrap-server kafka:9092 \
+          --topic offline_msg \
+          --partitions 8 \
+          --replication-factor 1 \
+          --config retention.ms=604800000
+        
+        # Create membership_change topic (4 partitions for local dev, replication factor 1)
+        kafka-topics --create --if-not-exists \
+          --bootstrap-server kafka:9092 \
+          --topic membership_change \
+          --partitions 4 \
+          --replication-factor 1 \
+          --config retention.ms=3600000
+        
+        echo 'Kafka topics created successfully!'
+        kafka-topics --list --bootstrap-server kafka:9092
+    networks:
+      - monorepo-network
+
+  # Liquibase for IM Database Migrations
+  im-liquibase:
+    image: im-liquibase:latest
+    container_name: im-liquibase
+    build:
+      context: ../../apps/im-chat-system/migrations
+      dockerfile: Dockerfile
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - ../../apps/im-chat-system/migrations:/liquibase/changelog
+    command: 
+      - --changelog-file=changelog/db.changelog-master.yaml
+      - --url=jdbc:mysql://mysql:3306/im_chat?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      - --username=im_service
+      - --password=im_service_password
+      - --driver=com.mysql.cj.jdbc.Driver
+      - --contexts=test
+      - update
+    networks:
+      - monorepo-network
+
+networks:
+  monorepo-network:
+    driver: bridge
+    name: monorepo-network
+
+volumes:
+  mysql-data:
+    name: shared-mysql-data
+  redis-data:
+    name: shared-redis-data
+  etcd-data:
+    name: im-etcd-data
+  kafka-data:
+    name: im-kafka-data

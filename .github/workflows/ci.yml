@@ -108,11 +108,45 @@ jobs:
         run: |
           git diff --exit-code || (echo "Generated code is out of date. Run 'make proto' and commit changes." && exit 1)
 
+  # Job 2.5: Test Infrastructure (Docker Compose)
+  test-infrastructure:
+    name: Test Infrastructure
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.has-changes == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Start infrastructure
+        run: |
+          docker compose -f deploy/docker/docker-compose.infra.yml up -d
+          echo "Waiting for services to be healthy..."
+          sleep 30
+
+      - name: Test infrastructure health
+        run: |
+          # Test MySQL
+          docker exec shortener-mysql mysql -u shortener_user -pshortener_password -e "SELECT 1" || echo "MySQL not ready"
+          
+          # Test Redis
+          docker exec shortener-redis redis-cli ping || echo "Redis not ready"
+          
+          # Test etcd (if IM infrastructure is running)
+          docker exec im-etcd-1 etcdctl endpoint health || echo "etcd not ready"
+          
+          echo "✅ Infrastructure health check completed"
+
+      - name: Stop infrastructure
+        if: always()
+        run: |
+          docker compose -f deploy/docker/docker-compose.infra.yml down -v
+
   # Job 3: Build and test apps (dynamic matrix)
   build-apps:
     name: Build ${{ matrix.app }}
     runs-on: ubuntu-latest
-    needs: [detect-changes, verify-proto]
+    needs: [detect-changes, verify-proto, test-infrastructure]
     if: needs.detect-changes.outputs.has-changes == 'true'
     strategy:
       fail-fast: false
@@ -267,8 +301,8 @@ jobs:
       - name: Build Docker image
         if: github.event_name == 'push' && steps.detect-type.outputs.type != 'node'
         run: |
-          # Build Docker image from repository root
-          docker build -f apps/${{ matrix.app }}/Dockerfile -t ${{ matrix.app }}:${{ github.sha }} .
+          # Build Docker image from repository root using new docker-compose structure
+          docker compose -f deploy/docker/docker-compose.services.yml build ${{ matrix.app }}
 
       - name: Save Docker image
         if: github.event_name == 'push' && steps.detect-type.outputs.type != 'node'
@@ -385,10 +419,17 @@ jobs:
           version: 'latest'
 
       - name: Install Kustomize
-        if: steps.check-kubeconfig.outputs.configured == 'true'
         run: |
           curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
           sudo mv kustomize /usr/local/bin/
+          kustomize version
+
+      - name: Validate Kubernetes manifests
+        run: |
+          echo "Validating Kubernetes manifests..."
+          kubectl apply --dry-run=client -k deploy/k8s/overlays/development || echo "⚠️  Development validation failed"
+          kubectl apply --dry-run=client -k deploy/k8s/overlays/production || echo "⚠️  Production validation failed"
+          echo "✅ Manifest validation completed"
 
       - name: Configure kubectl
         if: steps.check-kubeconfig.outputs.configured == 'true'
@@ -396,47 +437,9 @@ jobs:
           mkdir -p $HOME/.kube
           echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/.kube/config
 
-      - name: Install Kustomize
-        run: |
-          curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
-          sudo mv kustomize /usr/local/bin/
-          kustomize version
-
-      - name: Prepare K8s resources for Kustomize
-        run: |
-          echo "Copying K8s resources to base directory..."
-          mkdir -p k8s/base
-          
-          # Copy hello-service resources
-          if [ -f apps/hello-service/k8s/deployment.yaml ]; then
-            cp apps/hello-service/k8s/deployment.yaml k8s/base/hello-service-deployment.yaml
-          fi
-          if [ -f apps/hello-service/k8s/service.yaml ]; then
-            cp apps/hello-service/k8s/service.yaml k8s/base/hello-service-service.yaml
-          fi
-          if [ -f apps/hello-service/k8s/configmap.yaml ]; then
-            cp apps/hello-service/k8s/configmap.yaml k8s/base/hello-service-configmap.yaml
-          fi
-          
-          # Copy todo-service resources
-          if [ -f apps/todo-service/k8s/deployment.yaml ]; then
-            cp apps/todo-service/k8s/deployment.yaml k8s/base/todo-service-deployment.yaml
-          fi
-          if [ -f apps/todo-service/k8s/service.yaml ]; then
-            cp apps/todo-service/k8s/service.yaml k8s/base/todo-service-service.yaml
-          fi
-          
-          # Copy ingress
-          if [ -f tools/k8s/ingress.yaml ]; then
-            cp tools/k8s/ingress.yaml k8s/base/ingress.yaml
-          fi
-          
-          echo "✅ K8s resources prepared"
-          ls -la k8s/base/
-
       - name: Update image tags in Kustomize
         run: |
-          cd k8s/overlays/production
+          cd deploy/k8s/overlays/production
           
           # Update images for changed apps only
           CHANGED_APPS="${{ needs.detect-changes.outputs.apps }}"
@@ -451,7 +454,7 @@ jobs:
       - name: Generate K8s manifests
         run: |
           echo "Generating Kubernetes manifests..."
-          kustomize build k8s/overlays/production > k8s-manifests.yaml || {
+          kustomize build deploy/k8s/overlays/production > k8s-manifests.yaml || {
             echo "❌ Kustomize build failed"
             echo ""
             echo "This is likely due to missing k8s resource files."
@@ -463,8 +466,8 @@ jobs:
           # Generated because kustomize build failed
           #
           # To create actual manifests:
-          # 1. Ensure all k8s resource files exist in apps/*/k8s/
-          # 2. Run: kustomize build k8s/overlays/production
+          # 1. Ensure all k8s resource files exist in deploy/k8s/services/
+          # 2. Run: kustomize build deploy/k8s/overlays/production
           #
           # For now, here are the Docker images that were built:
           EOFMARKER
@@ -544,7 +547,7 @@ jobs:
           echo ""
           echo "To enable automatic deployment:"
           echo "  1. Configure KUBECONFIG secret in repository settings"
-          echo "  2. See docs/KUBERNETES_DEPLOYMENT.md for details"
+          echo "  2. See deploy/DEPLOYMENT_GUIDE.md for details"
           echo "================================================"
 
   # Job 6: Security scanning

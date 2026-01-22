@@ -1,19 +1,19 @@
 # Monorepo Hello/TODO Services
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com)
-[![Local Setup](https://img.shields.io/badge/local%20setup-verified-brightgreen)](docs/LOCAL_SETUP_VERIFICATION.md)
+[![Local Setup](https://img.shields.io/badge/local%20setup-verified-brightgreen)](docs/archive/LOCAL_SETUP_VERIFICATION.md)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 A multi-language monorepo project demonstrating microservices architecture with Java/Spring Boot, Go, and React/TypeScript.
 
 ## ✅ 项目状态
 
-- **本地开发**: ✅ 已验证可运行 ([查看验证报告](docs/LOCAL_SETUP_VERIFICATION.md))
+- **本地开发**: ✅ 已验证可运行 ([查看验证报告](docs/archive/LOCAL_SETUP_VERIFICATION.md))
 - **构建系统**: ✅ 所有服务可成功构建
 - **基础设施**: ✅ Envoy/Higress 配置完成
-- **CI/CD**: ✅ 动态增量构建 ([查看策略](docs/DYNAMIC_CI_STRATEGY.md))
-- **代码质量**: ✅ Shift-left 实践已实施 ([查看详情](docs/SHIFT_LEFT.md))
-- **架构可扩展性**: ⭐⭐⭐⭐⭐ 支持无限服务扩展 ([查看分析](docs/ARCHITECTURE_SCALABILITY_ANALYSIS.md))
+- **CI/CD**: ✅ 动态增量构建 ([查看策略](docs/ci-cd/DYNAMIC_CI_STRATEGY.md))
+- **代码质量**: ✅ Shift-left 实践已实施 ([查看详情](docs/process/SHIFT_LEFT.md))
+- **架构可扩展性**: ⭐⭐⭐⭐⭐ 支持无限服务扩展 ([查看分析](docs/archive/ARCHITECTURE_SCALABILITY_ANALYSIS.md))
 
 ## 项目概述
 
@@ -59,8 +59,8 @@ A multi-language monorepo project demonstrating microservices architecture with 
 > 📖 **详细指南**: 查看 [Getting Started Guide](docs/GETTING_STARTED.md) 获取完整的设置说明和故障排查。
 > 
 > ⚠️ **重要**: 
-> - Protobuf 代码生成需要使用特定的工具版本。请参阅 [Protobuf 工具版本要求](docs/PROTO_TOOLS_VERSION.md)。
-> - 本项目采用混合的 Proto 生成策略（务实方案）。请参阅 [Proto Hybrid Strategy](docs/PROTO_HYBRID_STRATEGY.md)。
+> - Protobuf 代码生成需要使用特定的工具版本。请参阅 [Protobuf 工具版本要求](docs/archive/PROTO_TOOLS_VERSION.md)。
+> - 本项目采用混合的 Proto 生成策略（务实方案）。请参阅 [Proto Hybrid Strategy](docs/archive/PROTO_HYBRID_STRATEGY.md)。
 
 ### 🚀 一键初始化（推荐）
 
@@ -231,7 +231,7 @@ make build APP=web
 > 💡 **提示**: 
 > - 支持简写：`hello` → `hello-service`, `todo` → `todo-service`
 > - 不指定 APP 参数时，系统会自动检测并构建变更的应用
-> - 详见 [App Management Guide](docs/APP_MANAGEMENT.md)
+> - 详见 [App Management Guide](docs/development/APP_MANAGEMENT.md)
 
 ### 测试
 
@@ -245,7 +245,7 @@ make test APP=todo              # 等同于 APP=todo-service
 make test APP=web
 ```
 
-> 💡 **提示**: 新的 APP 参数方式支持自动检测变更的应用。详见 [App Management Guide](docs/APP_MANAGEMENT.md)
+> 💡 **提示**: 新的 APP 参数方式支持自动检测变更的应用。详见 [App Management Guide](docs/development/APP_MANAGEMENT.md)
 
 ### 代码质量检查
 
@@ -271,7 +271,7 @@ make format APP=hello           # 格式化特定应用（支持简写）
 - **Go**: golangci-lint 可修复问题 + gofmt 格式化
 - **Node.js**: ESLint 可修复问题
 
-> 💡 **提示**: 详见 [Linting Guide](docs/LINTING_GUIDE.md) 和 [Code Quality Guide](docs/CODE_QUALITY.md)
+> 💡 **提示**: 详见 [Linting Guide](docs/development/LINTING_GUIDE.md) 和 [Code Quality Guide](docs/development/CODE_QUALITY.md)
 
 ### Docker 构建
 
@@ -284,7 +284,7 @@ make docker-build APP=hello-service
 make docker-build APP=todo-service
 ```
 
-> 💡 **提示**: 不指定 APP 参数时，系统会自动检测并构建变更应用的镜像。详见 [App Management Guide](docs/APP_MANAGEMENT.md)
+> 💡 **提示**: 不指定 APP 参数时，系统会自动检测并构建变更应用的镜像。详见 [App Management Guide](docs/development/APP_MANAGEMENT.md)
 
 ## 架构说明
 
@@ -328,7 +328,7 @@ graph TB
 
 详细的前后端通信架构说明请参考：
 - **[apps/web/DEPLOYMENT.md](apps/web/DEPLOYMENT.md)** - 完整的部署和通信架构文档
-- **[docs/COMMUNICATION.md](docs/COMMUNICATION.md)** - 快速参考指南
+- **[docs/process/COMMUNICATION.md](docs/process/COMMUNICATION.md)** - 快速参考指南
 
 ### API 契约
 
@@ -487,22 +487,111 @@ test-my-new-service:
 
 ## 部署
 
-### Kubernetes 部署
+### 本地开发 (Docker Compose)
+
+使用 Docker Compose 在本地运行所有服务：
 
 ```bash
-# 使用 Kustomize 部署
-kubectl apply -k k8s/overlays/production
+# 启动所有服务（基础设施 + 应用）
+make dev-up
 
-# 验证部署
-kubectl get pods
-kubectl get services
-kubectl get ingress
+# 仅启动基础设施（MySQL, Redis, etcd, Kafka）
+make infra-up
+
+# 仅启动应用服务
+make services-up
+
+# 重启应用服务（保持基础设施运行）
+make dev-restart
+
+# 停止所有服务
+make dev-down
 ```
+
+**优势**:
+- 快速启动和停止
+- 与生产环境架构一致
+- 支持独立启动基础设施和服务
+- 适合日常开发和调试
+
+详细说明请参考 [Docker 部署指南](deploy/docker/README.md)
+
+### Kubernetes 部署
+
+#### 验证配置
+
+```bash
+# 验证 Kubernetes 配置
+make k8s-validate
+```
+
+#### 部署基础设施
+
+使用 Helm 部署基础设施组件（MySQL, Redis, Kafka）：
+
+```bash
+# 部署所有基础设施
+make k8s-infra-deploy
+
+# 或手动部署单个组件
+helm install mysql bitnami/mysql -f deploy/k8s/infra/mysql-values.yaml
+helm install redis bitnami/redis -f deploy/k8s/infra/redis-values.yaml
+helm install kafka bitnami/kafka -f deploy/k8s/infra/kafka-values.yaml
+kubectl apply -k deploy/k8s/infra/etcd/
+```
+
+#### 部署应用服务
+
+使用 Kustomize 部署应用服务：
+
+```bash
+# 部署到开发环境
+make k8s-deploy-dev
+
+# 部署到生产环境
+make k8s-deploy-prod
+
+# 或使用 kubectl
+kubectl apply -k deploy/k8s/overlays/development
+kubectl apply -k deploy/k8s/overlays/production
+```
+
+#### 验证部署
+
+```bash
+# 查看 Pod 状态
+kubectl get pods -n production
+
+# 查看服务
+kubectl get svc -n production
+
+# 查看 Ingress
+kubectl get ingress -n production
+
+# 查看日志
+kubectl logs -f deployment/hello-service -n production
+```
+
+**环境说明**:
+- **Development**: 1 副本，最小资源，调试日志
+- **Production**: 3+ 副本，生产资源，HPA 自动扩缩容
+
+详细说明请参考：
+- [Kubernetes 部署指南](deploy/k8s/README.md)
+- [完整部署指南](docs/deployment/DEPLOYMENT_GUIDE.md)
+- [部署快速参考](docs/deployment/DEPLOYMENT_QUICK_REFERENCE.md)
 
 ### 配置说明
 
-- **Base**: `k8s/base/` - 基础配置
-- **Overlays**: `k8s/overlays/production/` - 生产环境配置
+#### Docker Compose
+- **基础设施**: `deploy/docker/docker-compose.infra.yml`
+- **应用服务**: `deploy/docker/docker-compose.services.yml`
+- **使用方式**: 使用 `make dev-up` 或直接使用两个文件
+
+#### Kubernetes
+- **基础设施**: `deploy/k8s/infra/` (Helm charts)
+- **应用服务**: `deploy/k8s/services/` (Kustomize)
+- **环境配置**: `deploy/k8s/overlays/` (development, production)
 
 ## CI/CD
 
@@ -531,7 +620,7 @@ kubectl get ingress
 - API 变更需要 @platform-team 审批
 - 跨服务变更需要相关团队共同审批
 
-详细的治理流程请参考 [docs/governance.md](docs/governance.md)
+详细的治理流程请参考 [docs/process/governance.md](docs/process/governance.md)
 
 ## 开发规范
 
@@ -551,7 +640,7 @@ kubectl get ingress
 make pre-commit
 ```
 
-详细的 Shift-Left 实践请参考 [docs/SHIFT_LEFT.md](docs/SHIFT_LEFT.md)
+详细的 Shift-Left 实践请参考 [docs/process/SHIFT_LEFT.md](docs/process/SHIFT_LEFT.md)
 
 ### Pull Request 流程
 
@@ -592,33 +681,69 @@ cd apps/todo-service && go run .
 
 ## 更多信息
 
-### 文档
+### 📚 文档中心
 
-- [快速参考](docs/QUICK_REFERENCE.md) - 常用命令速查
-- [API 文档](api/v1/README.md) - Protobuf API 定义和使用说明
-- [架构设计](docs/ARCHITECTURE.md) - 系统架构和设计决策
+**完整文档索引**: [docs/README.md](docs/README.md) - 所有文档的导航中心
+
+### 🚀 快速入门文档
+
 - [快速开始](docs/GETTING_STARTED.md) - 详细的环境设置指南
-- [创建应用](docs/CREATE_APP_GUIDE.md) - 创建新应用的完整指南
-- [应用管理](docs/APP_MANAGEMENT.md) - 应用管理系统使用指南
-- [Shift-Left 实践](docs/SHIFT_LEFT.md) - 质量左移和预提交检查
-- [测试指南](docs/TESTING_GUIDE.md) - 测试编写、运行和覆盖率要求
-- [代码检查指南](docs/LINTING_GUIDE.md) - Linting 配置和使用说明
-- [通信架构](docs/COMMUNICATION.md) - 前后端通信模式
-- [代码质量](docs/CODE_QUALITY.md) - 代码质量工具和规范
-- [基础设施](docs/INFRASTRUCTURE.md) - K8s 和 Higress 配置
-- [治理文档](docs/governance.md) - 代码所有权和 PR 流程
+- [快速参考](docs/QUICK_REFERENCE.md) - 常用命令速查
 
-### 服务模板
+### 🏗️ 架构文档
+
+- [系统架构](docs/architecture/ARCHITECTURE.md) - 系统架构和设计决策
+- [基础设施](docs/architecture/INFRASTRUCTURE.md) - K8s 和 Higress 配置
+- [Higress 路由配置](docs/architecture/HIGRESS_ROUTING_CONFIGURATION.md) - API 网关路由
+
+### 💻 开发文档
+
+- [代码质量](docs/development/CODE_QUALITY.md) - 代码质量工具和规范
+- [测试指南](docs/development/TESTING_GUIDE.md) - 测试编写、运行和覆盖率要求
+- [代码检查指南](docs/development/LINTING_GUIDE.md) - Linting 配置和使用说明
+- [创建应用](docs/development/CREATE_APP_GUIDE.md) - 创建新应用的完整指南
+- [应用管理](docs/development/APP_MANAGEMENT.md) - 应用管理系统使用指南
+- [Makefile 指南](docs/development/MAKEFILE_GUIDE.md) - Makefile 使用和 Proto 生成
+
+### 🚢 部署文档
+
+- [部署指南](docs/deployment/DEPLOYMENT_GUIDE.md) - 所有环境的完整部署指南
+- [部署快速参考](docs/deployment/DEPLOYMENT_QUICK_REFERENCE.md) - 部署命令速查
+- [生产运维](docs/deployment/PRODUCTION_OPERATIONS.md) - 生产环境运维指南
+- [Docker 部署](deploy/docker/README.md) - Docker Compose 本地开发
+- [Kubernetes 部署](deploy/k8s/README.md) - Kubernetes 生产部署
+
+### 🔄 CI/CD 文档
+
+- [动态 CI 策略](docs/ci-cd/DYNAMIC_CI_STRATEGY.md) - CI/CD 流水线设计
+- [集成测试](docs/ci-cd/INTEGRATION_TESTS_IMPLEMENTATION.md) - 集成测试实现
+- [覆盖率快速参考](docs/ci-cd/COVERAGE_QUICK_REFERENCE.md) - 代码覆盖率指南
+
+### 📋 流程与治理
+
+- [治理文档](docs/process/governance.md) - 代码所有权和 PR 流程
+- [通信指南](docs/process/COMMUNICATION.md) - 前后端通信模式
+- [Shift-Left 实践](docs/process/SHIFT_LEFT.md) - 质量左移和预提交检查
+
+### 📦 服务模板
 
 - [Java 服务模板](templates/java-service/README.md) - 创建新的 Java/Spring Boot 服务
 - [Go 服务模板](templates/go-service/README.md) - 创建新的 Go 服务
 
-### 服务文档
+### 🔧 服务文档
 
 - [Hello Service](apps/hello-service/README.md) - Java/Spring Boot 问候服务
 - [TODO Service](apps/todo-service/README.md) - Go 任务管理服务
 - [Shortener Service](apps/shortener-service/README.md) - Go URL 短链接服务
 - [Web Application](apps/web/README.md) - React 前端应用
+
+### 📖 API 文档
+
+- [API 文档](api/v1/README.md) - Protobuf API 定义和使用说明
+
+### 📜 历史文档
+
+- [文档归档](docs/archive/README.md) - 历史文档和迁移记录
 
 ## 贡献指南
 

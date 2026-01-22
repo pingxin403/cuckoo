@@ -1,0 +1,122 @@
+# Bitnami etcd Helm Chart Values
+# For IM Chat System Registry Service
+# Provides distributed key-value store for user-to-gateway mappings
+
+# Global settings
+global:
+  storageClass: ""  # Use default storage class
+
+# Cluster configuration
+replicaCount: 3  # 3-node cluster for high availability
+
+# Authentication
+auth:
+  rbac:
+    enabled: false  # Disable RBAC for simplicity (enable in production)
+  token:
+    enabled: false  # Disable token auth (enable in production with TLS)
+
+# Persistence
+persistence:
+  enabled: true
+  storageClass: ""  # Use default storage class
+  size: 10Gi
+  accessModes:
+    - ReadWriteOnce
+
+# Resource limits
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: 500m
+    memory: 1Gi
+
+# etcd configuration
+configuration: |
+  # Auto-compaction
+  auto-compaction-retention: 1
+  auto-compaction-mode: periodic
+  # Backend quota (8GB)
+  quota-backend-bytes: 8589934592
+  # Snapshot count
+  snapshot-count: 10000
+
+# Service configuration
+service:
+  type: ClusterIP
+  ports:
+    client: 2379
+    peer: 2380
+
+# Health checks
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+  successThreshold: 1
+
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+  successThreshold: 1
+
+# Metrics
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: false  # Enable if using Prometheus Operator
+
+# Pod disruption budget
+pdb:
+  create: true
+  minAvailable: 2  # Ensure at least 2 nodes are always available
+
+# Pod security context
+podSecurityContext:
+  enabled: true
+  fsGroup: 1001
+  runAsUser: 1001
+  runAsNonRoot: true
+
+# Container security context
+containerSecurityContext:
+  enabled: true
+  runAsUser: 1001
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+# Affinity rules (spread pods across nodes)
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: etcd
+          topologyKey: kubernetes.io/hostname
+
+# Tolerations
+tolerations: []
+
+# Node selector
+nodeSelector: {}
+
+# Labels
+commonLabels:
+  component: registry
+  system: im-chat
+
+# Annotations
+commonAnnotations: {}
+

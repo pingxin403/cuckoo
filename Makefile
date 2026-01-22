@@ -1,7 +1,9 @@
 .PHONY: help init check-env check-versions proto gen-proto gen-proto-go gen-proto-java gen-proto-ts verify-proto \
         build test lint lint-fix format docker-build run clean list-apps create \
         test-coverage verify-coverage \
-        dev pre-commit verify-auto-detection prepare-k8s-resources
+        dev pre-commit verify-auto-detection \
+        infra-up infra-down services-up services-down dev-up dev-down dev-restart infra-logs infra-clean infra-status \
+        k8s-deploy-dev k8s-deploy-prod k8s-infra-deploy k8s-validate
 
 # Default target
 help:
@@ -24,8 +26,25 @@ help:
 	@echo "  test-coverage [APP=name] - Run tests with coverage for app(s)"
 	@echo "  verify-coverage [APP=name] - Verify coverage thresholds for app(s)"
 	@echo ""
-	@echo "  Kubernetes:"
-	@echo "  prepare-k8s-resources - Prepare K8s resources for Kustomize build"
+	@echo "  Docker Compose Deployment (Local Development):"
+	@echo "  dev-up             - Start all services (infrastructure + applications)"
+	@echo "  dev-down           - Stop all services"
+	@echo "  infra-up           - Start infrastructure only (MySQL, Redis, etcd, Kafka)"
+	@echo "  infra-down         - Stop infrastructure"
+	@echo "  services-up        - Start application services only"
+	@echo "  services-down      - Stop application services"
+	@echo "  dev-restart        - Restart application services (keep infrastructure running)"
+	@echo ""
+	@echo "  Kubernetes Deployment (Production):"
+	@echo "  k8s-deploy-dev     - Deploy to Kubernetes development environment"
+	@echo "  k8s-deploy-prod    - Deploy to Kubernetes production environment"
+	@echo "  k8s-infra-deploy   - Deploy infrastructure using Helm charts"
+	@echo "  k8s-validate       - Validate Kubernetes manifests"
+	@echo ""
+	@echo "  Infrastructure Management:"
+	@echo "  infra-logs         - View infrastructure logs"
+	@echo "  infra-clean        - Clean infrastructure data (WARNING: Deletes all data!)"
+	@echo "  infra-status       - Check infrastructure service status"
 	@echo ""
 	@echo "  App Management (supports APP=<name> or auto-detects changed apps):"
 	@echo "  list-apps          - List all available apps"
@@ -35,9 +54,16 @@ help:
 	@echo "  run [APP=name]     - Run app(s) locally"
 	@echo "  clean [APP=name]   - Clean build artifacts for app(s)"
 	@echo ""
-	@echo "  dev                - Start all services in development mode"
+	@echo "  dev                - Start all services in development mode (legacy)"
 	@echo ""
 	@echo "Examples:"
+	@echo "  make dev-up                    # Start everything for local development"
+	@echo "  make infra-up                  # Start only infrastructure"
+	@echo "  make services-up               # Start only application services"
+	@echo "  make dev-restart               # Restart services without restarting infrastructure"
+	@echo "  make k8s-deploy-dev            # Deploy to Kubernetes dev environment"
+	@echo "  make k8s-deploy-prod           # Deploy to Kubernetes production"
+	@echo "  make k8s-infra-deploy          # Deploy infrastructure with Helm"
 	@echo "  make pre-commit                # Run all quality checks before commit"
 	@echo "  make proto                     # Generate code from Protobuf"
 	@echo "  make test APP=hello            # Test specific app (short name)"
@@ -194,7 +220,104 @@ else
 	@./scripts/coverage-manager.sh --verify
 endif
 
-# Development mode
+# ===== Docker Compose Deployment =====
+
+.PHONY: infra-up infra-down services-up services-down dev-up dev-down dev-restart infra-logs infra-clean infra-status
+
+# Start infrastructure only
+infra-up:
+	@echo "Starting infrastructure services..."
+	@docker compose -f deploy/docker/docker-compose.infra.yml up -d
+	@echo "✅ Infrastructure started"
+	@echo ""
+	@echo "Endpoints:"
+	@echo "  - etcd:   localhost:2379"
+	@echo "  - MySQL:  localhost:3306 (databases: shortener, im_chat)"
+	@echo "  - Redis:  localhost:6379"
+	@echo "  - Kafka:  localhost:9092, localhost:9093"
+	@echo ""
+	@echo "Run 'make infra-status' to check service health"
+
+# Stop infrastructure
+infra-down:
+	@echo "Stopping infrastructure services..."
+	@docker compose -f deploy/docker/docker-compose.infra.yml down
+	@echo "✅ Infrastructure stopped"
+
+# Start application services only
+services-up:
+	@echo "Starting application services..."
+	@docker compose -f deploy/docker/docker-compose.services.yml up -d
+	@echo "✅ Services started"
+
+# Stop application services
+services-down:
+	@echo "Stopping application services..."
+	@docker compose -f deploy/docker/docker-compose.services.yml down
+	@echo "✅ Services stopped"
+
+# Start everything (infrastructure + services)
+dev-up:
+	@echo "Starting all services in development mode..."
+	@docker compose -f deploy/docker/docker-compose.infra.yml \
+	                -f deploy/docker/docker-compose.services.yml up -d
+	@echo "✅ All services started"
+	@echo ""
+	@echo "Infrastructure endpoints:"
+	@echo "  - etcd:   localhost:2379"
+	@echo "  - MySQL:  localhost:3306"
+	@echo "  - Redis:  localhost:6379"
+	@echo "  - Kafka:  localhost:9092, localhost:9093"
+	@echo ""
+	@echo "Run 'make infra-status' to check service health"
+
+# Stop everything
+dev-down:
+	@echo "Stopping all services..."
+	@docker compose -f deploy/docker/docker-compose.infra.yml \
+	                -f deploy/docker/docker-compose.services.yml down
+	@echo "✅ All services stopped"
+
+# Restart services (keep infrastructure running)
+dev-restart:
+	@echo "Restarting application services..."
+	@docker compose -f deploy/docker/docker-compose.services.yml restart
+	@echo "✅ Services restarted"
+
+# View infrastructure logs
+infra-logs:
+	@echo "Viewing infrastructure logs (Ctrl+C to exit)..."
+	@docker compose -f deploy/docker/docker-compose.infra.yml logs -f
+
+# Check infrastructure status
+infra-status:
+	@echo "Checking infrastructure service status..."
+	@docker compose -f deploy/docker/docker-compose.infra.yml ps
+	@echo ""
+	@echo "Testing connectivity..."
+	@echo -n "  etcd:   "
+	@docker compose -f deploy/docker/docker-compose.infra.yml exec -T etcd etcdctl endpoint health 2>/dev/null && echo "✅" || echo "❌"
+	@echo -n "  MySQL:  "
+	@docker compose -f deploy/docker/docker-compose.infra.yml exec -T mysql mysqladmin ping -h localhost 2>/dev/null && echo "✅" || echo "❌"
+	@echo -n "  Redis:  "
+	@docker compose -f deploy/docker/docker-compose.infra.yml exec -T redis redis-cli ping 2>/dev/null && echo "✅" || echo "❌"
+	@echo -n "  Kafka:  "
+	@docker compose -f deploy/docker/docker-compose.infra.yml exec -T kafka kafka-broker-api-versions.sh --bootstrap-server localhost:9092 2>/dev/null >/dev/null && echo "✅" || echo "❌"
+
+# Clean infrastructure data (WARNING: Deletes all data!)
+infra-clean:
+	@echo "WARNING: This will delete all infrastructure data!"
+	@read -p "Are you sure? [y/N] " -n 1 -r; \
+	echo; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+		echo "Stopping and removing infrastructure..."; \
+		docker compose -f deploy/docker/docker-compose.infra.yml down -v; \
+		echo "✅ Infrastructure cleaned."; \
+	else \
+		echo "Cancelled."; \
+	fi
+
+# Development mode (legacy alias)
 dev:
 	@echo "Starting all services in development mode..."
 	@./scripts/dev.sh
@@ -204,7 +327,31 @@ pre-commit:
 	@echo "Running pre-commit checks..."
 	@./scripts/pre-commit-checks.sh
 
-# Kubernetes resource preparation
-prepare-k8s-resources:
-	@echo "Preparing K8s resources for Kustomize..."
-	@./scripts/prepare-k8s-resources.sh
+# ===== Kubernetes Deployment =====
+
+.PHONY: k8s-deploy-dev k8s-deploy-prod k8s-infra-deploy k8s-validate prepare-k8s-resources
+
+# Deploy to Kubernetes development environment
+k8s-deploy-dev:
+	@echo "Deploying to Kubernetes development environment..."
+	@kubectl apply -k deploy/k8s/overlays/development
+	@echo "✅ Deployed to development"
+
+# Deploy to Kubernetes production environment
+k8s-deploy-prod:
+	@echo "Deploying to Kubernetes production environment..."
+	@kubectl apply -k deploy/k8s/overlays/production
+	@echo "✅ Deployed to production"
+
+# Deploy infrastructure to Kubernetes (Helm charts)
+k8s-infra-deploy:
+	@echo "Deploying infrastructure to Kubernetes..."
+	@./deploy/k8s/infra/deploy-all.sh
+	@echo "✅ Infrastructure deployed"
+
+# Validate Kubernetes manifests
+k8s-validate:
+	@echo "Validating Kubernetes manifests..."
+	@kubectl apply --dry-run=client -k deploy/k8s/overlays/development
+	@kubectl apply --dry-run=client -k deploy/k8s/overlays/production
+	@echo "✅ Manifests validated"

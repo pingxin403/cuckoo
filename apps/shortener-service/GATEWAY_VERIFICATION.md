@@ -28,9 +28,9 @@ Envoy Gateway (localhost:8080)
 ## 配置文件
 
 ### Docker Compose
-- **文件**: `docker-compose.yml` (根目录)
-- **服务**: mysql, redis, shortener-service, envoy
-- **网络**: monorepo-network
+- **Files**: `deploy/docker/docker-compose.infra.yml` and `deploy/docker/docker-compose.services.yml`
+- **Services**: mysql, redis, shortener-service, envoy
+- **Network**: monorepo-network
 
 ### Envoy 配置
 - **文件**: `tools/envoy/envoy-docker.yaml`
@@ -195,7 +195,11 @@ HTTP/1.1 404 Not Found
 ### 启动所有服务
 ```bash
 # 从项目根目录
-docker compose up -d mysql redis shortener-service envoy
+docker compose -f deploy/docker/docker-compose.infra.yml \
+               -f deploy/docker/docker-compose.services.yml up -d
+
+# Or use Makefile
+make dev-up
 ```
 
 ### 查看服务状态
