@@ -10,7 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/pingxin403/cuckoo/apps/user-service/gen/user_servicepb"
+	"github.com/pingxin403/cuckoo/apps/user-service/gen/userpb"
 	"github.com/pingxin403/cuckoo/apps/user-service/service"
 	"github.com/pingxin403/cuckoo/apps/user-service/storage"
 	"google.golang.org/grpc"
@@ -24,24 +24,40 @@ func main() {
 		port = "9096"
 	}
 
+	// Get MySQL DSN from environment variable
+	mysqlDSN := os.Getenv("MYSQL_DSN")
+	if mysqlDSN == "" {
+		// Default DSN for local development
+		mysqlDSN = "im_service:im_password@tcp(localhost:3306)/im_chat?parseTime=true"
+		log.Printf("MYSQL_DSN not set, using default: %s", mysqlDSN)
+	}
+
 	// Create TCP listener
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
 	if err != nil {
 		log.Fatalf("Failed to listen on port %s: %v", port, err)
 	}
 
-	// Initialize storage
-	store := storage.NewMemoryStore()
-	log.Println("Initialized in-memory store")
+	// Initialize MySQL storage
+	store, err := storage.NewMySQLStore(mysqlDSN)
+	if err != nil {
+		log.Fatalf("Failed to initialize MySQL store: %v", err)
+	}
+	defer func() {
+		if err := store.Close(); err != nil {
+			log.Printf("Error closing store: %v", err)
+		}
+	}()
+	log.Println("Initialized MySQL store")
 
 	// Create service
-	svc := service.NewUuserUserviceServiceServer(store)
+	svc := service.NewUserServiceServer(store)
 
 	// Create gRPC server
 	grpcServer := grpc.NewServer()
 
 	// Register service
-	user_servicepb.RegisterUuserUserviceServiceServer(grpcServer, svc)
+	userpb.RegisterUserServiceServer(grpcServer, svc)
 
 	// Register reflection service for debugging (e.g., with grpcurl)
 	reflection.Register(grpcServer)
