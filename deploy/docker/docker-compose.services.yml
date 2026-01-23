@@ -111,6 +111,29 @@ services:
       - monorepo-network
     restart: unless-stopped
 
+
+  # UimUgatewayUservice (go)
+  im-gateway-service:
+    build:
+      context: ../..
+      dockerfile: apps/im-gateway-service/Dockerfile
+    image: im-gateway-service:latest
+    container_name: im-gateway-service
+    ports:
+      - "9093:9093"
+    environment:
+      - PORT=9093
+      - LOG_LEVEL=info
+      - ENVIRONMENT=development
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "im-gateway-service"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+    networks:
+      - monorepo-network
+    restart: unless-stopped
 networks:
   monorepo-network:
     external: true

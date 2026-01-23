@@ -230,4 +230,38 @@ enum IMErrorCode {
 
   // Internal server error
   IM_ERROR_CODE_INTERNAL_ERROR = 12;
+
+  // Delivery failed after retries
+  IM_ERROR_CODE_DELIVERY_FAILED = 13;
+}
+
+// OfflineMessageEvent represents a message event for the Kafka offline_msg topic.
+// This is used internally for routing messages to offline users.
+message OfflineMessageEvent {
+  // Unique message identifier
+  string msg_id = 1;
+
+  // Recipient user ID
+  string user_id = 2;
+
+  // Sender user ID
+  string sender_id = 3;
+
+  // Conversation ID (sorted user IDs for private, group_id for group)
+  string conversation_id = 4;
+
+  // Conversation type ("private" or "group")
+  string conversation_type = 5;
+
+  // Message content
+  string content = 6;
+
+  // Assigned sequence number
+  int64 sequence_number = 7;
+
+  // Timestamp in milliseconds
+  int64 timestamp = 8;
+
+  // Optional metadata
+  map<string, string> metadata = 9;
 }

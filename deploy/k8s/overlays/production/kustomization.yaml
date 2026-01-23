@@ -13,6 +13,7 @@ resources:
   - ../../services/user-service
   - ../../services/im-service
 
+  - ../../services/im-gateway-service
 commonLabels:
   environment: production
 
@@ -32,6 +33,8 @@ replicas:
   - name: im-service
     count: 3
 
+  - name: im-gateway-service
+    count: 3
 patches:
   - patch: |-
       - op: replace

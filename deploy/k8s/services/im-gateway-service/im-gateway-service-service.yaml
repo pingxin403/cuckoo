@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: im-gateway-service
+  namespace: default
+  labels:
+    app: im-gateway-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 9093
+    targetPort: 9093
+    protocol: TCP
+    name: grpc
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: websocket
+  selector:
+    app: im-gateway-service
+
