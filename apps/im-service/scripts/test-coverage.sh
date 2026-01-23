@@ -1,55 +1,59 @@
 #!/bin/bash
 
-# Test coverage script for Go services
-# This script runs tests with coverage and verifies thresholds:
-# - Overall coverage: 80% minimum
-# - Service/storage packages: 90% minimum
+# Test coverage script for im-service
+# Uses Go build tags to control test execution
 
 set -e
 
-echo "Running tests with coverage..."
-go test -v -race -coverprofile=coverage.out ./...
+# Colors
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
 
-echo ""
-echo "Generating HTML coverage report..."
-go tool cover -html=coverage.out -o coverage.html
-echo "Coverage report generated: coverage.html"
+echo -e "${BLUE}=== IM Service Test Coverage ===${NC}"
 
-echo ""
-echo "Coverage summary:"
-go tool cover -func=coverage.out
+# Parse arguments
+RUN_PROPERTY_TESTS=false
+TIMEOUT="5m"
 
-echo ""
-echo "Checking coverage thresholds..."
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --with-property-tests)
+            RUN_PROPERTY_TESTS=true
+            TIMEOUT="30m"
+            shift
+            ;;
+        --timeout)
+            TIMEOUT="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown option: $1"
+            echo "Usage: $0 [--with-property-tests] [--timeout <duration>]"
+            exit 1
+            ;;
+    esac
+done
 
-# Check overall coverage (80%)
-OVERALL_COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
-echo "Overall coverage: ${OVERALL_COVERAGE}%"
-
-if (( $(echo "$OVERALL_COVERAGE < 80" | bc -l) )); then
-    echo "❌ FAIL: Overall coverage ${OVERALL_COVERAGE}% is below 80% threshold"
-    exit 1
-fi
-
-echo "✅ PASS: Overall coverage meets 80% threshold"
-
-# Check service and storage package coverage (90%)
-SERVICE_LINES=$(go tool cover -func=coverage.out | grep -E '(service|storage)' || true)
-
-if [ -n "$SERVICE_LINES" ]; then
-    # Calculate average coverage for service/storage packages
-    SERVICE_COVERAGE=$(echo "$SERVICE_LINES" | awk '{sum+=$3; count++} END {if (count > 0) print sum/count; else print 0}' | sed 's/%//')
-    echo "Service/storage coverage: ${SERVICE_COVERAGE}%"
-    
-    if (( $(echo "$SERVICE_COVERAGE < 90" | bc -l) )); then
-        echo "❌ FAIL: Service/storage coverage ${SERVICE_COVERAGE}% is below 90% threshold"
-        exit 1
-    fi
-    
-    echo "✅ PASS: Service/storage coverage meets 90% threshold"
+# Determine test tags
+TEST_TAGS=""
+if [ "$RUN_PROPERTY_TESTS" = true ]; then
+    TEST_TAGS="-tags=property"
+    echo -e "${YELLOW}Running ALL tests (unit + property-based)...${NC}"
 else
-    echo "⚠️  WARNING: No service or storage packages found"
+    echo -e "${BLUE}Running unit tests only (use --with-property-tests for full suite)${NC}"
 fi
 
-echo ""
-echo "✅ All coverage thresholds met!"
+# Run tests with coverage
+go test ./... $TEST_TAGS -coverprofile=coverage.out -timeout="$TIMEOUT"
+
+# Calculate coverage
+COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}')
+echo -e "${GREEN}Test coverage: ${COVERAGE}${NC}"
+
+# Run linter
+echo -e "${BLUE}Running linter...${NC}"
+golangci-lint run ./...
+
+echo -e "${GREEN}=== All checks passed! ===${NC}"

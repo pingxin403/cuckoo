@@ -1,66 +1,80 @@
 # TODO Service
 
-TODO 管理服务，使用 Go 和 gRPC 实现。
+TODO management service built with Go and gRPC.
 
-## 功能
+## Overview
 
-- 创建 TODO 项
-- 列出所有 TODO 项
-- 更新 TODO 项
-- 删除 TODO 项
-- 服务间通信（调用 Hello Service）
+This service is part of the monorepo and provides TODO task management capabilities with inter-service communication.
 
-## 技术栈
+- **Port**: 9091
+- **Protocol**: gRPC
+- **Language**: Go 1.21+
+- **Team**: backend-go-team
+
+## Features
+
+- Create TODO items
+- List all TODO items
+- Update TODO items
+- Delete TODO items
+- Inter-service communication (calls Hello Service)
+- Property-based testing with rapid
+- 70% test coverage requirement
+
+## Technology Stack
 
 - Go 1.21+
 - gRPC
 - Protocol Buffers
-- 内存存储（可扩展为持久化存储）
+- In-memory storage (extensible to persistent storage)
 
-## 本地开发
+## Quick Start
 
-### 前置条件
+### Prerequisites
 
-- Go 1.21 或更高版本
-- Protocol Buffers 编译器（protoc）
+- Go 1.21 or higher
+- Protocol Buffers compiler (protoc)
 
-### 运行服务
+### Local Development
 
 ```bash
-# 从项目根目录
+# From project root
 cd apps/todo-service
 
-# 安装依赖
+# Install dependencies
 go mod download
 
-# 运行服务
+# Run the service
 go run .
 ```
 
-服务将在端口 9091 上监听。
+The service will listen on port 9091.
 
-### 环境变量
+### Environment Variables
 
-- `PORT`: gRPC 服务器端口（默认: 9091）
-- `HELLO_SERVICE_ADDR`: Hello 服务地址（默认: localhost:9090）
+- `PORT`: gRPC server port (default: 9091)
+- `HELLO_SERVICE_ADDR`: Hello service address (default: localhost:9090)
 
-### 构建
+### Build
 
 ```bash
-# 构建二进制文件
+# From monorepo root
+make build APP=todo
+
+# Or directly
 go build -o bin/todo-service .
 
-# 运行
+# Run
 ./bin/todo-service
 ```
 
 ### Docker
 
 ```bash
-# 从项目根目录构建镜像
-docker build -t todo-service:latest apps/todo-service
+# Build image
+docker build -t todo-service:latest .
 
-# 运行容器
+# Run container
 docker run -p 9091:9091 \
   -e HELLO_SERVICE_ADDR=host.docker.internal:9090 \
   todo-service:latest
@@ -68,87 +82,134 @@ docker run -p 9091:9091 \
 
 ## API
 
-服务实现了以下 gRPC 方法：
+The service implements the following gRPC methods:
 
-- `CreateTodo`: 创建新的 TODO 项
-- `ListTodos`: 获取所有 TODO 项
-- `UpdateTodo`: 更新现有 TODO 项
-- `DeleteTodo`: 删除 TODO 项
+- `CreateTodo`: Create a new TODO item
+- `ListTodos`: Get all TODO items
+- `UpdateTodo`: Update an existing TODO item
+- `DeleteTodo`: Delete a TODO item
 
-详细的 API 定义请参考 `api/v1/todo.proto`。
+For detailed API definitions, refer to `api/v1/todo.proto`.
 
-## 测试
+## Testing
+
+### Run All Tests
 
 ```bash
-# 运行所有测试
+# Run unit tests only (fast)
 go test ./...
 
-# 运行特定包的测试
-go test ./service
-go test ./storage
+# Run all tests including property-based tests
+go test ./... -tags=property
+
+# Run tests with coverage
+go test -v -race -coverprofile=coverage.out ./...
+
+# Generate HTML coverage report
+go tool cover -html=coverage.out -o coverage.html
+
+# Run coverage verification script
+./scripts/test-coverage.sh
 ```
 
-## 项目结构
+### Coverage Requirements
+
+- **Overall coverage**: 70% minimum
+- **Service/storage packages**: 80% minimum
+
+### Property-Based Tests
+
+The service uses property-based testing with `pgregory.net/rapid`. Property tests are separated using build tags:
+
+```bash
+# Run property tests
+go test ./... -tags=property
+```
+
+For more details, see [TESTING.md](./TESTING.md) and [Property Testing Guide](../../docs/development/PROPERTY_TESTING.md).
+
+## Project Structure
 
 ```
 apps/todo-service/
-├── main.go              # 主入口
-├── service/             # gRPC 服务实现
-│   └── todo_service.go
-├── storage/             # 存储层
-│   └── memory_store.go
-├── client/              # Hello 服务客户端
+├── main.go              # Main entry point
+├── go.mod               # Go module definition
+├── go.sum               # Dependency checksums
+├── Dockerfile           # Docker image build
+├── README.md            # This file
+├── TESTING.md           # Testing guide
+├── metadata.yaml        # Service metadata
+├── catalog-info.yaml    # Backstage catalog
+├── .apptype             # App type marker
+├── .golangci.yml        # Linter configuration
+├── service/             # gRPC service implementation
+│   ├── todo_service.go
+│   ├── todo_service_test.go
+│   └── todo_service_property_test.go
+├── storage/             # Storage layer
+│   ├── memory_store.go
+│   └── memory_store_test.go
+├── client/              # Hello service client
 │   └── hello_client.go
-├── gen/                 # 生成的 Protobuf 代码
+├── gen/                 # Generated Protobuf code
 │   ├── hellopb/
 │   └── todopb/
-├── k8s/                 # Kubernetes 资源
-│   ├── deployment.yaml
-│   └── service.yaml
-├── Dockerfile           # Docker 镜像构建
-└── README.md
+└── scripts/
+    ├── test-coverage.sh
+    └── run-integration-tests.sh
 ```
 
-## 部署
+## Deployment
 
 ### Kubernetes
 
 ```bash
-# 应用 Kubernetes 资源
-kubectl apply -f k8s/
+# Apply Kubernetes resources
+kubectl apply -k deploy/k8s/overlays/development
 
-# 检查部署状态
+# Check deployment status
 kubectl get pods -l app=todo-service
 kubectl get svc todo-service
 ```
 
-## 开发指南
+## Development
 
-### 添加新功能
+### Adding New Features
 
-1. 更新 `api/v1/todo.proto` 定义新的消息或方法
-2. 运行 `make proto` 重新生成代码（或 `make gen-proto-go` 仅生成 Go 代码）
-3. 在 `service/todo_service.go` 中实现新方法
-4. 添加相应的测试
+1. Update `api/v1/todo.proto` to define new messages or methods
+2. Run `make gen-proto-go` to regenerate code
+3. Implement new methods in `service/todo_service.go`
+4. Add corresponding tests
 
-### 代码规范
+### Code Standards
 
-- 遵循 Go 标准代码风格
-- 使用 `gofmt` 格式化代码
-- 使用 `golangci-lint` 进行代码检查
+- Follow Go standard code style
+- Use `gofmt` to format code
+- Use `golangci-lint` for code checking
 
-## 故障排除
+## Troubleshooting
 
-### 服务无法启动
+### Service Won't Start
 
-- 检查端口 9091 是否被占用
-- 确认 Hello Service 在 9090 端口运行（如果需要服务间通信）
+- Check if port 9091 is already in use
+- Confirm Hello Service is running on port 9090 (if inter-service communication is needed)
 
-### 连接 Hello Service 失败
+### Failed to Connect to Hello Service
 
-- 检查 `HELLO_SERVICE_ADDR` 环境变量设置
-- 确认 Hello Service 正在运行并可访问
+- Check `HELLO_SERVICE_ADDR` environment variable setting
+- Confirm Hello Service is running and accessible
 
-## 许可证
+## Resources
 
-[添加许可证信息]
+- [Monorepo Documentation](../../docs/README.md)
+- [API Documentation](../../api/v1/README.md)
+- [Testing Guide](../../docs/development/TESTING_GUIDE.md)
+- [Property Testing Guide](../../docs/development/PROPERTY_TESTING.md)
+- [Deployment Guide](../../docs/deployment/DEPLOYMENT_GUIDE.md)
+
+## Support
+
+For questions or issues:
+- Check the monorepo documentation
+- Contact backend-go-team
+- Review existing services for examples

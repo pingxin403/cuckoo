@@ -15,7 +15,7 @@ func TestAnalyticsWriter_EventBuffering(t *testing.T) {
 		BufferSize:   10,
 	}
 	aw := NewAnalyticsWriter(config)
-	defer aw.Close()
+	defer func() { _ = aw.Close() }()
 
 	// Log events
 	for i := 0; i < 5; i++ {
@@ -48,7 +48,7 @@ func TestAnalyticsWriter_WorkerPool(t *testing.T) {
 		BufferSize:   100,
 	}
 	aw := NewAnalyticsWriter(config)
-	defer aw.Close()
+	defer func() { _ = aw.Close() }()
 
 	// Verify worker count
 	stats := aw.Stats()
@@ -68,7 +68,7 @@ func TestAnalyticsWriter_KafkaFailureHandling(t *testing.T) {
 		BufferSize:   10,
 	}
 	aw := NewAnalyticsWriter(config)
-	defer aw.Close()
+	defer func() { _ = aw.Close() }()
 
 	// Log event - should not panic even if Kafka is unavailable
 	event := ClickEvent{
@@ -95,7 +95,7 @@ func TestAnalyticsWriter_BufferFull(t *testing.T) {
 		BufferSize:   5,
 	}
 	aw := NewAnalyticsWriter(config)
-	defer aw.Close()
+	defer func() { _ = aw.Close() }()
 
 	// Fill buffer beyond capacity
 	for i := 0; i < 10; i++ {
@@ -168,7 +168,7 @@ func TestAnalyticsWriter_Stats(t *testing.T) {
 		BufferSize:   50,
 	}
 	aw := NewAnalyticsWriter(config)
-	defer aw.Close()
+	defer func() { _ = aw.Close() }()
 
 	stats := aw.Stats()
 
@@ -195,7 +195,7 @@ func TestAnalyticsWriter_DefaultConfig(t *testing.T) {
 		// NumWorkers, BufferSize, Topic not specified - should use defaults
 	}
 	aw := NewAnalyticsWriter(config)
-	defer aw.Close()
+	defer func() { _ = aw.Close() }()
 
 	stats := aw.Stats()
 
@@ -244,7 +244,7 @@ func TestAnalyticsWriter_ConcurrentLogging(t *testing.T) {
 		BufferSize:   100,
 	}
 	aw := NewAnalyticsWriter(config)
-	defer aw.Close()
+	defer func() { _ = aw.Close() }()
 
 	// Log events concurrently
 	done := make(chan bool)

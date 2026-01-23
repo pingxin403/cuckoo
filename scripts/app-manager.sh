@@ -193,10 +193,13 @@ cmd_test() {
             fi
             ;;
         go)
-            (cd "$app_path" && go test ./...) || return 1
+            (cd "$app_path" && go test ./... -timeout=10m) || return 1
             ;;
         node)
             (cd "$app_path" && npm test -- --run) || return 1
+            ;;
+        migration)
+            log_info "Skipping tests for migration-only app: $app"
             ;;
         *)
             log_error "Unknown app type: $app_type"
@@ -231,6 +234,9 @@ cmd_build() {
             ;;
         node)
             (cd "$app_path" && npm run build) || return 1
+            ;;
+        migration)
+            log_info "Skipping build for migration-only app: $app"
             ;;
         *)
             log_error "Unknown app type: $app_type"
@@ -315,6 +321,9 @@ cmd_lint() {
             ;;
         node)
             (cd "$app_path" && npm run lint) || return 1
+            ;;
+        migration)
+            log_info "Skipping lint for migration-only app: $app"
             ;;
         *)
             log_error "Unknown app type: $app_type"
