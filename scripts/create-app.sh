@@ -297,6 +297,135 @@ if [ "$APP_TYPE" = "go" ]; then
     log_success "Go module dependencies initialized"
 fi
 
+# Create Kubernetes resources
+log_info "Creating Kubernetes resources..."
+mkdir -p "deploy/k8s/services/$APP_NAME"
+
+# Copy K8s templates
+cp "templates/k8s/deployment.yaml" "deploy/k8s/services/$APP_NAME/${APP_NAME}-deployment.yaml"
+cp "templates/k8s/service.yaml" "deploy/k8s/services/$APP_NAME/${APP_NAME}-service.yaml"
+cp "templates/k8s/kustomization.yaml" "deploy/k8s/services/$APP_NAME/kustomization.yaml"
+
+# Replace placeholders in K8s files
+replace_in_file "deploy/k8s/services/$APP_NAME/${APP_NAME}-deployment.yaml"
+replace_in_file "deploy/k8s/services/$APP_NAME/${APP_NAME}-service.yaml"
+replace_in_file "deploy/k8s/services/$APP_NAME/kustomization.yaml"
+
+log_success "Kubernetes resources created in deploy/k8s/services/$APP_NAME/"
+
+# Add service to K8s overlays
+log_info "Adding service to K8s overlays..."
+
+# Function to add service to kustomization.yaml
+add_to_kustomization() {
+    local overlay_file=$1
+    local replica_count=$2
+    
+    if [ ! -f "$overlay_file" ]; then
+        log_warning "Overlay file not found: $overlay_file"
+        return
+    fi
+    
+    # Check if service already exists
+    if grep -q "services/$APP_NAME" "$overlay_file"; then
+        log_warning "Service already exists in $overlay_file"
+        return
+    fi
+    
+    # Add to resources section (insert after last resource entry)
+    awk -v service="  - ../../services/$APP_NAME" '
+        /^resources:/ { in_resources=1; print; next }
+        in_resources && /^[^ ]/ { print service; in_resources=0 }
+        in_resources && /^  - / { last_resource=NR }
+        { print }
+        END { if (in_resources && last_resource) print service }
+    ' "$overlay_file" > "${overlay_file}.tmp" && mv "${overlay_file}.tmp" "$overlay_file"
+    
+    # Add to replicas section (insert after last replica entry)
+    awk -v name="$APP_NAME" -v count="$replica_count" '
+        /^replicas:/ { in_replicas=1; print; next }
+        in_replicas && /^[^ ]/ { print "  - name: " name "\n    count: " count; in_replicas=0 }
+        in_replicas && /^  - name:/ { last_replica=NR }
+        { print }
+        END { if (in_replicas && last_replica) print "  - name: " name "\n    count: " count }
+    ' "$overlay_file" > "${overlay_file}.tmp" && mv "${overlay_file}.tmp" "$overlay_file"
+}
+
+# Add to development overlay (1 replica)
+add_to_kustomization "deploy/k8s/overlays/development/kustomization.yaml" 1
+log_success "Added to development overlay"
+
+# Add to production overlay (3 replicas)
+add_to_kustomization "deploy/k8s/overlays/production/kustomization.yaml" 3
+log_success "Added to production overlay"
+
+# Add service to Docker Compose
+log_info "Adding service to Docker Compose..."
+
+# Determine ports and healthcheck based on app type
+if [ "$APP_TYPE" = "go" ]; then
+    DOCKER_PORT="$PORT"
+    DOCKER_HEALTHCHECK='["CMD", "pgrep", "-f", "'$APP_NAME'"]'
+elif [ "$APP_TYPE" = "java" ]; then
+    DOCKER_PORT="$PORT"
+    DOCKER_HEALTHCHECK='["CMD", "pgrep", "-f", "java.*app.jar"]'
+else
+    DOCKER_PORT="3000"
+    DOCKER_HEALTHCHECK='["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]'
+fi
+
+# Create Docker Compose service block
+COMPOSE_FILE="deploy/docker/docker-compose.services.yml"
+if [ -f "$COMPOSE_FILE" ]; then
+    # Check if service already exists
+    if grep -q "^  $APP_NAME:" "$COMPOSE_FILE"; then
+        log_warning "Service already exists in docker-compose.services.yml"
+    else
+        # Create temporary file with the new service block
+        cat > /tmp/new_service.yml << EOF
+
+  # $APP_NAME_CAMEL ($APP_TYPE)
+  $APP_NAME:
+    build:
+      context: ../..
+      dockerfile: apps/$APP_NAME/Dockerfile
+    image: $APP_NAME:latest
+    container_name: $APP_NAME
+    ports:
+      - "$DOCKER_PORT:$DOCKER_PORT"
+    environment:
+      - PORT=$DOCKER_PORT
+      - LOG_LEVEL=info
+      - ENVIRONMENT=development
+    healthcheck:
+      test: $DOCKER_HEALTHCHECK
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+    networks:
+      - monorepo-network
+    restart: unless-stopped
+EOF
+        
+        # Insert before networks section using awk
+        awk '
+            /^networks:/ { 
+                while ((getline line < "/tmp/new_service.yml") > 0) {
+                    print line
+                }
+                close("/tmp/new_service.yml")
+            }
+            { print }
+        ' "$COMPOSE_FILE" > "${COMPOSE_FILE}.tmp" && mv "${COMPOSE_FILE}.tmp" "$COMPOSE_FILE"
+        
+        rm -f /tmp/new_service.yml
+        log_success "Added to docker-compose.services.yml"
+    fi
+else
+    log_warning "Docker Compose file not found: $COMPOSE_FILE"
+fi
+
 # Show next steps
 log_info ""
 log_info "========================================="
@@ -314,6 +443,8 @@ log_info "  ✓ Auto-detection for changed apps"
 log_info "  ✓ CI/CD pipeline"
 log_info "  ✓ Testing framework with coverage"
 log_info "  ✓ Docker build support"
-log_info "  ✓ Kubernetes deployment"
+log_info "  ✓ Kubernetes deployment resources"
+log_info "  ✓ K8s overlays (development & production)"
+log_info "  ✓ Docker Compose services"
 log_info ""
 log_success "App $APP_NAME created successfully!"

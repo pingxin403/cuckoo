@@ -149,13 +149,18 @@ public class {{ServiceName}}ServiceImpl extends {{ServiceName}}ServiceGrpc.{{Ser
 }
 ```
 
-### 7. Update Kubernetes Resources
+### 7. Kubernetes Resources
 
-Update the following files in `k8s/`:
+Kubernetes resources are automatically created in `deploy/k8s/services/{{SERVICE_NAME}}/` when you create a new service using `create-app.sh`.
 
-- `deployment.yaml`: Update service name, port, and resource limits
-- `service.yaml`: Update service name and port
-- `configmap.yaml`: Update configuration values
+The following files are created:
+- `{{SERVICE_NAME}}-deployment.yaml`: Deployment configuration with replicas, ports, and resource limits
+- `{{SERVICE_NAME}}-service.yaml`: Service configuration exposing the gRPC port
+- `kustomization.yaml`: Kustomize configuration for the service
+
+To deploy your service, add it to the appropriate overlay:
+- Development: `deploy/k8s/overlays/development/kustomization.yaml`
+- Production: `deploy/k8s/overlays/production/kustomization.yaml`
 
 ### 8. Update Backstage Catalog
 
@@ -214,11 +219,8 @@ your-service-name/
 ├── gradlew                   # Gradle wrapper script
 ├── Dockerfile                # Multi-stage Docker build
 ├── catalog-info.yaml         # Backstage service catalog
+├── metadata.yaml             # Service metadata for monorepo tooling
 ├── README.md                 # Service documentation
-├── k8s/                      # Kubernetes resources
-│   ├── deployment.yaml
-│   ├── service.yaml
-│   └── configmap.yaml
 └── src/
     ├── main/
     │   ├── java/
@@ -232,6 +234,12 @@ your-service-name/
         └── java/
             └── {{PACKAGE_PATH}}/
                 └── {{ServiceName}}ApplicationTests.java
+
+# Kubernetes resources are in:
+deploy/k8s/services/your-service-name/
+├── your-service-name-deployment.yaml
+├── your-service-name-service.yaml
+└── kustomization.yaml
 ```
 
 ## Dependencies
@@ -388,10 +396,18 @@ docker run -p {{GRPC_PORT}}:{{GRPC_PORT}} {{SERVICE_NAME}}:latest
 
 ## Kubernetes Deployment
 
-### Deploy to Cluster
+Kubernetes resources are located in `deploy/k8s/services/{{SERVICE_NAME}}/` and are managed through Kustomize overlays.
+
+### Deploy to Development
 
 ```bash
-kubectl apply -f k8s/
+kubectl apply -k deploy/k8s/overlays/development
+```
+
+### Deploy to Production
+
+```bash
+kubectl apply -k deploy/k8s/overlays/production
 ```
 
 ### Check Status
@@ -400,6 +416,12 @@ kubectl apply -f k8s/
 kubectl get pods -l app={{SERVICE_NAME}}
 kubectl logs -f deployment/{{SERVICE_NAME}}
 ```
+
+### Update Deployment
+
+After creating your service, remember to add it to the appropriate Kustomize overlays:
+- `deploy/k8s/overlays/development/kustomization.yaml` (1 replica for dev)
+- `deploy/k8s/overlays/production/kustomization.yaml` (3 replicas for prod)
 
 ## Best Practices
 

@@ -233,10 +233,24 @@ Dockerfile is included with multi-stage builds.
 
 ### ✅ Kubernetes Deployment
 
-K8s resources are created in `apps/your-app/k8s/`:
-- `deployment.yaml` - Deployment configuration
-- `service.yaml` - Service definition
-- `configmap.yaml` - Configuration (if needed)
+K8s resources are automatically created in `deploy/k8s/services/your-app/`:
+- `your-app-deployment.yaml` - Deployment configuration
+- `your-app-service.yaml` - Service definition
+- `kustomization.yaml` - Kustomize configuration
+
+**Automatic Integration:**
+Your service is automatically added to:
+- `deploy/k8s/overlays/development/kustomization.yaml` (1 replica for dev)
+- `deploy/k8s/overlays/production/kustomization.yaml` (3 replicas for prod)
+
+### ✅ Docker Compose Integration
+
+Your service is automatically added to `deploy/docker/docker-compose.services.yml` with:
+- Build configuration
+- Port mappings
+- Environment variables
+- Health checks
+- Network configuration
 
 ## Next Steps After Creation
 
@@ -342,11 +356,15 @@ After creation, you can customize:
 
 ### Kubernetes Resources
 
-Edit files in `apps/your-app/k8s/`:
-- Adjust resource limits
+Edit files in `deploy/k8s/services/your-app/`:
+- Adjust resource limits in `your-app-deployment.yaml`
 - Add environment variables
 - Configure health checks
 - Add volumes or secrets
+
+Remember to update the overlays:
+- `deploy/k8s/overlays/development/kustomization.yaml`
+- `deploy/k8s/overlays/production/kustomization.yaml`
 
 ### Testing
 
@@ -380,8 +398,8 @@ If the assigned port conflicts:
 
 1. Check what ports are in use: `lsof -i :<port>`
 2. Edit the port in:
-   - `apps/your-app/k8s/deployment.yaml`
-   - `apps/your-app/k8s/service.yaml`
+   - `deploy/k8s/services/your-app/your-app-deployment.yaml`
+   - `deploy/k8s/services/your-app/your-app-service.yaml`
    - Application configuration files
 
 ### Tests Fail

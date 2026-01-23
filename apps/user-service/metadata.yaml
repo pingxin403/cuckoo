@@ -1,0 +1,11 @@
+spec:
+  name: user-service
+  short_name: user  # Short name for CLI convenience (e.g., 'myapp' for 'myapp-service')
+  description: User profile and group membership management service
+  type: go
+  port: 9096
+  cd: true
+  codeowners:
+    - "@platform-team"
+test:
+  coverage: 80

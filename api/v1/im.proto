@@ -1,0 +1,233 @@
+syntax = "proto3";
+
+package im.v1;
+
+option go_package = "github.com/pingxin403/cuckoo/apps/im-service/gen/impb";
+option java_package = "com.pingxin403.cuckoo.im.v1";
+option java_multiple_files = true;
+
+import "google/protobuf/timestamp.proto";
+
+// IMService provides message routing and delivery for the IM system.
+// It handles both private and group message routing with sequence number assignment.
+service IMService {
+  // RoutePrivateMessage routes a private message to a specific user.
+  // Assigns sequence number and routes to Fast Path (online) or Slow Path (offline).
+  rpc RoutePrivateMessage(RoutePrivateMessageRequest) returns (RoutePrivateMessageResponse);
+
+  // RouteGroupMessage routes a message to all members of a group.
+  // Assigns sequence number and publishes to Kafka for broadcast.
+  rpc RouteGroupMessage(RouteGroupMessageRequest) returns (RouteGroupMessageResponse);
+
+  // GetMessageStatus retrieves the delivery status of a message.
+  rpc GetMessageStatus(GetMessageStatusRequest) returns (GetMessageStatusResponse);
+}
+
+// RoutePrivateMessageRequest contains a private message to be routed.
+message RoutePrivateMessageRequest {
+  // Unique message identifier (UUID format)
+  string msg_id = 1;
+
+  // Sender user ID
+  string sender_id = 2;
+
+  // Recipient user ID
+  string recipient_id = 3;
+
+  // Message content (max 10,000 characters)
+  string content = 4;
+
+  // Message type (text, image, file, etc.)
+  MessageType message_type = 5;
+
+  // Optional metadata for extensibility
+  map<string, string> metadata = 6;
+
+  // Client timestamp when message was sent
+  google.protobuf.Timestamp client_timestamp = 7;
+}
+
+// RoutePrivateMessageResponse contains the routing result.
+message RoutePrivateMessageResponse {
+  // Assigned sequence number for message ordering
+  int64 sequence_number = 1;
+
+  // Server timestamp when message was processed
+  google.protobuf.Timestamp server_timestamp = 2;
+
+  // Delivery status
+  DeliveryStatus delivery_status = 3;
+
+  // Error code if routing failed
+  IMErrorCode error_code = 4;
+
+  // Human-readable error message
+  string error_message = 5;
+}
+
+// RouteGroupMessageRequest contains a group message to be routed.
+message RouteGroupMessageRequest {
+  // Unique message identifier (UUID format)
+  string msg_id = 1;
+
+  // Sender user ID
+  string sender_id = 2;
+
+  // Group ID
+  string group_id = 3;
+
+  // Message content (max 10,000 characters)
+  string content = 4;
+
+  // Message type (text, image, file, etc.)
+  MessageType message_type = 5;
+
+  // Optional metadata for extensibility
+  map<string, string> metadata = 6;
+
+  // Client timestamp when message was sent
+  google.protobuf.Timestamp client_timestamp = 7;
+}
+
+// RouteGroupMessageResponse contains the routing result.
+message RouteGroupMessageResponse {
+  // Assigned sequence number for message ordering
+  int64 sequence_number = 1;
+
+  // Server timestamp when message was processed
+  google.protobuf.Timestamp server_timestamp = 2;
+
+  // Number of online members who will receive the message
+  int32 online_member_count = 3;
+
+  // Number of offline members who will receive via Offline Channel
+  int32 offline_member_count = 4;
+
+  // Error code if routing failed
+  IMErrorCode error_code = 5;
+
+  // Human-readable error message
+  string error_message = 6;
+}
+
+// GetMessageStatusRequest contains the message ID to query.
+message GetMessageStatusRequest {
+  // Message ID to query
+  string msg_id = 1;
+
+  // Conversation type (private or group)
+  ConversationType conversation_type = 2;
+
+  // Conversation ID (user_id for private, group_id for group)
+  string conversation_id = 3;
+}
+
+// GetMessageStatusResponse contains the message delivery status.
+message GetMessageStatusResponse {
+  // Message ID
+  string msg_id = 1;
+
+  // Sequence number
+  int64 sequence_number = 2;
+
+  // Overall delivery status
+  DeliveryStatus delivery_status = 3;
+
+  // Delivery details per recipient (for group messages)
+  repeated RecipientDeliveryStatus recipient_statuses = 4;
+
+  // Server timestamp when message was processed
+  google.protobuf.Timestamp server_timestamp = 5;
+
+  // Error code if query failed
+  IMErrorCode error_code = 6;
+
+  // Human-readable error message
+  string error_message = 7;
+}
+
+// RecipientDeliveryStatus contains delivery status for a specific recipient.
+message RecipientDeliveryStatus {
+  // Recipient user ID
+  string user_id = 1;
+
+  // Delivery status for this recipient
+  DeliveryStatus status = 2;
+
+  // Timestamp when delivered (if delivered)
+  google.protobuf.Timestamp delivered_at = 3;
+
+  // Timestamp when read (if read)
+  google.protobuf.Timestamp read_at = 4;
+}
+
+// MessageType defines the type of message content.
+enum MessageType {
+  MESSAGE_TYPE_UNSPECIFIED = 0;
+  MESSAGE_TYPE_TEXT = 1;
+  MESSAGE_TYPE_IMAGE = 2;
+  MESSAGE_TYPE_FILE = 3;
+  MESSAGE_TYPE_AUDIO = 4;
+  MESSAGE_TYPE_VIDEO = 5;
+  MESSAGE_TYPE_LOCATION = 6;
+  MESSAGE_TYPE_SYSTEM = 7;  // System notifications
+}
+
+// ConversationType defines the type of conversation.
+enum ConversationType {
+  CONVERSATION_TYPE_UNSPECIFIED = 0;
+  CONVERSATION_TYPE_PRIVATE = 1;
+  CONVERSATION_TYPE_GROUP = 2;
+}
+
+// DeliveryStatus defines the delivery status of a message.
+enum DeliveryStatus {
+  DELIVERY_STATUS_UNSPECIFIED = 0;
+  DELIVERY_STATUS_PENDING = 1;      // Message is being processed
+  DELIVERY_STATUS_DELIVERED = 2;    // Message delivered to recipient
+  DELIVERY_STATUS_READ = 3;         // Message read by recipient
+  DELIVERY_STATUS_FAILED = 4;       // Delivery failed after retries
+  DELIVERY_STATUS_OFFLINE = 5;      // Routed to Offline Channel
+}
+
+// IMErrorCode defines error codes for IM service operations.
+enum IMErrorCode {
+  // No error
+  IM_ERROR_CODE_UNSPECIFIED = 0;
+
+  // Invalid message format
+  IM_ERROR_CODE_INVALID_MESSAGE = 1;
+
+  // Message content exceeds 10,000 characters
+  IM_ERROR_CODE_CONTENT_TOO_LONG = 2;
+
+  // Sender not found
+  IM_ERROR_CODE_SENDER_NOT_FOUND = 3;
+
+  // Recipient not found
+  IM_ERROR_CODE_RECIPIENT_NOT_FOUND = 4;
+
+  // Group not found
+  IM_ERROR_CODE_GROUP_NOT_FOUND = 5;
+
+  // Sender is not a member of the group
+  IM_ERROR_CODE_NOT_GROUP_MEMBER = 6;
+
+  // Message contains sensitive words (blocked)
+  IM_ERROR_CODE_SENSITIVE_CONTENT = 7;
+
+  // Sequence generator error
+  IM_ERROR_CODE_SEQUENCE_ERROR = 8;
+
+  // Registry lookup error
+  IM_ERROR_CODE_REGISTRY_ERROR = 9;
+
+  // Kafka publish error
+  IM_ERROR_CODE_KAFKA_ERROR = 10;
+
+  // Delivery timeout after retries
+  IM_ERROR_CODE_DELIVERY_TIMEOUT = 11;
+
+  // Internal server error
+  IM_ERROR_CODE_INTERNAL_ERROR = 12;
+}

@@ -1,0 +1,206 @@
+syntax = "proto3";
+
+package user.v1;
+
+option go_package = "github.com/pingxin403/cuckoo/apps/user-service/gen/userpb";
+option java_package = "com.pingxin403.cuckoo.user.v1";
+option java_multiple_files = true;
+
+import "google/protobuf/timestamp.proto";
+
+// UserService provides user profile and group membership management.
+service UserService {
+  // GetUser retrieves a single user's profile information.
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+
+  // BatchGetUsers retrieves multiple users' profiles in a single request.
+  rpc BatchGetUsers(BatchGetUsersRequest) returns (BatchGetUsersResponse);
+
+  // GetGroupMembers retrieves all members of a group with pagination support.
+  rpc GetGroupMembers(GetGroupMembersRequest) returns (GetGroupMembersResponse);
+
+  // ValidateGroupMembership checks if a user is a member of a specific group.
+  rpc ValidateGroupMembership(ValidateGroupMembershipRequest) returns (ValidateGroupMembershipResponse);
+}
+
+// GetUserRequest contains the user ID to retrieve.
+message GetUserRequest {
+  // User ID to retrieve
+  string user_id = 1;
+}
+
+// GetUserResponse contains the user profile information.
+message GetUserResponse {
+  // User profile
+  UserProfile user = 1;
+
+  // Error code if retrieval failed
+  UserErrorCode error_code = 2;
+
+  // Human-readable error message
+  string error_message = 3;
+}
+
+// BatchGetUsersRequest contains multiple user IDs to retrieve.
+message BatchGetUsersRequest {
+  // List of user IDs to retrieve (max 100)
+  repeated string user_ids = 1;
+}
+
+// BatchGetUsersResponse contains multiple user profiles.
+message BatchGetUsersResponse {
+  // Map of user_id to user profile
+  map<string, UserProfile> users = 1;
+
+  // List of user IDs that were not found
+  repeated string not_found_user_ids = 2;
+
+  // Error code if retrieval failed
+  UserErrorCode error_code = 3;
+
+  // Human-readable error message
+  string error_message = 4;
+}
+
+// GetGroupMembersRequest contains the group ID and pagination parameters.
+message GetGroupMembersRequest {
+  // Group ID
+  string group_id = 1;
+
+  // Pagination cursor (empty for first page)
+  string cursor = 2;
+
+  // Page size (default: 100, max: 1000)
+  int32 limit = 3;
+}
+
+// GetGroupMembersResponse contains the list of group members.
+message GetGroupMembersResponse {
+  // List of group members
+  repeated GroupMember members = 1;
+
+  // Next page cursor (empty if no more pages)
+  string next_cursor = 2;
+
+  // Total member count
+  int32 total_count = 3;
+
+  // Whether there are more pages
+  bool has_more = 4;
+
+  // Error code if retrieval failed
+  UserErrorCode error_code = 5;
+
+  // Human-readable error message
+  string error_message = 6;
+}
+
+// ValidateGroupMembershipRequest checks if a user is in a group.
+message ValidateGroupMembershipRequest {
+  // User ID to check
+  string user_id = 1;
+
+  // Group ID to check
+  string group_id = 2;
+}
+
+// ValidateGroupMembershipResponse contains the membership validation result.
+message ValidateGroupMembershipResponse {
+  // Whether the user is a member of the group
+  bool is_member = 1;
+
+  // Group member details if user is a member
+  GroupMember member = 2;
+
+  // Error code if validation failed
+  UserErrorCode error_code = 3;
+
+  // Human-readable error message
+  string error_message = 4;
+}
+
+// UserProfile contains user profile information.
+message UserProfile {
+  // User ID
+  string user_id = 1;
+
+  // Username
+  string username = 2;
+
+  // Display name
+  string display_name = 3;
+
+  // Avatar URL
+  string avatar_url = 4;
+
+  // User status (online, offline, away, busy)
+  UserStatus status = 5;
+
+  // Account creation timestamp
+  google.protobuf.Timestamp created_at = 6;
+
+  // Last updated timestamp
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+// GroupMember contains group membership information.
+message GroupMember {
+  // User ID
+  string user_id = 1;
+
+  // Group ID
+  string group_id = 2;
+
+  // Member role (owner, admin, member)
+  GroupRole role = 3;
+
+  // Display name in group (optional, overrides user display_name)
+  string group_display_name = 4;
+
+  // When the user joined the group
+  google.protobuf.Timestamp joined_at = 5;
+
+  // Whether the user is muted in the group
+  bool is_muted = 6;
+}
+
+// UserStatus represents the user's current status.
+enum UserStatus {
+  USER_STATUS_UNSPECIFIED = 0;
+  USER_STATUS_ONLINE = 1;
+  USER_STATUS_OFFLINE = 2;
+  USER_STATUS_AWAY = 3;
+  USER_STATUS_BUSY = 4;
+}
+
+// GroupRole represents the user's role in a group.
+enum GroupRole {
+  GROUP_ROLE_UNSPECIFIED = 0;
+  GROUP_ROLE_MEMBER = 1;
+  GROUP_ROLE_ADMIN = 2;
+  GROUP_ROLE_OWNER = 3;
+}
+
+// UserErrorCode defines error codes for user service operations.
+enum UserErrorCode {
+  // No error
+  USER_ERROR_CODE_UNSPECIFIED = 0;
+
+  // User not found
+  USER_ERROR_CODE_USER_NOT_FOUND = 1;
+
+  // Group not found
+  USER_ERROR_CODE_GROUP_NOT_FOUND = 2;
+
+  // Invalid request parameters
+  USER_ERROR_CODE_INVALID_REQUEST = 3;
+
+  // Database error
+  USER_ERROR_CODE_DATABASE_ERROR = 4;
+
+  // Too many user IDs in batch request (max 100)
+  USER_ERROR_CODE_TOO_MANY_IDS = 5;
+
+  // Internal server error
+  USER_ERROR_CODE_INTERNAL_ERROR = 6;
+}

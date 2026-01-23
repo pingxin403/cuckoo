@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: im-service
+  namespace: default
+  labels:
+    app: im-service
+    version: v1
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: im-service
+  template:
+    metadata:
+      labels:
+        app: im-service
+        version: v1
+    spec:
+      containers:
+      - name: im-service
+        image: im-service:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: grpc
+          containerPort: 9094
+          protocol: TCP
+        env:
+        - name: PORT
+          value: "9094"
+        - name: AUTH_SERVICE_ADDR
+          value: "auth-service:9095"
+        - name: USER_SERVICE_ADDR
+          value: "user-service:9096"
+        - name: REDIS_HOST
+          value: "redis-master"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: KAFKA_BROKERS
+          value: "kafka-0.kafka-headless:9092,kafka-1.kafka-headless:9092,kafka-2.kafka-headless:9092"
+        - name: ETCD_ENDPOINTS
+          value: "etcd-0.etcd-headless:2379,etcd-1.etcd-headless:2379,etcd-2.etcd-headless:2379"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          grpc:
+            port: 9094
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        readinessProbe:
+          grpc:
+            port: 9094
+          initialDelaySeconds: 5
+          periodSeconds: 5

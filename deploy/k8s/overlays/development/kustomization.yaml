@@ -9,6 +9,9 @@ resources:
   - ../../services/shortener-service
   - ../../services/web
   - ../../services/higress
+  - ../../services/auth-service
+  - ../../services/user-service
+  - ../../services/im-service
 
 commonLabels:
   environment: development
@@ -21,6 +24,12 @@ replicas:
   - name: shortener-service
     count: 1
   - name: web
+    count: 1
+  - name: auth-service
+    count: 1
+  - name: user-service
+    count: 1
+  - name: im-service
     count: 1
 
 patches:

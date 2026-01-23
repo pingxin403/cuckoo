@@ -6,9 +6,8 @@ metadata:
   labels:
     app: {{SERVICE_NAME}}
     version: v1
-    component: backend
 spec:
-  replicas: 2
+  replicas: 3
   selector:
     matchLabels:
       app: {{SERVICE_NAME}}
@@ -17,7 +16,6 @@ spec:
       labels:
         app: {{SERVICE_NAME}}
         version: v1
-        component: backend
     spec:
       containers:
       - name: {{SERVICE_NAME}}
@@ -28,39 +26,22 @@ spec:
           containerPort: {{GRPC_PORT}}
           protocol: TCP
         env:
-        - name: SPRING_PROFILES_ACTIVE
-          value: "production"
-        - name: GRPC_SERVER_PORT
+        - name: PORT
           value: "{{GRPC_PORT}}"
-        - name: JAVA_OPTS
-          value: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+UseG1GC"
         resources:
           requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
             memory: "256Mi"
             cpu: "250m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
         livenessProbe:
           grpc:
             port: {{GRPC_PORT}}
-          initialDelaySeconds: 30
+          initialDelaySeconds: 15
           periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 3
         readinessProbe:
           grpc:
             port: {{GRPC_PORT}}
-          initialDelaySeconds: 10
+          initialDelaySeconds: 5
           periodSeconds: 5
-          timeoutSeconds: 3
-          failureThreshold: 3
-        startupProbe:
-          grpc:
-            port: {{GRPC_PORT}}
-          initialDelaySeconds: 0
-          periodSeconds: 5
-          timeoutSeconds: 3
-          failureThreshold: 30
-      restartPolicy: Always
-      terminationGracePeriodSeconds: 30

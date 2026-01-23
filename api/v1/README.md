@@ -8,6 +8,258 @@
 
 ## 包含的服务
 
+### Auth Service (`auth.proto`)
+
+- **服务名称**: `auth.v1.AuthService`
+- **功能**: JWT 认证和令牌管理
+- **端口**: 9095 (gRPC)
+- **实现语言**: Go
+- **实现位置**: `apps/auth-service/` (待实现)
+
+#### API 定义
+
+```protobuf
+service AuthService {
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+}
+
+message ValidateTokenRequest {
+  string access_token = 1;  // JWT 访问令牌
+}
+
+message ValidateTokenResponse {
+  bool valid = 1;                              // 令牌是否有效
+  string user_id = 2;                          // 用户 ID
+  string device_id = 3;                        // 设备 ID (UUID v4 格式)
+  google.protobuf.Timestamp expires_at = 4;    // 过期时间
+  AuthErrorCode error_code = 5;                // 错误码
+  string error_message = 6;                    // 错误消息
+}
+```
+
+#### 使用示例
+
+**验证令牌**:
+```go
+import authpb "github.com/pingxin403/cuckoo/apps/auth-service/gen/authpb"
+
+req := &authpb.ValidateTokenRequest{
+    AccessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+}
+resp, _ := client.ValidateToken(context.Background(), req)
+if resp.Valid {
+    fmt.Printf("User ID: %s, Device ID: %s\n", resp.UserId, resp.DeviceId)
+}
+```
+
+**刷新令牌**:
+```go
+req := &authpb.RefreshTokenRequest{
+    RefreshToken: "refresh_token_here",
+}
+resp, _ := client.RefreshToken(context.Background(), req)
+fmt.Printf("New access token: %s\n", resp.AccessToken)
+```
+
+#### 错误码
+
+- `AUTH_ERROR_CODE_TOKEN_EXPIRED`: 令牌已过期
+- `AUTH_ERROR_CODE_INVALID_SIGNATURE`: 签名无效
+- `AUTH_ERROR_CODE_MALFORMED_TOKEN`: 令牌格式错误
+- `AUTH_ERROR_CODE_MISSING_CLAIMS`: 缺少必需的声明字段
+- `AUTH_ERROR_CODE_INVALID_REFRESH_TOKEN`: 刷新令牌无效
+- `AUTH_ERROR_CODE_INTERNAL_ERROR`: 内部服务器错误
+
+### User Service (`user.proto`)
+
+- **服务名称**: `user.v1.UserService`
+- **功能**: 用户资料和群组成员管理
+- **端口**: 9096 (gRPC)
+- **实现语言**: Go
+- **实现位置**: `apps/user-service/` (待实现)
+
+#### API 定义
+
+```protobuf
+service UserService {
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+  rpc BatchGetUsers(BatchGetUsersRequest) returns (BatchGetUsersResponse);
+  rpc GetGroupMembers(GetGroupMembersRequest) returns (GetGroupMembersResponse);
+  rpc ValidateGroupMembership(ValidateGroupMembershipRequest) returns (ValidateGroupMembershipResponse);
+}
+
+message UserProfile {
+  string user_id = 1;                          // 用户 ID
+  string username = 2;                         // 用户名
+  string display_name = 3;                     // 显示名称
+  string avatar_url = 4;                       // 头像 URL
+  UserStatus status = 5;                       // 用户状态
+  google.protobuf.Timestamp created_at = 6;    // 创建时间
+  google.protobuf.Timestamp updated_at = 7;    // 更新时间
+}
+```
+
+#### 使用示例
+
+**获取用户资料**:
+```go
+import userpb "github.com/pingxin403/cuckoo/apps/user-service/gen/userpb"
+
+req := &userpb.GetUserRequest{UserId: "user123"}
+resp, _ := client.GetUser(context.Background(), req)
+fmt.Printf("User: %s (%s)\n", resp.User.DisplayName, resp.User.Status)
+```
+
+**批量获取用户**:
+```go
+req := &userpb.BatchGetUsersRequest{
+    UserIds: []string{"user1", "user2", "user3"},
+}
+resp, _ := client.BatchGetUsers(context.Background(), req)
+for userId, user := range resp.Users {
+    fmt.Printf("%s: %s\n", userId, user.DisplayName)
+}
+```
+
+**获取群组成员**:
+```go
+req := &userpb.GetGroupMembersRequest{
+    GroupId: "group123",
+    Cursor:  "",      // 首页为空
+    Limit:   100,     // 每页 100 条
+}
+resp, _ := client.GetGroupMembers(context.Background(), req)
+fmt.Printf("Found %d members (total: %d)\n", len(resp.Members), resp.TotalCount)
+```
+
+**验证群组成员资格**:
+```go
+req := &userpb.ValidateGroupMembershipRequest{
+    UserId:  "user123",
+    GroupId: "group456",
+}
+resp, _ := client.ValidateGroupMembership(context.Background(), req)
+if resp.IsMember {
+    fmt.Printf("User is %s in group\n", resp.Member.Role)
+}
+```
+
+#### 错误码
+
+- `USER_ERROR_CODE_USER_NOT_FOUND`: 用户不存在
+- `USER_ERROR_CODE_GROUP_NOT_FOUND`: 群组不存在
+- `USER_ERROR_CODE_INVALID_REQUEST`: 请求参数无效
+- `USER_ERROR_CODE_DATABASE_ERROR`: 数据库错误
+- `USER_ERROR_CODE_TOO_MANY_IDS`: 批量请求 ID 过多（最多 100 个）
+- `USER_ERROR_CODE_INTERNAL_ERROR`: 内部服务器错误
+
+### IM Service (`im.proto`)
+
+- **服务名称**: `im.v1.IMService`
+- **功能**: 消息路由和投递
+- **端口**: 9094 (gRPC)
+- **实现语言**: Go
+- **实现位置**: `apps/im-service/` (待实现)
+
+#### API 定义
+
+```protobuf
+service IMService {
+  rpc RoutePrivateMessage(RoutePrivateMessageRequest) returns (RoutePrivateMessageResponse);
+  rpc RouteGroupMessage(RouteGroupMessageRequest) returns (RouteGroupMessageResponse);
+  rpc GetMessageStatus(GetMessageStatusRequest) returns (GetMessageStatusResponse);
+}
+
+message RoutePrivateMessageRequest {
+  string msg_id = 1;                           // 消息 ID (UUID)
+  string sender_id = 2;                        // 发送者 ID
+  string recipient_id = 3;                     // 接收者 ID
+  string content = 4;                          // 消息内容（最多 10,000 字符）
+  MessageType message_type = 5;                // 消息类型
+  map<string, string> metadata = 6;            // 元数据
+  google.protobuf.Timestamp client_timestamp = 7;  // 客户端时间戳
+}
+```
+
+#### 使用示例
+
+**发送私聊消息**:
+```go
+import impb "github.com/pingxin403/cuckoo/apps/im-service/gen/impb"
+
+req := &impb.RoutePrivateMessageRequest{
+    MsgId:       "msg-uuid-here",
+    SenderId:    "user123",
+    RecipientId: "user456",
+    Content:     "Hello, how are you?",
+    MessageType: impb.MessageType_MESSAGE_TYPE_TEXT,
+    ClientTimestamp: timestamppb.Now(),
+}
+resp, _ := client.RoutePrivateMessage(context.Background(), req)
+fmt.Printf("Message sent with sequence: %d, status: %s\n", 
+    resp.SequenceNumber, resp.DeliveryStatus)
+```
+
+**发送群组消息**:
+```go
+req := &impb.RouteGroupMessageRequest{
+    MsgId:       "msg-uuid-here",
+    SenderId:    "user123",
+    GroupId:     "group789",
+    Content:     "Hello everyone!",
+    MessageType: impb.MessageType_MESSAGE_TYPE_TEXT,
+    ClientTimestamp: timestamppb.Now(),
+}
+resp, _ := client.RouteGroupMessage(context.Background(), req)
+fmt.Printf("Delivered to %d online, %d offline members\n", 
+    resp.OnlineMemberCount, resp.OfflineMemberCount)
+```
+
+**查询消息状态**:
+```go
+req := &impb.GetMessageStatusRequest{
+    MsgId:            "msg-uuid-here",
+    ConversationType: impb.ConversationType_CONVERSATION_TYPE_PRIVATE,
+    ConversationId:   "user456",
+}
+resp, _ := client.GetMessageStatus(context.Background(), req)
+fmt.Printf("Message status: %s\n", resp.DeliveryStatus)
+```
+
+#### 消息类型
+
+- `MESSAGE_TYPE_TEXT`: 文本消息
+- `MESSAGE_TYPE_IMAGE`: 图片消息
+- `MESSAGE_TYPE_FILE`: 文件消息
+- `MESSAGE_TYPE_AUDIO`: 音频消息
+- `MESSAGE_TYPE_VIDEO`: 视频消息
+- `MESSAGE_TYPE_LOCATION`: 位置消息
+- `MESSAGE_TYPE_SYSTEM`: 系统通知
+
+#### 投递状态
+
+- `DELIVERY_STATUS_PENDING`: 消息处理中
+- `DELIVERY_STATUS_DELIVERED`: 已投递到接收者
+- `DELIVERY_STATUS_READ`: 接收者已读
+- `DELIVERY_STATUS_FAILED`: 重试后投递失败
+- `DELIVERY_STATUS_OFFLINE`: 已路由到离线通道
+
+#### 错误码
+
+- `IM_ERROR_CODE_INVALID_MESSAGE`: 消息格式无效
+- `IM_ERROR_CODE_CONTENT_TOO_LONG`: 内容超过 10,000 字符
+- `IM_ERROR_CODE_SENDER_NOT_FOUND`: 发送者不存在
+- `IM_ERROR_CODE_RECIPIENT_NOT_FOUND`: 接收者不存在
+- `IM_ERROR_CODE_GROUP_NOT_FOUND`: 群组不存在
+- `IM_ERROR_CODE_NOT_GROUP_MEMBER`: 发送者不是群组成员
+- `IM_ERROR_CODE_SENSITIVE_CONTENT`: 消息包含敏感词（已拦截）
+- `IM_ERROR_CODE_SEQUENCE_ERROR`: 序列号生成器错误
+- `IM_ERROR_CODE_REGISTRY_ERROR`: 注册表查询错误
+- `IM_ERROR_CODE_KAFKA_ERROR`: Kafka 发布错误
+- `IM_ERROR_CODE_DELIVERY_TIMEOUT`: 重试后投递超时
+- `IM_ERROR_CODE_INTERNAL_ERROR`: 内部服务器错误
+
 ### Hello Service (`hello.proto`)
 
 - **服务名称**: `api.v1.HelloService`
@@ -182,7 +434,11 @@ make gen-proto-ts      # TypeScript 代码
 
 ### 生成代码位置
 
-- **Go**: `apps/todo-service/gen/`
+- **Go**: 
+  - `apps/todo-service/gen/todopb/` (TODO Service)
+  - `apps/auth-service/gen/authpb/` (Auth Service - 待实现)
+  - `apps/user-service/gen/userpb/` (User Service - 待实现)
+  - `apps/im-service/gen/impb/` (IM Service - 待实现)
 - **Java**: `apps/hello-service/src/main/java-gen/`
 - **TypeScript**: `apps/web/src/gen/`
 
@@ -226,6 +482,18 @@ grpcurl -plaintext -d '{"title": "Test", "description": "Test TODO"}' \
 # 列出所有 TODO
 grpcurl -plaintext -d '{}' \
   localhost:9091 api.v1.TodoService/ListTodos
+
+# 调用 Auth Service - 验证令牌
+grpcurl -plaintext -d '{"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."}' \
+  localhost:9095 auth.v1.AuthService/ValidateToken
+
+# 调用 User Service - 获取用户
+grpcurl -plaintext -d '{"user_id": "user123"}' \
+  localhost:9096 user.v1.UserService/GetUser
+
+# 调用 IM Service - 发送私聊消息
+grpcurl -plaintext -d '{"msg_id": "msg-123", "sender_id": "user1", "recipient_id": "user2", "content": "Hello", "message_type": "MESSAGE_TYPE_TEXT"}' \
+  localhost:9094 im.v1.IMService/RoutePrivateMessage
 ```
 
 ### 使用 Postman

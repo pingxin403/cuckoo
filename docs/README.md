@@ -19,6 +19,7 @@ Welcome to the Monorepo documentation! This index helps you find the information
 - [Testing Guide](development/TESTING_GUIDE.md) - How to write and run tests
 - [Linting Guide](development/LINTING_GUIDE.md) - Linting rules and configuration
 - [Create App Guide](development/CREATE_APP_GUIDE.md) - How to create new applications
+- [Service Creation Automation](development/SERVICE_CREATION_AUTOMATION.md) - Automated service creation details
 - [App Management](development/APP_MANAGEMENT.md) - Managing applications in the monorepo
 - [Makefile Guide](development/MAKEFILE_GUIDE.md) - Using the Makefile for builds and tasks
 
@@ -122,6 +123,7 @@ docs/
 │   ├── TESTING_GUIDE.md
 │   ├── LINTING_GUIDE.md
 │   ├── CREATE_APP_GUIDE.md
+│   ├── SERVICE_CREATION_AUTOMATION.md
 │   ├── APP_MANAGEMENT.md
 │   └── MAKEFILE_GUIDE.md
 │
