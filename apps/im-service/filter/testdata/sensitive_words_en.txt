@@ -1,0 +1,6 @@
+# English sensitive words for testing
+badword
+offensive
+spam
+scam
+illegal
