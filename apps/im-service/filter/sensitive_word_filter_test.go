@@ -248,7 +248,7 @@ spam
 # Another comment
 illegal
 `
-	err := os.WriteFile(wordListPath, []byte(content), 0644)
+	err := os.WriteFile(wordListPath, []byte(content), 0600)
 	require.NoError(t, err)
 
 	cfg := Config{

@@ -90,11 +90,12 @@ func NewSensitiveWordFilter(cfg Config) (*SensitiveWordFilter, error) {
 // LoadWordList loads sensitive words from a file
 // Requirements: 11.4
 func (f *SensitiveWordFilter) LoadWordList(filePath string, lang string) error {
+	// #nosec G304 - filePath is from trusted configuration
 	file, err := os.Open(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to open word list file %s: %w", filePath, err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
