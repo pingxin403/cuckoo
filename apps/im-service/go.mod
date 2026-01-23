@@ -14,6 +14,7 @@ require (
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
+	github.com/alicebob/miniredis/v2 v2.36.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/coreos/go-semver v0.3.1 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
@@ -23,6 +24,7 @@ require (
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.26.3 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/yuin/gopher-lua v1.1.1 // indirect
 	go.etcd.io/etcd/api/v3 v3.6.7 // indirect
 	go.etcd.io/etcd/client/pkg/v3 v3.6.7 // indirect
 	go.uber.org/multierr v1.11.0 // indirect

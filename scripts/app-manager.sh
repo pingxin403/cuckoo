@@ -272,6 +272,9 @@ cmd_run() {
         node)
             cd "$app_path" && npm run dev
             ;;
+        migration)
+            log_info "Skipping run for migration-only app: $app"
+            ;;
         *)
             log_error "Unknown app type: $app_type"
             return 1
@@ -282,13 +285,20 @@ cmd_run() {
 # Docker build command
 cmd_docker() {
     local app=$1
+    local app_type=$(get_app_type "$app")
     local app_path=$(get_app_path "$app")
     
     log_info "Building Docker image for $app..."
     
-    docker build -t "$app:latest" "$app_path"
-    
-    log_success "Docker image built for $app"
+    case $app_type in
+        migration)
+            log_info "Skipping Docker build for migration-only app: $app"
+            ;;
+        *)
+            docker build -t "$app:latest" "$app_path"
+            log_success "Docker image built for $app"
+            ;;
+    esac
 }
 
 # Lint command
@@ -373,6 +383,9 @@ cmd_lint-fix() {
         node)
             (cd "$app_path" && npm run lint -- --fix) || return 1
             ;;
+        migration)
+            log_info "Skipping lint-fix for migration-only app: $app"
+            ;;
         *)
             log_error "Unknown app type: $app_type"
             return 1
@@ -419,6 +432,9 @@ cmd_format() {
                 log_error "package.json not found"
                 return 1
             fi
+            ;;
+        migration)
+            log_info "Skipping format for migration-only app: $app"
             ;;
         *)
             log_error "Unknown app type: $app_type"
