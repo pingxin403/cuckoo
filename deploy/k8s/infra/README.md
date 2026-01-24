@@ -196,7 +196,7 @@ After MySQL is deployed, run database migrations:
 
 ```bash
 # Build Liquibase image (if not already built)
-docker build -t im-liquibase:latest apps/im-chat-system/migrations/
+docker build -t im-liquibase:latest apps/im-service/migrations/
 
 # Create Kubernetes Job for migration
 kubectl create job im-liquibase-migration \
@@ -527,7 +527,7 @@ After MySQL is deployed, run database migrations:
 
 ```bash
 # Build Liquibase image (if not already built)
-docker build -t im-liquibase:latest apps/im-chat-system/migrations/
+docker build -t im-liquibase:latest apps/im-service/migrations/
 
 # Create Kubernetes Job for migration
 kubectl create job im-liquibase-migration \

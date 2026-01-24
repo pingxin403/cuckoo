@@ -8,9 +8,13 @@ metadata:
 spec:
   type: ClusterIP
   ports:
-  - port: 9094
+  - name: grpc
+    port: 9094
     targetPort: 9094
     protocol: TCP
-    name: grpc
+  - name: http
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
   selector:
     app: im-service

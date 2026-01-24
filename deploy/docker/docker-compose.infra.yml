@@ -2,15 +2,13 @@
 # Simplified for local development: single instances of etcd and Kafka, shared MySQL and Redis
 # Usage: docker compose -f deploy/docker/docker-compose.infra.yml up -d
 
-version: '3.8'
-
 services:
   # ===== Shared Infrastructure =====
   
-  # Shared MySQL Database (for both Shortener and IM services)
+  # MySQL Database (for both Shortener and IM services)
   mysql:
     image: mysql:8.0
-    container_name: shared-mysql
+    container_name: mysql
     ports:
       - "3306:3306"
     environment:
@@ -33,10 +31,10 @@ services:
     command: --default-authentication-plugin=mysql_native_password --max-connections=500
     restart: unless-stopped
 
-  # Shared Redis (for both Shortener and IM services)
+  # Redis (for both Shortener and IM services)
   redis:
     image: redis:7.2-alpine
-    container_name: shared-redis
+    container_name: redis
     ports:
       - "6379:6379"
     volumes:
@@ -57,7 +55,7 @@ services:
   # Single etcd instance for local development
   etcd:
     image: quay.io/coreos/etcd:v3.5.11
-    container_name: im-etcd
+    container_name: etcd
     ports:
       - "2379:2379"
       - "2380:2380"
@@ -85,7 +83,7 @@ services:
   # Single Kafka instance for local development (KRaft mode - no Zookeeper)
   kafka:
     image: confluentinc/cp-kafka:7.5.0
-    container_name: im-kafka
+    container_name: kafka
     ports:
       - "9092:9092"
       - "9093:9093"
@@ -121,7 +119,7 @@ services:
   # Kafka Topic Initialization
   kafka-init:
     image: confluentinc/cp-kafka:7.5.0
-    container_name: im-kafka-init
+    container_name: kafka-init
     depends_on:
       kafka:
         condition: service_healthy
@@ -163,9 +161,9 @@ services:
       - monorepo-network
 
   # Liquibase for IM Database Migrations
-  im-liquibase:
-    image: im-liquibase:latest
-    container_name: im-liquibase
+  liquibase:
+    image: liquibase:latest
+    container_name: liquibase
     build:
       context: ../../apps/im-chat-system/migrations
       dockerfile: Dockerfile
@@ -192,10 +190,10 @@ networks:
 
 volumes:
   mysql-data:
-    name: shared-mysql-data
+    name: mysql-data
   redis-data:
-    name: shared-redis-data
+    name: redis-data
   etcd-data:
-    name: im-etcd-data
+    name: etcd-data
   kafka-data:
-    name: im-kafka-data
+    name: kafka-data

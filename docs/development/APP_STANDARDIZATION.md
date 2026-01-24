@@ -215,7 +215,7 @@ Every app must:
 
 ### 📦 Special Cases
 
-- `apps/im-chat-system` - Migration scripts only, no service code (no changes needed)
+- Migration scripts are now in `apps/im-service/migrations/`
 
 ## Implementation Plan
 

@@ -32,21 +32,17 @@ RUN go mod download
 # Copy proto files (Single Source of Truth)
 COPY api/v1 /api/v1
 
-# Generate proto code (adjust proto file names as needed)
-RUN mkdir -p gen/hellopb gen/todopb && \
+# Generate proto code
+RUN mkdir -p gen/impb gen/im_servicepb && \
     protoc --proto_path=/api/v1 \
-           --go_out=./gen/hellopb --go_opt=paths=source_relative \
-           --go-grpc_out=./gen/hellopb --go-grpc_opt=paths=source_relative \
-           /api/v1/hello.proto && \
-    protoc --proto_path=/api/v1 \
-           --go_out=./gen/todopb --go_opt=paths=source_relative \
-           --go-grpc_out=./gen/todopb --go-grpc_opt=paths=source_relative \
-           /api/v1/todo.proto
+           --go_out=./gen/impb --go_opt=paths=source_relative \
+           --go-grpc_out=./gen/impb --go-grpc_opt=paths=source_relative \
+           /api/v1/im.proto
 
 # Copy source code
 COPY apps/im-service/ ./
 
-# Build the application
+# Build the application (single binary with integrated worker)
 RUN CGO_ENABLED=0 GOOS=linux go build -o im-service .
 
 # Stage 2: Runtime
@@ -63,5 +59,8 @@ COPY --from=build /app/im-service .
 # Expose gRPC port
 EXPOSE 9094
 
-# Run the service
+# Expose HTTP port for health checks and metrics
+EXPOSE 8080
+
+# Run the service (includes both gRPC server and offline worker)
 ENTRYPOINT ["./im-service"]

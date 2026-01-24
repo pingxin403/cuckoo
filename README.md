@@ -22,6 +22,7 @@ A multi-language monorepo project demonstrating microservices architecture with 
 - **Hello Service** (Java/Spring Boot) - 提供问候功能的 gRPC 服务
 - **TODO Service** (Go) - 提供任务管理功能的 gRPC 服务
 - **Shortener Service** (Go) - 高性能 URL 短链接服务，支持自定义短码和多级缓存
+- **IM Chat System** (Go) - 分布式即时通讯系统，支持私聊、群聊、离线消息
 - **Web Application** (React/TypeScript) - 前端单页应用
 
 所有服务通过 Protobuf 定义统一的 API 契约，使用 gRPC 进行通信。
@@ -338,11 +339,120 @@ graph TB
 - `todo.proto` - TODO 服务接口
 - `shortener.proto` - URL 短链接服务接口
 
+## IM Chat System
+
+### 🚀 快速启动
+
+```bash
+# 一键启动 IM 系统（基础设施 + 服务）
+make im-up
+```
+
+等待 30 秒后，所有服务就绪！
+
+### 📊 系统状态
+
+✅ **已完成 (Tasks 1-12)**:
+- 基础设施：etcd, MySQL, Redis, Kafka
+- 核心服务：Auth, User, IM, Gateway
+- 功能：消息路由、序列号生成、去重、敏感词过滤、加密、离线消息持久化
+- 测试：78+ 单元测试，9+ 属性测试，全部通过
+
+### 🔍 验证运行
+
+```bash
+# 查看所有服务状态
+docker compose -f deploy/docker/docker-compose.infra.yml \
+               -f deploy/docker/docker-compose.services.yml ps
+
+# 测试系统
+make test-services SUITE=im
+```
+
+### 🌐 服务说明
+
+| 服务 | 端口 | 说明 |
+|------|------|------|
+| auth-service | 9095 | JWT 认证 |
+| user-service | 9096 | 用户/群组管理 |
+| im-service | 9094 | 消息路由 (gRPC) + 离线消息持久化 (后台组件) |
+| im-service | 8080 | 健康检查和指标 (HTTP) |
+| im-gateway-service | 9093 | gRPC API |
+| im-gateway-service | 8082 | WebSocket |
+
+**注意**: Offline Worker 已集成到 im-service 中，作为后台组件运行。
+
+### 📝 查看日志
+
+```bash
+docker logs im-service              # 包含消息路由和离线worker
+docker logs im-gateway-service
+```
+
+### 🛑 停止服务
+
+```bash
+make im-down
+```
+
+### 🔧 故障排查
+
+**首次构建失败**
+
+如果首次运行 `make im-up` 失败，可能是因为 Docker 镜像还没构建。先构建镜像：
+
+```bash
+# 构建所有 IM 服务镜像
+docker compose -f deploy/docker/docker-compose.services.yml build auth-service user-service im-service im-gateway-service
+
+# 然后启动
+make im-up
+```
+
+**查看构建日志**
+
+```bash
+docker compose -f deploy/docker/docker-compose.services.yml build --progress=plain im-service
+```
+
+**清理并重新开始**
+
+```bash
+# 停止所有服务
+make im-down
+
+# 清理镜像
+docker compose -f deploy/docker/docker-compose.services.yml down --rmi all
+
+# 重新构建和启动
+make im-up
+```
+
+### 📚 详细文档
+
+- [IM Service 文档](apps/im-service/README.md) - 核心消息路由和离线持久化
+- [IM Gateway 文档](apps/im-gateway-service/README.md) - WebSocket 网关
+- [设计文档](.kiro/specs/im-chat-system/design.md) - 系统设计
+- [任务列表](.kiro/specs/im-chat-system/tasks.md) - 实现进度
+
+### 🎯 下一步
+
+Tasks 13-22 待实现：
+- 已读回执
+- 多设备支持
+- 群聊高级功能
+- 监控和安全
+- 集成测试
+
 ### 服务端口
 
 - Hello Service: 9090 (gRPC)
 - TODO Service: 9091 (gRPC)
 - Shortener Service: 9092 (gRPC), 8080 (HTTP Redirect)
+- Auth Service: 9095 (gRPC)
+- User Service: 9096 (gRPC)
+- IM Service: 9094 (gRPC), 8080 (HTTP)
+- IM Gateway Service: 9093 (gRPC), 8082 (WebSocket)
 - Web Application: 5173 (开发模式)
 - Envoy Proxy: 8080 (HTTP/gRPC-Web)
 
@@ -735,6 +845,10 @@ cd apps/todo-service && go run .
 - [Hello Service](apps/hello-service/README.md) - Java/Spring Boot 问候服务
 - [TODO Service](apps/todo-service/README.md) - Go 任务管理服务
 - [Shortener Service](apps/shortener-service/README.md) - Go URL 短链接服务
+- [IM Service](apps/im-service/README.md) - Go 即时通讯核心服务
+- [IM Gateway Service](apps/im-gateway-service/README.md) - Go WebSocket 网关服务
+- [Auth Service](apps/auth-service/README.md) - Go JWT 认证服务
+- [User Service](apps/user-service/README.md) - Go 用户管理服务
 - [Web Application](apps/web/README.md) - React 前端应用
 
 ### 📖 API 文档

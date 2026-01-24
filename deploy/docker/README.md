@@ -232,5 +232,5 @@ This Docker Compose setup is for **local development only**. For production:
 ## Related Documentation
 
 - [Kubernetes Deployment](../k8s/README.md)
-- [IM Chat System Infrastructure](../../apps/im-chat-system/README.md)
+- [IM Service Infrastructure](../../apps/im-service/README.md#infrastructure)
 - [Shortener Service](../../apps/shortener-service/README.md)

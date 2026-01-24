@@ -127,7 +127,8 @@ CREATE TABLE group_members (
 
 ```bash
 # Set up MySQL database
-mysql -u root -p < ../im-chat-system/migrations/002_user_service_schema.sql
+# Database migrations are now in apps/im-service/migrations/
+docker compose -f deploy/docker/docker-compose.infra.yml up liquibase
 
 # Run the service
 export MYSQL_DSN="im_service:im_password@tcp(localhost:3306)/im_chat?parseTime=true"

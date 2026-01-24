@@ -1,8 +1,6 @@
 # Application Services for Local Development
 # Usage: docker compose -f deploy/docker/docker-compose.infra.yml -f deploy/docker/docker-compose.services.yml up -d
 
-version: '3.8'
-
 services:
   # Hello Service (Java/Spring Boot)
   hello-service:
@@ -112,7 +110,130 @@ services:
     restart: unless-stopped
 
 
-  # UimUgatewayUservice (go)
+  # Auth Service (Go)
+  auth-service:
+    build:
+      context: ../..
+      dockerfile: apps/auth-service/Dockerfile
+    image: auth-service:latest
+    container_name: auth-service
+    ports:
+      - "9095:9095"
+    environment:
+      - PORT=9095
+      - LOG_LEVEL=info
+      - JWT_SECRET=your-secret-key-change-in-production
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "auth-service"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+    networks:
+      - monorepo-network
+    restart: unless-stopped
+
+  # User Service (Go)
+  user-service:
+    build:
+      context: ../..
+      dockerfile: apps/user-service/Dockerfile
+    image: user-service:latest
+    container_name: user-service
+    ports:
+      - "9096:9096"
+    environment:
+      - PORT=9096
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=im_chat
+      - MYSQL_USER=im_service
+      - MYSQL_PASSWORD=im_service_password
+      - LOG_LEVEL=info
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "user-service"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+    networks:
+      - monorepo-network
+    restart: unless-stopped
+
+  # IM Service (Go) - Message routing and offline persistence
+  im-service:
+    build:
+      context: ../..
+      dockerfile: apps/im-service/Dockerfile
+    image: im-service:latest
+    container_name: im-service
+    ports:
+      - "9094:9094"  # gRPC
+      - "8084:8080"  # HTTP (health checks and metrics)
+    environment:
+      # gRPC server
+      - GRPC_PORT=9094
+      - HTTP_PORT=8080
+      
+      # Kafka configuration
+      - KAFKA_BROKERS=kafka:9092
+      - KAFKA_CONSUMER_GROUP=im-service-offline-workers
+      - KAFKA_TOPIC=offline_msg
+      
+      # Database configuration
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=im_service
+      - DB_PASSWORD=im_service_password
+      - DB_NAME=im_chat
+      - DB_MAX_OPEN_CONNS=25
+      - DB_MAX_IDLE_CONNS=5
+      
+      # Redis configuration
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=
+      - REDIS_DB=2
+      
+      # Offline worker configuration (always enabled)
+      - OFFLINE_WORKER_ENABLED=true
+      - BATCH_SIZE=100
+      - BATCH_TIMEOUT=5s
+      - MAX_RETRIES=5
+      - RETRY_BACKOFF=1s,2s,4s,8s,16s
+      - MESSAGE_TTL=168h  # 7 days
+      
+      # Service dependencies
+      - ETCD_ENDPOINTS=etcd:2379
+      - AUTH_SERVICE_ADDR=auth-service:9095
+      - USER_SERVICE_ADDR=user-service:9096
+      - LOG_LEVEL=info
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      etcd:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      user-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+    networks:
+      - monorepo-network
+    restart: unless-stopped
+
+  # IM Gateway Service (Go)
   im-gateway-service:
     build:
       context: ../..
@@ -120,11 +241,28 @@ services:
     image: im-gateway-service:latest
     container_name: im-gateway-service
     ports:
-      - "9093:9093"
+      - "9093:9093"  # gRPC
+      - "8082:8080"  # WebSocket
     environment:
-      - PORT=9093
+      - GRPC_PORT=9093
+      - WEBSOCKET_PORT=8080
+      - ETCD_ENDPOINTS=etcd:2379
+      - KAFKA_BROKERS=kafka:9092
+      - REDIS_ADDR=redis:6379
+      - AUTH_SERVICE_ADDR=auth-service:9095
+      - IM_SERVICE_ADDR=im-service:9094
       - LOG_LEVEL=info
-      - ENVIRONMENT=development
+    depends_on:
+      etcd:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      im-service:
+        condition: service_started
     healthcheck:
       test: ["CMD", "pgrep", "-f", "im-gateway-service"]
       interval: 15s
@@ -134,6 +272,7 @@ services:
     networks:
       - monorepo-network
     restart: unless-stopped
+
 networks:
   monorepo-network:
     external: true

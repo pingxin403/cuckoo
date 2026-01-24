@@ -406,5 +406,5 @@ See [.github/workflows/](../.github/workflows/) for complete CI/CD setup.
 
 - [Docker Deployment](./docker/README.md)
 - [Kubernetes Deployment](./k8s/README.md)
-- [IM Chat System](../apps/im-chat-system/README.md)
+- [IM Service](../apps/im-service/README.md)
 - [Shortener Service](../apps/shortener-service/README.md)

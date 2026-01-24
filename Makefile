@@ -1,8 +1,9 @@
 .PHONY: help init check-env check-versions proto gen-proto gen-proto-go gen-proto-java gen-proto-ts verify-proto \
         build test lint lint-fix format docker-build run clean list-apps create \
-        test-coverage verify-coverage \
+        test-coverage verify-coverage test-services \
         dev pre-commit verify-auto-detection \
         infra-up infra-down services-up services-down dev-up dev-down dev-restart infra-logs infra-clean infra-status \
+        im-up im-down \
         k8s-deploy-dev k8s-deploy-prod k8s-infra-deploy k8s-validate
 
 # Default target
@@ -19,6 +20,7 @@ help:
 	@echo ""
 	@echo "  Quality & Testing:"
 	@echo "  pre-commit         - Run all pre-commit quality checks (lint, test, security)"
+	@echo "  test-services [SUITE=name] - Test running services (all, hello-todo, shortener, im, infra)"
 	@echo "  lint [APP=name]    - Run linters for app(s)"
 	@echo "  lint-fix [APP=name] - Auto-fix lint errors for app(s)"
 	@echo "  format [APP=name]  - Format code for app(s)"
@@ -29,6 +31,8 @@ help:
 	@echo "  Docker Compose Deployment (Local Development):"
 	@echo "  dev-up             - Start all services (infrastructure + applications)"
 	@echo "  dev-down           - Stop all services"
+	@echo "  im-up              - Start IM Chat System (infrastructure + IM services)"
+	@echo "  im-down            - Stop IM Chat System"
 	@echo "  infra-up           - Start infrastructure only (MySQL, Redis, etcd, Kafka)"
 	@echo "  infra-down         - Stop infrastructure"
 	@echo "  services-up        - Start application services only"
@@ -61,6 +65,9 @@ help:
 	@echo "  make infra-up                  # Start only infrastructure"
 	@echo "  make services-up               # Start only application services"
 	@echo "  make dev-restart               # Restart services without restarting infrastructure"
+	@echo "  make test-services             # Test all running services"
+	@echo "  make test-services SUITE=im    # Test IM Chat System only"
+	@echo "  make test-services SUITE=infra # Test infrastructure only"
 	@echo "  make k8s-deploy-dev            # Deploy to Kubernetes dev environment"
 	@echo "  make k8s-deploy-prod           # Deploy to Kubernetes production"
 	@echo "  make k8s-infra-deploy          # Deploy infrastructure with Helm"
@@ -220,6 +227,14 @@ else
 	@./scripts/coverage-manager.sh --verify
 endif
 
+# Test running services (end-to-end tests)
+test-services:
+ifdef SUITE
+	@./scripts/test-services.sh $(SUITE)
+else
+	@./scripts/test-services.sh all
+endif
+
 # ===== Docker Compose Deployment =====
 
 .PHONY: infra-up infra-down services-up services-down dev-up dev-down dev-restart infra-logs infra-clean infra-status
@@ -277,6 +292,18 @@ dev-down:
 	@docker compose -f deploy/docker/docker-compose.infra.yml \
 	                -f deploy/docker/docker-compose.services.yml down
 	@echo "✅ All services stopped"
+
+# Start IM Chat System (simplified)
+im-up:
+	@echo "Starting IM Chat System..."
+	@./scripts/start-im-system.sh
+
+# Stop IM Chat System
+im-down:
+	@echo "Stopping IM Chat System..."
+	@docker compose -f deploy/docker/docker-compose.infra.yml \
+	                -f deploy/docker/docker-compose.services.yml down
+	@echo "✅ IM Chat System stopped"
 
 # Restart services (keep infrastructure running)
 dev-restart:
