@@ -205,10 +205,13 @@ func (p *PushService) BroadcastToGroup(ctx context.Context, groupID string, mess
 // getGroupMembers retrieves group members from cache or User Service.
 // Validates: Requirements 17.1, 17.2
 func (g *GatewayService) getGroupMembers(ctx context.Context, groupID string) ([]string, error) {
-	// Check cache first
-	cacheKey := fmt.Sprintf("group_members:%s", groupID)
+	// Use cache manager if available
+	if g.cacheManager != nil {
+		return g.cacheManager.GetGroupMembers(ctx, groupID)
+	}
 
-	// Try to get from Redis cache
+	// Fallback: Check Redis cache
+	cacheKey := fmt.Sprintf("group_members:%s", groupID)
 	if g.redisClient != nil {
 		cached, err := g.redisClient.SMembers(ctx, cacheKey).Result()
 		if err == nil && len(cached) > 0 {

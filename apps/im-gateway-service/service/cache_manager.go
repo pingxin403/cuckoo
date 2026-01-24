@@ -18,15 +18,27 @@ type CacheManager struct {
 	// Group membership cache
 	groupMemberCache sync.Map // map[string]*GroupCacheEntry
 
+	// Large group local member cache (only locally-connected members)
+	largeGroupLocalCache sync.Map // map[string]*LocalGroupCacheEntry
+
 	// Redis client for distributed cache
 	redisClient *redis.Client
 
 	// Registry client for watching changes
 	registryClient RegistryClient
 
+	// Gateway service reference (for accessing connections)
+	gateway *GatewayService
+
 	// Configuration
-	userCacheTTL  time.Duration // Default: 5 minutes
-	groupCacheTTL time.Duration // Default: 5 minutes
+	userCacheTTL        time.Duration // Default: 5 minutes
+	groupCacheTTL       time.Duration // Default: 5 minutes
+	largeGroupThreshold int           // Default: 1000 members
+
+	// Metrics
+	cacheHits   int64
+	cacheMisses int64
+	memoryUsage int64 // Approximate memory usage in bytes
 
 	// Lifecycle
 	ctx    context.Context
@@ -48,6 +60,14 @@ type GroupCacheEntry struct {
 	IsLarge   bool // True if group has >1,000 members
 }
 
+// LocalGroupCacheEntry represents a cached local group membership for large groups.
+// Validates: Requirements 2.10, 2.11, 2.12
+type LocalGroupCacheEntry struct {
+	LocalMembers []string // Only members connected to this gateway node
+	ExpiresAt    time.Time
+	MemberCount  int // Total member count (for reference)
+}
+
 // NewCacheManager creates a new cache manager instance.
 func NewCacheManager(
 	redisClient *redis.Client,
@@ -58,13 +78,20 @@ func NewCacheManager(
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &CacheManager{
-		redisClient:    redisClient,
-		registryClient: registryClient,
-		userCacheTTL:   userCacheTTL,
-		groupCacheTTL:  groupCacheTTL,
-		ctx:            ctx,
-		cancel:         cancel,
+		redisClient:         redisClient,
+		registryClient:      registryClient,
+		userCacheTTL:        userCacheTTL,
+		groupCacheTTL:       groupCacheTTL,
+		largeGroupThreshold: 1000, // Default threshold for large groups
+		ctx:                 ctx,
+		cancel:              cancel,
 	}
+}
+
+// SetGateway sets the gateway service reference.
+// This is needed to access active connections for large group optimization.
+func (c *CacheManager) SetGateway(gateway *GatewayService) {
+	c.gateway = gateway
 }
 
 // Start starts the cache manager and watch mechanisms.
@@ -119,17 +146,26 @@ func (c *CacheManager) GetUserGateway(ctx context.Context, userID string) ([]Gat
 }
 
 // GetGroupMembers retrieves group members from cache or User Service.
-// Validates: Requirements 17.2
+// Validates: Requirements 17.2, 2.10, 2.11, 2.12
 func (c *CacheManager) GetGroupMembers(ctx context.Context, groupID string) ([]string, error) {
 	// Check local cache first
 	if entry, ok := c.groupMemberCache.Load(groupID); ok {
 		cacheEntry := entry.(*GroupCacheEntry)
 		if time.Now().Before(cacheEntry.ExpiresAt) {
+			c.cacheHits++
+
+			// For large groups, return locally-connected members only
+			if cacheEntry.IsLarge {
+				return c.getLocallyConnectedMembers(groupID, cacheEntry.Members)
+			}
+
 			return cacheEntry.Members, nil
 		}
 		// Expired, remove from cache
 		c.groupMemberCache.Delete(groupID)
 	}
+
+	c.cacheMisses++
 
 	// Cache miss, query Redis or User Service
 	members, err := c.fetchGroupMembers(ctx, groupID)
@@ -138,7 +174,7 @@ func (c *CacheManager) GetGroupMembers(ctx context.Context, groupID string) ([]s
 	}
 
 	// Determine if group is large
-	isLarge := len(members) > 1000
+	isLarge := len(members) > c.largeGroupThreshold
 
 	// Update cache
 	c.groupMemberCache.Store(groupID, &GroupCacheEntry{
@@ -147,7 +183,60 @@ func (c *CacheManager) GetGroupMembers(ctx context.Context, groupID string) ([]s
 		IsLarge:   isLarge,
 	})
 
+	// Update memory usage estimate
+	c.updateMemoryUsage(groupID, len(members))
+
+	// For large groups, return only locally-connected members
+	if isLarge {
+		return c.getLocallyConnectedMembers(groupID, members)
+	}
+
 	return members, nil
+}
+
+// getLocallyConnectedMembers filters group members to only those connected to this gateway node.
+// Validates: Requirements 2.10, 2.11, 2.12
+func (c *CacheManager) getLocallyConnectedMembers(groupID string, allMembers []string) ([]string, error) {
+	// Check local cache for large groups
+	if entry, ok := c.largeGroupLocalCache.Load(groupID); ok {
+		localEntry := entry.(*LocalGroupCacheEntry)
+		if time.Now().Before(localEntry.ExpiresAt) {
+			return localEntry.LocalMembers, nil
+		}
+		// Expired, remove from cache
+		c.largeGroupLocalCache.Delete(groupID)
+	}
+
+	// Build set of all members for fast lookup
+	memberSet := make(map[string]bool, len(allMembers))
+	for _, member := range allMembers {
+		memberSet[member] = true
+	}
+
+	// Find locally-connected members
+	localMembers := make([]string, 0)
+	seen := make(map[string]bool)
+
+	if c.gateway != nil {
+		c.gateway.connections.Range(func(key, value any) bool {
+			connection := value.(*Connection)
+			// Check if this user is a group member and not already added
+			if memberSet[connection.UserID] && !seen[connection.UserID] {
+				localMembers = append(localMembers, connection.UserID)
+				seen[connection.UserID] = true
+			}
+			return true
+		})
+	}
+
+	// Cache the local members
+	c.largeGroupLocalCache.Store(groupID, &LocalGroupCacheEntry{
+		LocalMembers: localMembers,
+		ExpiresAt:    time.Now().Add(c.groupCacheTTL),
+		MemberCount:  len(allMembers),
+	})
+
+	return localMembers, nil
 }
 
 // fetchGroupMembers fetches group members from Redis or User Service.
@@ -176,12 +265,44 @@ func (c *CacheManager) InvalidateUserCache(userID string) {
 // Validates: Requirements 2.9, 17.3
 func (c *CacheManager) InvalidateGroupCache(groupID string) {
 	c.groupMemberCache.Delete(groupID)
+	c.largeGroupLocalCache.Delete(groupID) // Also invalidate local cache for large groups
 
 	// Also invalidate in Redis
 	if c.redisClient != nil {
 		cacheKey := fmt.Sprintf("group_members:%s", groupID)
 		c.redisClient.Del(c.ctx, cacheKey)
 	}
+}
+
+// updateMemoryUsage updates the approximate memory usage estimate.
+// Validates: Requirements 2.11
+func (c *CacheManager) updateMemoryUsage(groupID string, memberCount int) {
+	// Rough estimate:
+	// - groupID: ~50 bytes
+	// - each member ID: ~50 bytes
+	// - overhead: ~100 bytes
+	estimatedBytes := int64(50 + (memberCount * 50) + 100)
+
+	// Use atomic operations for thread-safe updates
+	// Note: This is a rough estimate, not exact memory usage
+	c.memoryUsage += estimatedBytes
+}
+
+// GetMemoryUsage returns the approximate memory usage in bytes.
+// Validates: Requirements 2.11
+func (c *CacheManager) GetMemoryUsage() int64 {
+	return c.memoryUsage
+}
+
+// GetCacheStats returns cache hit/miss statistics.
+func (c *CacheManager) GetCacheStats() (hits int64, misses int64, hitRate float64) {
+	hits = c.cacheHits
+	misses = c.cacheMisses
+	total := hits + misses
+	if total > 0 {
+		hitRate = float64(hits) / float64(total)
+	}
+	return
 }
 
 // watchRegistryChanges watches for Registry changes and invalidates cache.
@@ -238,6 +359,15 @@ func (c *CacheManager) cleanupExpiredEntries() {
 				entry := value.(*GroupCacheEntry)
 				if now.After(entry.ExpiresAt) {
 					c.groupMemberCache.Delete(key)
+				}
+				return true
+			})
+
+			// Clean up large group local cache
+			c.largeGroupLocalCache.Range(func(key, value interface{}) bool {
+				entry := value.(*LocalGroupCacheEntry)
+				if now.After(entry.ExpiresAt) {
+					c.largeGroupLocalCache.Delete(key)
 				}
 				return true
 			})

@@ -11,26 +11,31 @@ import (
 
 // KafkaConsumer handles consuming messages from Kafka topics.
 type KafkaConsumer struct {
-	groupReader        *kafka.Reader
-	readReceiptReader  *kafka.Reader
-	gateway            *GatewayService
-	pushService        *PushService
-	ctx                context.Context
-	cancel             context.CancelFunc
-	readReceiptEnabled bool
+	groupReader             *kafka.Reader
+	readReceiptReader       *kafka.Reader
+	membershipChangeReader  *kafka.Reader
+	gateway                 *GatewayService
+	pushService             *PushService
+	ctx                     context.Context
+	cancel                  context.CancelFunc
+	readReceiptEnabled      bool
+	membershipChangeEnabled bool
 }
 
 // KafkaConfig contains Kafka consumer configuration.
 type KafkaConfig struct {
-	Brokers            []string
-	GroupID            string
-	Topic              string
-	ReadReceiptTopic   string
-	ReadReceiptGroupID string
-	MinBytes           int
-	MaxBytes           int
-	CommitInterval     time.Duration
-	EnableReadReceipts bool
+	Brokers                 []string
+	GroupID                 string
+	Topic                   string
+	ReadReceiptTopic        string
+	ReadReceiptGroupID      string
+	MembershipChangeTopic   string
+	MembershipChangeGroupID string
+	MinBytes                int
+	MaxBytes                int
+	CommitInterval          time.Duration
+	EnableReadReceipts      bool
+	EnableMembershipChange  bool
 }
 
 // GroupMessage represents a group message from Kafka.
@@ -54,6 +59,15 @@ type ReadReceiptEvent struct {
 	DeviceID       string `json:"device_id,omitempty"`
 }
 
+// MembershipChangeEvent represents a group membership change event from Kafka.
+// Validates: Requirements 2.6, 2.7, 2.8, 2.9
+type MembershipChangeEvent struct {
+	GroupID   string `json:"group_id"`
+	UserID    string `json:"user_id"`
+	EventType string `json:"event_type"` // "join" or "leave"
+	Timestamp int64  `json:"timestamp"`
+}
+
 // NewKafkaConsumer creates a new Kafka consumer instance.
 func NewKafkaConsumer(config KafkaConfig, gateway *GatewayService, pushService *PushService) *KafkaConsumer {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -69,12 +83,13 @@ func NewKafkaConsumer(config KafkaConfig, gateway *GatewayService, pushService *
 	})
 
 	consumer := &KafkaConsumer{
-		groupReader:        groupReader,
-		gateway:            gateway,
-		pushService:        pushService,
-		ctx:                ctx,
-		cancel:             cancel,
-		readReceiptEnabled: config.EnableReadReceipts,
+		groupReader:             groupReader,
+		gateway:                 gateway,
+		pushService:             pushService,
+		ctx:                     ctx,
+		cancel:                  cancel,
+		readReceiptEnabled:      config.EnableReadReceipts,
+		membershipChangeEnabled: config.EnableMembershipChange,
 	}
 
 	// Create read receipt reader if enabled
@@ -90,11 +105,24 @@ func NewKafkaConsumer(config KafkaConfig, gateway *GatewayService, pushService *
 		})
 	}
 
+	// Create membership change reader if enabled
+	if config.EnableMembershipChange && config.MembershipChangeTopic != "" {
+		consumer.membershipChangeReader = kafka.NewReader(kafka.ReaderConfig{
+			Brokers:        config.Brokers,
+			GroupID:        config.MembershipChangeGroupID,
+			Topic:          config.MembershipChangeTopic,
+			MinBytes:       config.MinBytes,
+			MaxBytes:       config.MaxBytes,
+			CommitInterval: config.CommitInterval,
+			StartOffset:    kafka.LastOffset,
+		})
+	}
+
 	return consumer
 }
 
 // Start starts consuming messages from Kafka.
-// Validates: Requirements 2.2, 2.3, 5.3, 5.4
+// Validates: Requirements 2.2, 2.3, 2.6, 2.7, 5.3, 5.4
 func (k *KafkaConsumer) Start() error {
 	// Start group message consumer
 	go k.consumeGroupMessages()
@@ -102,6 +130,11 @@ func (k *KafkaConsumer) Start() error {
 	// Start read receipt consumer if enabled
 	if k.readReceiptEnabled && k.readReceiptReader != nil {
 		go k.consumeReadReceipts()
+	}
+
+	// Start membership change consumer if enabled
+	if k.membershipChangeEnabled && k.membershipChangeReader != nil {
+		go k.consumeMembershipChanges()
 	}
 
 	return nil
@@ -199,16 +232,14 @@ func (k *KafkaConsumer) processGroupMessage(data []byte) error {
 	for _, memberID := range localMembers {
 		// Find all connections for this member
 		k.gateway.connections.Range(func(key, value any) bool {
-			keyStr := key.(string)
-			if len(keyStr) > len(memberID) && keyStr[:len(memberID)] == memberID {
-				connection := value.(*Connection)
-				if connection.UserID == memberID {
-					select {
-					case connection.Send <- msgData:
-						deliveredCount++
-					default:
-						// Channel full, skip
-					}
+			connection := value.(*Connection)
+			// Check if this connection belongs to the member
+			if connection.UserID == memberID {
+				select {
+				case connection.Send <- msgData:
+					deliveredCount++
+				default:
+					// Channel full, skip
 				}
 			}
 			return true
@@ -276,7 +307,111 @@ func (k *KafkaConsumer) Stop() error {
 		}
 	}
 
+	if k.membershipChangeReader != nil {
+		if closeErr := k.membershipChangeReader.Close(); closeErr != nil {
+			err = closeErr
+		}
+	}
+
 	return err
+}
+
+// consumeMembershipChanges continuously consumes membership change events from Kafka.
+// Validates: Requirements 2.6, 2.7, 2.8, 2.9
+func (k *KafkaConsumer) consumeMembershipChanges() {
+	for {
+		select {
+		case <-k.ctx.Done():
+			return
+		default:
+		}
+
+		// Read message from Kafka
+		msg, err := k.membershipChangeReader.ReadMessage(k.ctx)
+		if err != nil {
+			if err == context.Canceled {
+				return
+			}
+			// Log error and continue
+			time.Sleep(time.Second)
+			continue
+		}
+
+		// Process the membership change event
+		if err := k.processMembershipChangeEvent(msg.Value); err != nil {
+			// Log error but don't stop consuming
+			continue
+		}
+	}
+}
+
+// processMembershipChangeEvent processes a membership change event from Kafka.
+// Validates: Requirements 2.6, 2.7, 2.8, 2.9
+func (k *KafkaConsumer) processMembershipChangeEvent(data []byte) error {
+	var event MembershipChangeEvent
+	if err := json.Unmarshal(data, &event); err != nil {
+		return fmt.Errorf("failed to unmarshal membership change event: %w", err)
+	}
+
+	// Invalidate group membership cache
+	// This ensures that the next time we need group members, we fetch fresh data
+	k.gateway.cacheManager.InvalidateGroupCache(event.GroupID)
+
+	// Optionally, broadcast the membership change to all locally-connected group members
+	// This allows clients to update their UI in real-time
+	if err := k.broadcastMembershipChange(&event); err != nil {
+		// Log error but don't fail the entire operation
+		fmt.Printf("Failed to broadcast membership change: %v\n", err)
+	}
+
+	return nil
+}
+
+// broadcastMembershipChange broadcasts a membership change event to locally-connected group members.
+// Validates: Requirements 2.6, 2.7
+func (k *KafkaConsumer) broadcastMembershipChange(event *MembershipChangeEvent) error {
+	// Get locally-connected group members
+	localMembers, err := k.getLocallyConnectedMembers(event.GroupID)
+	if err != nil {
+		return fmt.Errorf("failed to get local members: %w", err)
+	}
+
+	// Prepare server message
+	serverMsg := ServerMessage{
+		Type:      "membership_change",
+		Sender:    event.UserID,
+		Content:   event.EventType, // "join" or "leave"
+		Timestamp: event.Timestamp,
+	}
+
+	msgData, err := json.Marshal(serverMsg)
+	if err != nil {
+		return fmt.Errorf("failed to marshal server message: %w", err)
+	}
+
+	// Push to all locally-connected members
+	for _, memberID := range localMembers {
+		// Skip the user who triggered the change
+		if memberID == event.UserID {
+			continue
+		}
+
+		// Find all connections for this member
+		k.gateway.connections.Range(func(key, value any) bool {
+			connection := value.(*Connection)
+			// Check if this connection belongs to the member
+			if connection.UserID == memberID {
+				select {
+				case connection.Send <- msgData:
+				default:
+					// Channel full, skip
+				}
+			}
+			return true
+		})
+	}
+
+	return nil
 }
 
 // contains checks if a string slice contains a value.

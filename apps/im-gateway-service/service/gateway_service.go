@@ -234,6 +234,9 @@ func NewGatewayService(
 		5*time.Minute, // group cache TTL
 	)
 
+	// Set gateway reference in cache manager for large group optimization
+	gateway.cacheManager.SetGateway(gateway)
+
 	return gateway
 }
 
