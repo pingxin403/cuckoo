@@ -28,20 +28,35 @@ func (m *mockAuthClient) ValidateToken(ctx context.Context, token string) (*Toke
 	}
 	return &TokenClaims{
 		UserID:    "user123",
-		DeviceID:  "device456",
+		DeviceID:  "550e8400-e29b-41d4-a716-446655440000", // Valid UUID v4
 		ExpiresAt: time.Now().Add(time.Hour).Unix(),
 	}, nil
 }
 
 type mockRegistryClient struct {
-	users map[string][]GatewayLocation
-	mu    sync.RWMutex
+	users       map[string][]GatewayLocation
+	mu          sync.RWMutex
+	lookupError error // For testing error cases
 }
 
 func newMockRegistryClient() *mockRegistryClient {
 	return &mockRegistryClient{
 		users: make(map[string][]GatewayLocation),
 	}
+}
+
+// SetLookupError sets an error to be returned by LookupUser
+func (m *mockRegistryClient) SetLookupError(err error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.lookupError = err
+}
+
+// SetUserLocations sets the locations for a user (for testing)
+func (m *mockRegistryClient) SetUserLocations(userID string, locations []GatewayLocation) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.users[userID] = locations
 }
 
 func (m *mockRegistryClient) RegisterUser(ctx context.Context, userID, deviceID, gatewayNode string) error {
@@ -71,6 +86,10 @@ func (m *mockRegistryClient) RenewLease(ctx context.Context, userID, deviceID st
 func (m *mockRegistryClient) LookupUser(ctx context.Context, userID string) ([]GatewayLocation, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
+
+	if m.lookupError != nil {
+		return nil, m.lookupError
+	}
 
 	if locations, ok := m.users[userID]; ok {
 		return locations, nil
@@ -202,7 +221,7 @@ func TestHandleWebSocket_ValidToken(t *testing.T) {
 	locations, err := registryClient.LookupUser(context.Background(), "user123")
 	require.NoError(t, err)
 	assert.Len(t, locations, 1)
-	assert.Equal(t, "device456", locations[0].DeviceID)
+	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", locations[0].DeviceID)
 }
 
 // TestConnection_RateLimit tests rate limiting
@@ -211,7 +230,7 @@ func TestConnection_RateLimit(t *testing.T) {
 
 	connection := &Connection{
 		UserID:   "user123",
-		DeviceID: "device456",
+		DeviceID: "550e8400-e29b-41d4-a716-446655440000",
 		Gateway:  gateway,
 	}
 
@@ -237,7 +256,7 @@ func TestConnection_SendAck(t *testing.T) {
 
 	connection := &Connection{
 		UserID:   "user123",
-		DeviceID: "device456",
+		DeviceID: "550e8400-e29b-41d4-a716-446655440000",
 		Send:     make(chan []byte, 256),
 		Gateway:  gateway,
 		ctx:      ctx,
@@ -269,7 +288,7 @@ func TestConnection_SendError(t *testing.T) {
 
 	connection := &Connection{
 		UserID:   "user123",
-		DeviceID: "device456",
+		DeviceID: "550e8400-e29b-41d4-a716-446655440000",
 		Send:     make(chan []byte, 256),
 		Gateway:  gateway,
 		ctx:      ctx,
@@ -301,7 +320,7 @@ func TestConnection_HandleHeartbeat(t *testing.T) {
 
 	connection := &Connection{
 		UserID:   "user123",
-		DeviceID: "device456",
+		DeviceID: "550e8400-e29b-41d4-a716-446655440000",
 		Send:     make(chan []byte, 256),
 		Gateway:  gateway,
 		ctx:      ctx,
@@ -335,7 +354,7 @@ func TestConnection_HandleSendMessage(t *testing.T) {
 
 	connection := &Connection{
 		UserID:   "user123",
-		DeviceID: "device456",
+		DeviceID: "550e8400-e29b-41d4-a716-446655440000",
 		Send:     make(chan []byte, 256),
 		Gateway:  gateway,
 		ctx:      ctx,
@@ -419,7 +438,7 @@ func TestConnection_Close(t *testing.T) {
 	assert.Len(t, locations, 0)
 
 	// Verify connection was removed
-	_, exists := gateway.connections.Load("user123_device456")
+	_, exists := gateway.connections.Load("user123_550e8400-e29b-41d4-a716-446655440000")
 	assert.False(t, exists)
 }
 
@@ -431,24 +450,24 @@ func TestGatewayService_Shutdown(t *testing.T) {
 	ctx1, cancel1 := context.WithCancel(context.Background())
 	conn1 := &Connection{
 		UserID:   "user1",
-		DeviceID: "device1",
+		DeviceID: "550e8400-e29b-41d4-a716-446655440001",
 		Send:     make(chan []byte, 256),
 		Gateway:  gateway,
 		ctx:      ctx1,
 		cancel:   cancel1,
 	}
-	gateway.connections.Store("user1_device1", conn1)
+	gateway.connections.Store("user1_550e8400-e29b-41d4-a716-446655440001", conn1)
 
 	ctx2, cancel2 := context.WithCancel(context.Background())
 	conn2 := &Connection{
 		UserID:   "user2",
-		DeviceID: "device2",
+		DeviceID: "550e8400-e29b-41d4-a716-446655440002",
 		Send:     make(chan []byte, 256),
 		Gateway:  gateway,
 		ctx:      ctx2,
 		cancel:   cancel2,
 	}
-	gateway.connections.Store("user2_device2", conn2)
+	gateway.connections.Store("user2_550e8400-e29b-41d4-a716-446655440002", conn2)
 
 	// Shutdown
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)

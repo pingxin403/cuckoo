@@ -68,8 +68,12 @@ func NewRegistryClient(endpoints []string, ttl time.Duration) (*RegistryClient, 
 	}, nil
 }
 
+// MaxDevicesPerUser is the maximum number of devices allowed per user
+const MaxDevicesPerUser = 5
+
 // RegisterUser registers a user's connection to a gateway node with TTL
 // Key format: /registry/users/{user_id}/{device_id}
+// Validates: Requirements 15.10 (max 5 devices per user)
 func (rc *RegistryClient) RegisterUser(ctx context.Context, userID, deviceID, gatewayNode string) (int64, error) {
 	if userID == "" {
 		return 0, fmt.Errorf("user ID cannot be empty")
@@ -81,14 +85,35 @@ func (rc *RegistryClient) RegisterUser(ctx context.Context, userID, deviceID, ga
 		return 0, fmt.Errorf("gateway node cannot be empty")
 	}
 
+	// Check current device count for this user
+	// Validates: Requirement 15.10 (enforce max 5 devices per user)
+	prefix := fmt.Sprintf("/registry/users/%s/", userID)
+	resp, err := rc.client.Get(ctx, prefix, clientv3.WithPrefix(), clientv3.WithCountOnly())
+	if err != nil {
+		return 0, fmt.Errorf("failed to check device count: %w", err)
+	}
+
+	// Check if this is a new device (not already registered)
+	key := fmt.Sprintf("/registry/users/%s/%s", userID, deviceID)
+	existingResp, err := rc.client.Get(ctx, key)
+	if err != nil {
+		return 0, fmt.Errorf("failed to check existing device: %w", err)
+	}
+
+	isNewDevice := len(existingResp.Kvs) == 0
+
+	// If this is a new device and we're at the limit, reject
+	if isNewDevice && resp.Count >= MaxDevicesPerUser {
+		return 0, fmt.Errorf("maximum number of devices (%d) reached for user", MaxDevicesPerUser)
+	}
+
 	// Create lease with TTL
 	leaseResp, err := rc.client.Grant(ctx, int64(rc.ttl.Seconds()))
 	if err != nil {
 		return 0, fmt.Errorf("failed to create lease: %w", err)
 	}
 
-	// Build key and value
-	key := fmt.Sprintf("/registry/users/%s/%s", userID, deviceID)
+	// Build value
 	value := fmt.Sprintf("%s|%d", gatewayNode, time.Now().Unix())
 
 	// Put with lease

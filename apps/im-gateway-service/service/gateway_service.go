@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -253,7 +254,7 @@ func (g *GatewayService) Start(kafkaConfig KafkaConfig) error {
 }
 
 // HandleWebSocket handles WebSocket connection upgrade and lifecycle.
-// Validates: Requirements 6.1, 6.2, 11.1
+// Validates: Requirements 6.1, 6.2, 11.1, 15.5
 func (g *GatewayService) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	// Extract JWT token from query parameter or header
 	token := r.URL.Query().Get("token")
@@ -273,6 +274,12 @@ func (g *GatewayService) HandleWebSocket(w http.ResponseWriter, r *http.Request)
 	claims, err := g.authClient.ValidateToken(r.Context(), token)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Invalid token: %v", err), http.StatusUnauthorized)
+		return
+	}
+
+	// Validate device_id format (Requirement 15.5)
+	if err := ValidateDeviceID(claims.DeviceID); err != nil {
+		http.Error(w, fmt.Sprintf("Invalid device_id: %v", err), http.StatusBadRequest)
 		return
 	}
 
@@ -297,10 +304,15 @@ func (g *GatewayService) HandleWebSocket(w http.ResponseWriter, r *http.Request)
 		cancel:   cancel,
 	}
 
-	// Register user in Registry (Requirement 7.1, 7.2)
+	// Register user in Registry (Requirement 7.1, 7.2, 15.10)
 	if err := g.registryClient.RegisterUser(ctx, claims.UserID, claims.DeviceID, g.getGatewayNodeID()); err != nil {
 		_ = conn.Close()
-		http.Error(w, fmt.Sprintf("Failed to register user: %v", err), http.StatusInternalServerError)
+		// Check if it's a max devices error
+		if strings.Contains(err.Error(), "maximum number of devices") {
+			http.Error(w, fmt.Sprintf("Maximum number of devices reached: %v", err), http.StatusTooManyRequests)
+		} else {
+			http.Error(w, fmt.Sprintf("Failed to register user: %v", err), http.StatusInternalServerError)
+		}
 		return
 	}
 
