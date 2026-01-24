@@ -4,17 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/pingxin403/cuckoo/apps/im-gateway-service/gen/im_gateway_servicepb"
 	"github.com/pingxin403/cuckoo/apps/im-gateway-service/service"
-	"github.com/pingxin403/cuckoo/apps/im-gateway-service/storage"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
+	"github.com/redis/go-redis/v9"
 )
 
 func main() {
@@ -24,27 +21,60 @@ func main() {
 		port = "9093"
 	}
 
-	// Create TCP listener
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
-	if err != nil {
-		log.Fatalf("Failed to listen on port %s: %v", port, err)
+	// Initialize Redis client
+	redisAddr := os.Getenv("REDIS_ADDR")
+	if redisAddr == "" {
+		redisAddr = "localhost:6379"
+	}
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: redisAddr,
+	})
+	defer func() { _ = redisClient.Close() }()
+
+	// Test Redis connection
+	ctx := context.Background()
+	if err := redisClient.Ping(ctx).Err(); err != nil {
+		log.Printf("Warning: Redis connection failed: %v", err)
+	} else {
+		log.Println("Connected to Redis")
 	}
 
-	// Initialize storage
-	store := storage.NewMemoryStore()
-	log.Println("Initialized in-memory store")
+	// TODO: Initialize actual clients (auth, registry, IM service)
+	// For now, using nil clients - these should be replaced with real implementations
+	var authClient service.AuthServiceClient
+	var registryClient service.RegistryClient
+	var imClient service.IMServiceClient
 
-	// Create service
-	svc := service.NewUimUgatewayUserviceServiceServer(store)
+	// Create gateway service with default config
+	config := service.DefaultGatewayConfig()
+	gateway := service.NewGatewayService(
+		authClient,
+		registryClient,
+		imClient,
+		redisClient,
+		config,
+	)
 
-	// Create gRPC server
-	grpcServer := grpc.NewServer()
+	// TODO: Start gateway service with Kafka config
+	// kafkaConfig := service.KafkaConfig{...}
+	// if err := gateway.Start(kafkaConfig); err != nil {
+	//     log.Fatalf("Failed to start gateway service: %v", err)
+	// }
 
-	// Register service
-	im_gateway_servicepb.RegisterUimUgatewayUserviceServiceServer(grpcServer, svc)
+	// Setup HTTP server with timeouts
+	mux := http.NewServeMux()
+	mux.HandleFunc("/ws", gateway.HandleWebSocket)
+	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("OK"))
+	})
 
-	// Register reflection service for debugging (e.g., with grpcurl)
-	reflection.Register(grpcServer)
+	server := &http.Server{
+		Addr:         fmt.Sprintf(":%s", port),
+		Handler:      mux,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
 
 	// Setup graceful shutdown
 	sigChan := make(chan os.Signal, 1)
@@ -53,8 +83,9 @@ func main() {
 	// Start server in a goroutine
 	go func() {
 		log.Printf("im-gateway-service listening on port %s", port)
-		log.Println("Service ready to accept requests")
-		if err := grpcServer.Serve(lis); err != nil {
+		log.Println("WebSocket endpoint: /ws")
+		log.Println("Health endpoint: /health")
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Failed to serve: %v", err)
 		}
 	}()
@@ -64,22 +95,17 @@ func main() {
 	log.Printf("Received signal: %v. Initiating graceful shutdown...", sig)
 
 	// Graceful shutdown with timeout
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// Stop accepting new connections and wait for existing ones to finish
-	stopped := make(chan struct{})
-	go func() {
-		grpcServer.GracefulStop()
-		close(stopped)
-	}()
+	// Shutdown gateway service
+	if err := gateway.Shutdown(shutdownCtx); err != nil {
+		log.Printf("Gateway shutdown error: %v", err)
+	}
 
-	select {
-	case <-stopped:
-		log.Println("Server stopped gracefully")
-	case <-shutdownCtx.Done():
-		log.Println("Shutdown timeout exceeded, forcing stop")
-		grpcServer.Stop()
+	// Shutdown HTTP server
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Printf("HTTP server shutdown error: %v", err)
 	}
 
 	log.Println("im-gateway-service shutdown complete")

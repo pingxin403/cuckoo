@@ -63,6 +63,12 @@ func (s *OfflineStore) Close() error {
 	return s.db.Close()
 }
 
+// GetDB returns the underlying database connection
+// This is used by other services that need direct database access
+func (s *OfflineStore) GetDB() *sql.DB {
+	return s.db
+}
+
 // BatchInsert inserts multiple messages in a single transaction
 // Maximum batch size is 100 messages per transaction
 func (s *OfflineStore) BatchInsert(ctx context.Context, messages []OfflineMessage) error {
@@ -78,7 +84,7 @@ func (s *OfflineStore) BatchInsert(ctx context.Context, messages []OfflineMessag
 	if err != nil {
 		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	stmt, err := tx.PrepareContext(ctx, `
 		INSERT INTO offline_messages (
@@ -89,7 +95,7 @@ func (s *OfflineStore) BatchInsert(ctx context.Context, messages []OfflineMessag
 	if err != nil {
 		return fmt.Errorf("failed to prepare statement: %w", err)
 	}
-	defer stmt.Close()
+	defer func() { _ = stmt.Close() }()
 
 	for _, msg := range messages {
 		// Convert metadata map to JSON string (simplified - in production use json.Marshal)
@@ -144,7 +150,7 @@ func (s *OfflineStore) GetMessages(ctx context.Context, userID string, cursor in
 	if err != nil {
 		return nil, fmt.Errorf("failed to query messages: %w", err)
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var messages []OfflineMessage
 	for rows.Next() {

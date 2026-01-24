@@ -20,7 +20,7 @@ func (m *MockStatsLogger) LogCleanupStats(stats CleanupStats) {
 func TestNewCleanupJob(t *testing.T) {
 	db, _, err := sqlmock.New()
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	store := &OfflineStore{db: db}
 
@@ -50,7 +50,7 @@ func TestNewCleanupJob(t *testing.T) {
 func TestRunOnce(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	store := &OfflineStore{db: db}
 	logger := &MockStatsLogger{}
@@ -162,7 +162,7 @@ func TestRunOnce(t *testing.T) {
 func TestStartStop(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	store := &OfflineStore{db: db}
 	logger := &MockStatsLogger{}

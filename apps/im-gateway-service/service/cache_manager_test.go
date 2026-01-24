@@ -15,7 +15,7 @@ func TestCacheManager_GetUserGateway_CacheMiss(t *testing.T) {
 	cacheManager := NewCacheManager(nil, registryClient, 5*time.Minute, 5*time.Minute)
 
 	// Register a user
-	registryClient.RegisterUser(context.Background(), "user123", "device456", "gateway-1")
+	_ = registryClient.RegisterUser(context.Background(), "user123", "device456", "gateway-1")
 
 	// Get user gateway (cache miss)
 	locations, err := cacheManager.GetUserGateway(context.Background(), "user123")
@@ -31,7 +31,7 @@ func TestCacheManager_GetUserGateway_CacheHit(t *testing.T) {
 	cacheManager := NewCacheManager(nil, registryClient, 5*time.Minute, 5*time.Minute)
 
 	// Register a user
-	registryClient.RegisterUser(context.Background(), "user123", "device456", "gateway-1")
+	_ = registryClient.RegisterUser(context.Background(), "user123", "device456", "gateway-1")
 
 	// First call - cache miss
 	locations1, err := cacheManager.GetUserGateway(context.Background(), "user123")
@@ -51,7 +51,7 @@ func TestCacheManager_InvalidateUserCache(t *testing.T) {
 	cacheManager := NewCacheManager(nil, registryClient, 5*time.Minute, 5*time.Minute)
 
 	// Register a user
-	registryClient.RegisterUser(context.Background(), "user123", "device456", "gateway-1")
+	_ = registryClient.RegisterUser(context.Background(), "user123", "device456", "gateway-1")
 
 	// Get user gateway (cache miss)
 	locations1, err := cacheManager.GetUserGateway(context.Background(), "user123")
@@ -62,8 +62,8 @@ func TestCacheManager_InvalidateUserCache(t *testing.T) {
 	cacheManager.InvalidateUserCache("user123")
 
 	// Update registry
-	registryClient.UnregisterUser(context.Background(), "user123", "device456")
-	registryClient.RegisterUser(context.Background(), "user123", "device789", "gateway-2")
+	_ = registryClient.UnregisterUser(context.Background(), "user123", "device456")
+	_ = registryClient.RegisterUser(context.Background(), "user123", "device789", "gateway-2")
 
 	// Get user gateway again (should query registry)
 	locations2, err := cacheManager.GetUserGateway(context.Background(), "user123")
@@ -117,7 +117,7 @@ func TestCacheManager_ExpiredEntries(t *testing.T) {
 	cacheManager := NewCacheManager(nil, registryClient, 100*time.Millisecond, 100*time.Millisecond)
 
 	// Register a user
-	registryClient.RegisterUser(context.Background(), "user123", "device456", "gateway-1")
+	_ = registryClient.RegisterUser(context.Background(), "user123", "device456", "gateway-1")
 
 	// Get user gateway (cache miss)
 	locations1, err := cacheManager.GetUserGateway(context.Background(), "user123")

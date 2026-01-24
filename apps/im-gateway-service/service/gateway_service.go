@@ -182,7 +182,7 @@ type ClientMessage struct {
 
 // ServerMessage represents a message to the client.
 type ServerMessage struct {
-	Type           string `json:"type"` // "message", "ack", "ping", "error"
+	Type           string `json:"type"` // "message", "ack", "ping", "error", "read_receipt"
 	MsgID          string `json:"msg_id"`
 	Sender         string `json:"sender"`
 	Content        string `json:"content"`
@@ -190,6 +190,10 @@ type ServerMessage struct {
 	SequenceNumber int64  `json:"sequence_number"`
 	ErrorCode      string `json:"error_code,omitempty"`
 	ErrorMessage   string `json:"error_message,omitempty"`
+	// Read receipt fields
+	ReaderID       string `json:"reader_id,omitempty"`
+	ReadAt         int64  `json:"read_at,omitempty"`
+	ConversationID string `json:"conversation_id,omitempty"`
 }
 
 // NewGatewayService creates a new gateway service instance.
@@ -295,7 +299,7 @@ func (g *GatewayService) HandleWebSocket(w http.ResponseWriter, r *http.Request)
 
 	// Register user in Registry (Requirement 7.1, 7.2)
 	if err := g.registryClient.RegisterUser(ctx, claims.UserID, claims.DeviceID, g.getGatewayNodeID()); err != nil {
-		conn.Close()
+		_ = conn.Close()
 		http.Error(w, fmt.Sprintf("Failed to register user: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -349,7 +353,7 @@ func (g *GatewayService) Shutdown(ctx context.Context) error {
 	closeData, _ := json.Marshal(closeMsg)
 
 	// Close all connections with notification
-	g.connections.Range(func(key, value interface{}) bool {
+	g.connections.Range(func(key, value any) bool {
 		conn := value.(*Connection)
 		// Try to send close notification
 		select {
@@ -386,9 +390,9 @@ func (c *Connection) readPump() {
 		c.Close()
 	}()
 
-	c.Conn.SetReadDeadline(time.Now().Add(c.Gateway.config.PongWait))
+	_ = c.Conn.SetReadDeadline(time.Now().Add(c.Gateway.config.PongWait))
 	c.Conn.SetPongHandler(func(string) error {
-		c.Conn.SetReadDeadline(time.Now().Add(c.Gateway.config.PongWait))
+		_ = c.Conn.SetReadDeadline(time.Now().Add(c.Gateway.config.PongWait))
 		return nil
 	})
 
@@ -441,9 +445,9 @@ func (c *Connection) writePump() {
 	for {
 		select {
 		case message, ok := <-c.Send:
-			c.Conn.SetWriteDeadline(time.Now().Add(c.Gateway.config.WriteWait))
+			_ = c.Conn.SetWriteDeadline(time.Now().Add(c.Gateway.config.WriteWait))
 			if !ok {
-				c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
+				_ = c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
 
@@ -452,7 +456,7 @@ func (c *Connection) writePump() {
 			}
 
 		case <-ticker.C:
-			c.Conn.SetWriteDeadline(time.Now().Add(c.Gateway.config.WriteWait))
+			_ = c.Conn.SetWriteDeadline(time.Now().Add(c.Gateway.config.WriteWait))
 			if err := c.Conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				return
 			}
@@ -550,7 +554,7 @@ func (c *Connection) handleSendMessage(msg *ClientMessage) {
 }
 
 // handleAck handles an acknowledgment from the client.
-func (c *Connection) handleAck(msg *ClientMessage) {
+func (c *Connection) handleAck(_ *ClientMessage) {
 	// TODO: Implement ACK handling
 	// This would update delivery status in the system
 }
@@ -623,7 +627,7 @@ func (c *Connection) Close() {
 		c.cancel()
 
 		// Unregister from Registry
-		c.Gateway.registryClient.UnregisterUser(context.Background(), c.UserID, c.DeviceID)
+		_ = c.Gateway.registryClient.UnregisterUser(context.Background(), c.UserID, c.DeviceID)
 
 		// Remove from connections map
 		c.Gateway.connections.Delete(c.UserID + "_" + c.DeviceID)
@@ -633,7 +637,7 @@ func (c *Connection) Close() {
 
 		// Close WebSocket connection if it exists
 		if c.Conn != nil {
-			c.Conn.Close()
+			_ = c.Conn.Close()
 		}
 	})
 }

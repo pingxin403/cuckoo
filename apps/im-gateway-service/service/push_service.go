@@ -86,7 +86,7 @@ func (p *PushService) PushMessage(ctx context.Context, req *PushMessageRequest) 
 	} else {
 		// Push to all devices for this user (multi-device support)
 		// Validates: Requirements 15.1, 15.2, 15.3
-		p.gateway.connections.Range(func(key, value interface{}) bool {
+		p.gateway.connections.Range(func(key, value any) bool {
 			keyStr := key.(string)
 			// Check if this connection belongs to the recipient
 			if len(keyStr) > len(req.RecipientID) && keyStr[:len(req.RecipientID)] == req.RecipientID {
@@ -112,7 +112,7 @@ func (p *PushService) PushMessage(ctx context.Context, req *PushMessageRequest) 
 
 // pushToConnection attempts to push a message to a specific connection.
 // Returns true if successful, false otherwise.
-func (p *PushService) pushToConnection(conn *Connection, data []byte, msgID string) bool {
+func (p *PushService) pushToConnection(conn *Connection, data []byte, _ string) bool {
 	// Try to send message
 	select {
 	case conn.Send <- data:
@@ -141,7 +141,7 @@ func (p *PushService) BroadcastToGroup(ctx context.Context, groupID string, mess
 	// Push to all locally-connected members
 	for _, memberID := range members {
 		// Find all connections for this member
-		p.gateway.connections.Range(func(key, value interface{}) bool {
+		p.gateway.connections.Range(func(key, value any) bool {
 			keyStr := key.(string)
 			if len(keyStr) > len(memberID) && keyStr[:len(memberID)] == memberID {
 				connection := value.(*Connection)
@@ -190,4 +190,69 @@ func (g *GatewayService) InvalidateGroupCache(ctx context.Context, groupID strin
 	}
 
 	return nil
+}
+
+// PushReadReceiptRequest represents a read receipt push request.
+type PushReadReceiptRequest struct {
+	MsgID          string
+	SenderID       string // Original message sender (recipient of read receipt)
+	ReaderID       string // User who read the message
+	ConversationID string
+	ReadAt         int64
+}
+
+// PushReadReceipt pushes a read receipt to the message sender.
+// Validates: Requirements 5.3, 5.4, 15.4
+func (p *PushService) PushReadReceipt(ctx context.Context, req *PushReadReceiptRequest) (*PushMessageResponse, error) {
+	if req.SenderID == "" || req.ReaderID == "" {
+		return &PushMessageResponse{
+			Success:      false,
+			ErrorMessage: "sender_id and reader_id are required",
+		}, nil
+	}
+
+	// Prepare read receipt message
+	readReceiptMsg := ServerMessage{
+		Type:           "read_receipt",
+		MsgID:          req.MsgID,
+		ReaderID:       req.ReaderID,
+		ReadAt:         req.ReadAt,
+		ConversationID: req.ConversationID,
+		Timestamp:      time.Now().Unix(),
+	}
+
+	data, err := json.Marshal(readReceiptMsg)
+	if err != nil {
+		return &PushMessageResponse{
+			Success:      false,
+			ErrorMessage: fmt.Sprintf("failed to marshal read receipt: %v", err),
+		}, nil
+	}
+
+	var deliveredCount int32
+	var failedDevices []string
+
+	// Push to all devices for the sender (multi-device support)
+	// Validates: Requirements 15.4 (read receipt sync across devices)
+	p.gateway.connections.Range(func(key, value any) bool {
+		keyStr := key.(string)
+		// Check if this connection belongs to the sender
+		if len(keyStr) > len(req.SenderID) && keyStr[:len(req.SenderID)] == req.SenderID {
+			connection := value.(*Connection)
+			if connection.UserID == req.SenderID {
+				if p.pushToConnection(connection, data, req.MsgID) {
+					deliveredCount++
+				} else {
+					failedDevices = append(failedDevices, connection.DeviceID)
+				}
+			}
+		}
+		return true
+	})
+
+	return &PushMessageResponse{
+		Success:        deliveredCount > 0,
+		DeliveredCount: deliveredCount,
+		FailedDevices:  failedDevices,
+	}, nil
 }

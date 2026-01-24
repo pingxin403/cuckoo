@@ -31,7 +31,7 @@ func TestProperty_OfflineMessageOrderingPreservation(t *testing.T) {
 		// Create mock database
 		db, mock, err := sqlmock.New()
 		require.NoError(t, err)
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 
 		store := &OfflineStore{db: db}
 		ctx := context.Background()
@@ -108,7 +108,7 @@ func TestProperty_PaginationCorrectness(t *testing.T) {
 
 		db, mock, err := sqlmock.New()
 		require.NoError(t, err)
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 
 		store := &OfflineStore{db: db}
 		ctx := context.Background()
@@ -205,7 +205,7 @@ func TestProperty_BatchInsertPreservesOrder(t *testing.T) {
 
 		db, mock, err := sqlmock.New()
 		require.NoError(t, err)
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 
 		store := &OfflineStore{db: db}
 		ctx := context.Background()
@@ -242,7 +242,7 @@ func TestProperty_TTLCleanupConsistency(t *testing.T) {
 
 		db, mock, err := sqlmock.New()
 		require.NoError(t, err)
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 
 		store := &OfflineStore{db: db}
 		ctx := context.Background()

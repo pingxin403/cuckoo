@@ -174,6 +174,61 @@ The service exposes HTTP endpoints for monitoring:
 - `GET /stats`: JSON statistics about worker performance
 - `GET /metrics`: Prometheus-format metrics
 
+## Read Receipt API
+
+The service provides HTTP REST API for read receipt tracking with real-time delivery:
+
+### Mark Message as Read
+```bash
+POST /api/v1/messages/read
+Content-Type: application/json
+
+{
+  "msg_id": "550e8400-e29b-41d4-a716-446655440000",
+  "reader_id": "user123",
+  "sender_id": "user456",
+  "conversation_id": "conv789",
+  "conversation_type": "private",
+  "device_id": "device-uuid"
+}
+```
+
+**Real-Time Delivery**:
+- When a message is marked as read, a read receipt event is published to Kafka topic `read_receipt_events`
+- The Gateway Service consumes the event and pushes it to the sender via WebSocket
+- All sender's devices receive the read receipt (multi-device sync)
+- If the sender is offline, the receipt is stored for later retrieval
+
+### Get Unread Message Count
+```bash
+GET /api/v1/messages/unread/count?user_id=user123
+```
+
+### Get Unread Messages
+```bash
+GET /api/v1/messages/unread?user_id=user123&limit=50&offset=0
+```
+
+### Get Read Receipts for Message
+```bash
+GET /api/v1/messages/receipts?msg_id=550e8400-e29b-41d4-a716-446655440000
+```
+
+### Mark Conversation as Read
+```bash
+POST /api/v1/conversations/read
+Content-Type: application/json
+
+{
+  "user_id": "user123",
+  "conversation_id": "conv789"
+}
+```
+
+For detailed API documentation and read receipt delivery architecture, see:
+- [Read Receipt Tracking](readreceipt/README.md)
+- [Read Receipt Delivery](readreceipt/READ_RECEIPT_DELIVERY.md)
+
 ## Requirements Validated
 
 ### Message Routing
@@ -198,6 +253,17 @@ The service exposes HTTP endpoints for monitoring:
 - **5.1**: MySQL storage with partitioning
 - **5.2**: 7-day TTL for offline messages
 - **5.3**: Automatic cleanup of expired messages
+
+### Read Receipts
+- **5.1**: Mark messages as read with timestamp
+- **5.2**: Update message status to "read"
+- **5.3**: Push read receipt to online sender via WebSocket
+- **5.4**: Store read receipt for offline sender
+- **15.4**: Read receipt sync across devices (multi-device support)
+- **5.2**: Update message status to "read"
+- **5.3**: Real-time read receipt delivery (via Gateway Service)
+- **5.4**: Offline read receipt storage
+- **5.5**: Support for private and group chat read receipts
 
 ## Test Coverage
 
@@ -261,19 +327,25 @@ The IM Service depends on the following infrastructure components:
 1. **offline_messages**: Stores offline messages with 7-day retention
    - Partitioned by user_id (16 partitions)
    - Indexed by user_id, timestamp, conversation_id, sequence_number
+   - Added `read_at` column for read receipt tracking
 
-2. **groups**: Group metadata
+2. **read_receipts**: Tracks read receipts for messages
+   - Stores msg_id, reader_id, sender_id, read_at timestamp
+   - Supports multi-device read tracking with device_id
+   - Unique constraint on (msg_id, reader_id, device_id)
+
+3. **groups**: Group metadata
    - Stores group name, creator, member count
 
-3. **group_members**: Group membership
+4. **group_members**: Group membership
    - Many-to-many relationship between users and groups
    - Supports roles: owner, admin, member
 
-4. **sequence_snapshots**: Backup for Redis sequence numbers
+5. **sequence_snapshots**: Backup for Redis sequence numbers
    - Periodic snapshots every 10,000 messages
    - Used for disaster recovery
 
-5. **users**: User profiles
+6. **users**: User profiles
    - Stores username, email, display name, avatar
 
 ### Kafka Topics

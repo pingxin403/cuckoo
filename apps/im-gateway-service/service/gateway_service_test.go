@@ -193,7 +193,7 @@ func TestHandleWebSocket_ValidToken(t *testing.T) {
 	// Connect as client
 	ws, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
 	require.NoError(t, err)
-	defer ws.Close()
+	defer func() { _ = ws.Close() }()
 
 	// Give time for registration
 	time.Sleep(100 * time.Millisecond)
@@ -409,7 +409,7 @@ func TestConnection_Close(t *testing.T) {
 	assert.Len(t, locations, 1)
 
 	// Close connection
-	ws.Close()
+	_ = ws.Close()
 
 	// Give time for cleanup
 	time.Sleep(100 * time.Millisecond)

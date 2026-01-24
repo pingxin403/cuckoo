@@ -15,7 +15,7 @@ func TestNewOfflineStore(t *testing.T) {
 	t.Run("successful connection", func(t *testing.T) {
 		db, _, err := sqlmock.New(sqlmock.MonitorPingsOption(true))
 		require.NoError(t, err)
-		defer db.Close()
+		defer func() { _ = db.Close() }()
 
 		store := &OfflineStore{db: db}
 		assert.NotNil(t, store)
@@ -37,7 +37,7 @@ func TestNewOfflineStore(t *testing.T) {
 func TestBatchInsert(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	store := &OfflineStore{db: db}
 	ctx := context.Background()
@@ -182,7 +182,7 @@ func TestBatchInsert(t *testing.T) {
 func TestGetMessages(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	store := &OfflineStore{db: db}
 	ctx := context.Background()
@@ -275,7 +275,7 @@ func TestGetMessages(t *testing.T) {
 func TestGetMessageCount(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	store := &OfflineStore{db: db}
 	ctx := context.Background()
@@ -320,7 +320,7 @@ func TestGetMessageCount(t *testing.T) {
 func TestDeleteExpiredMessages(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	store := &OfflineStore{db: db}
 	ctx := context.Background()
@@ -373,7 +373,7 @@ func TestDeleteExpiredMessages(t *testing.T) {
 func TestGetExpiredMessageCount(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	store := &OfflineStore{db: db}
 	ctx := context.Background()
@@ -404,7 +404,7 @@ func TestGetExpiredMessageCount(t *testing.T) {
 func TestDeleteMessagesByUser(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	store := &OfflineStore{db: db}
 	ctx := context.Background()
@@ -437,7 +437,7 @@ func TestDeleteMessagesByUser(t *testing.T) {
 func TestGetOldestExpiredMessage(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	store := &OfflineStore{db: db}
 	ctx := context.Background()

@@ -16,7 +16,7 @@ import (
 func TestHTTPGetOfflineMessages(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	store := &OfflineStore{db: db}
 	handler := NewHTTPHandler(store)
@@ -158,7 +158,7 @@ func TestHTTPGetOfflineMessages(t *testing.T) {
 func TestHTTPGetMessageCount(t *testing.T) {
 	db, mock, err := sqlmock.New()
 	require.NoError(t, err)
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	store := &OfflineStore{db: db}
 	handler := NewHTTPHandler(store)
