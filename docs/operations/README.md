@@ -6,6 +6,23 @@ Operational guides for running, monitoring, and maintaining the IM Chat System i
 
 ## Guides
 
+### 🎯 Monitoring and Alerting Guide (START HERE)
+**File**: [MONITORING_ALERTING_GUIDE.md](./MONITORING_ALERTING_GUIDE.md)
+
+**Comprehensive unified guide integrating all monitoring and alerting documentation**:
+- Quick reference for emergency contacts, dashboards, and critical alerts
+- Complete monitoring stack architecture (Prometheus, Loki, Grafana, Alertmanager)
+- Key metrics and alerting system with severity levels
+- Centralized logging with query examples
+- SLO tracking and error budget management
+- Pre-configured dashboards and troubleshooting procedures
+- Daily, weekly, and monthly operational procedures
+- Best practices for monitoring, alerting, logging, and SLOs
+
+**Use this guide as your primary reference for all monitoring and alerting needs.**
+
+---
+
 ### Operational Runbooks
 **File**: [OPERATIONAL_RUNBOOKS.md](./OPERATIONAL_RUNBOOKS.md)
 
@@ -17,7 +34,7 @@ Comprehensive runbooks for handling operational scenarios:
 - **Runbook 5**: Scale Cluster Down (P3, 30-45 min)
 - **Runbook 6**: Investigate Message Delivery Issues (P1, 30-60 min)
 
-### Alerting Guide
+### Alerting Guide (Legacy - See Monitoring Guide)
 **File**: [ALERTING_GUIDE.md](./ALERTING_GUIDE.md)
 
 Complete alerting system documentation:
@@ -27,7 +44,9 @@ Complete alerting system documentation:
 - Response procedures
 - Testing and troubleshooting
 
-### Centralized Logging
+**Note**: This content is now integrated into the [Monitoring and Alerting Guide](./MONITORING_ALERTING_GUIDE.md).
+
+### Centralized Logging (Legacy - See Monitoring Guide)
 **File**: [CENTRALIZED_LOGGING.md](./CENTRALIZED_LOGGING.md)
 
 Centralized logging implementation with Loki:
@@ -37,7 +56,9 @@ Centralized logging implementation with Loki:
 - Retention policies
 - Integration with Grafana
 
-### SLO Tracking
+**Note**: This content is now integrated into the [Monitoring and Alerting Guide](./MONITORING_ALERTING_GUIDE.md).
+
+### SLO Tracking (Legacy - See Monitoring Guide)
 **File**: [SLO_TRACKING.md](./SLO_TRACKING.md)
 
 Service Level Objectives tracking and monitoring:
@@ -46,6 +67,8 @@ Service Level Objectives tracking and monitoring:
 - Success Rate SLO (99.99%)
 - Error budget tracking
 - SLO dashboards and alerts
+
+**Note**: This content is now integrated into the [Monitoring and Alerting Guide](./MONITORING_ALERTING_GUIDE.md).
 
 ## Quick Links
 
