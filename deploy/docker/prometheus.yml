@@ -8,15 +8,16 @@ global:
     cluster: 'monorepo-dev'
     environment: 'development'
 
-# Alertmanager configuration (optional)
-# alerting:
-#   alertmanagers:
-#     - static_configs:
-#         - targets: ['alertmanager:9093']
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ['alertmanager:9093']
+      timeout: 10s
 
 # Load rules once and periodically evaluate them
-# rule_files:
-#   - "alerts/*.yml"
+rule_files:
+  - "prometheus-alerts.yml"
 
 scrape_configs:
   # Scrape Prometheus itself

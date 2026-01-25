@@ -1,0 +1,179 @@
+# Alertmanager Configuration
+# Handles alert routing, grouping, and notification delivery
+
+global:
+  # Global configuration
+  resolve_timeout: 5m
+  
+  # Slack configuration (optional - configure when ready)
+  # slack_api_url: 'https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK'
+  
+  # PagerDuty configuration (optional - configure when ready)
+  # pagerduty_url: 'https://events.pagerduty.com/v2/enqueue'
+
+# Templates for alert notifications
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# Route tree for alert routing
+route:
+  # Default receiver for all alerts
+  receiver: 'default-receiver'
+  
+  # Group alerts by these labels
+  group_by: ['alertname', 'service', 'severity']
+  
+  # Wait time before sending initial notification
+  group_wait: 30s
+  
+  # Wait time before sending notification about new alerts in the same group
+  group_interval: 5m
+  
+  # Wait time before re-sending notification for the same alert
+  repeat_interval: 4h
+  
+  # Child routes for specific alert types
+  routes:
+    # Critical alerts (P1, circuit breaker)
+    - match_re:
+        severity: ^(critical|P1)$
+      receiver: 'critical-alerts'
+      group_wait: 10s
+      group_interval: 2m
+      repeat_interval: 30m
+      continue: true  # Also send to default receiver
+    
+    # P2 alerts
+    - match:
+        severity: P2
+      receiver: 'p2-alerts'
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 2h
+    
+    # Warning alerts
+    - match:
+        severity: warning
+      receiver: 'warning-alerts'
+      group_wait: 1m
+      group_interval: 10m
+      repeat_interval: 4h
+    
+    # Circuit breaker alerts (highest priority)
+    - match:
+        circuit_breaker: "true"
+      receiver: 'circuit-breaker-alerts'
+      group_wait: 0s
+      group_interval: 1m
+      repeat_interval: 15m
+
+# Inhibition rules - suppress certain alerts when others are firing
+inhibit_rules:
+  # Suppress warning alerts when critical alerts are firing for the same service
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['service', 'component']
+  
+  # Suppress P2 alerts when P1 alerts are firing for the same service
+  - source_match:
+      severity: 'P1'
+    target_match:
+      severity: 'P2'
+    equal: ['service', 'component']
+  
+  # Suppress all alerts when service is down
+  - source_match:
+      alertname: 'IMGatewayServiceDown'
+    target_match_re:
+      alertname: '^(High.*|Low.*|Too.*)$'
+    equal: ['service']
+
+# Receivers - define how to send notifications
+receivers:
+  # Default receiver - logs to console
+  - name: 'default-receiver'
+    webhook_configs:
+      - url: 'http://localhost:5001/webhook'
+        send_resolved: true
+  
+  # Critical alerts receiver
+  - name: 'critical-alerts'
+    # Slack configuration (uncomment and configure when ready)
+    # slack_configs:
+    #   - channel: '#alerts-critical'
+    #     title: '🚨 Critical Alert: {{ .GroupLabels.alertname }}'
+    #     text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+    #     send_resolved: true
+    
+    # PagerDuty configuration (uncomment and configure when ready)
+    # pagerduty_configs:
+    #   - service_key: 'YOUR_PAGERDUTY_SERVICE_KEY'
+    #     description: '{{ .GroupLabels.alertname }}: {{ .GroupLabels.service }}'
+    #     severity: 'critical'
+    #     details:
+    #       firing: '{{ .Alerts.Firing | len }}'
+    #       resolved: '{{ .Alerts.Resolved | len }}'
+    #       description: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+    
+    # Email configuration (uncomment and configure when ready)
+    # email_configs:
+    #   - to: 'oncall@example.com'
+    #     from: 'alertmanager@example.com'
+    #     smarthost: 'smtp.example.com:587'
+    #     auth_username: 'alertmanager@example.com'
+    #     auth_password: 'YOUR_PASSWORD'
+    #     headers:
+    #       Subject: '🚨 Critical Alert: {{ .GroupLabels.alertname }}'
+    
+    webhook_configs:
+      - url: 'http://localhost:5001/webhook/critical'
+        send_resolved: true
+  
+  # Circuit breaker alerts receiver (immediate notification)
+  - name: 'circuit-breaker-alerts'
+    # Slack configuration (uncomment and configure when ready)
+    # slack_configs:
+    #   - channel: '#alerts-circuit-breaker'
+    #     title: '⚠️ CIRCUIT BREAKER: {{ .GroupLabels.alertname }}'
+    #     text: '{{ range .Alerts }}{{ .Annotations.description }}\n{{ .Annotations.action }}{{ end }}'
+    #     send_resolved: true
+    #     color: 'danger'
+    
+    # PagerDuty configuration (uncomment and configure when ready)
+    # pagerduty_configs:
+    #   - service_key: 'YOUR_PAGERDUTY_SERVICE_KEY'
+    #     description: 'CIRCUIT BREAKER: {{ .GroupLabels.alertname }}'
+    #     severity: 'critical'
+    
+    webhook_configs:
+      - url: 'http://localhost:5001/webhook/circuit-breaker'
+        send_resolved: true
+  
+  # P2 alerts receiver
+  - name: 'p2-alerts'
+    # Slack configuration (uncomment and configure when ready)
+    # slack_configs:
+    #   - channel: '#alerts-p2'
+    #     title: '⚠️ P2 Alert: {{ .GroupLabels.alertname }}'
+    #     text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+    #     send_resolved: true
+    
+    webhook_configs:
+      - url: 'http://localhost:5001/webhook/p2'
+        send_resolved: true
+  
+  # Warning alerts receiver
+  - name: 'warning-alerts'
+    # Slack configuration (uncomment and configure when ready)
+    # slack_configs:
+    #   - channel: '#alerts-warnings'
+    #     title: 'ℹ️ Warning: {{ .GroupLabels.alertname }}'
+    #     text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+    #     send_resolved: true
+    
+    webhook_configs:
+      - url: 'http://localhost:5001/webhook/warning'
+        send_resolved: true
+

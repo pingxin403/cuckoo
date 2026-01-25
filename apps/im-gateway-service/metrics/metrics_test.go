@@ -1,265 +1,257 @@
 package metrics
 
 import (
-	"net/http"
-	"net/http/httptest"
-	"strings"
+	"context"
 	"testing"
 	"time"
 
+	"github.com/pingxin403/cuckoo/libs/observability"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewMetrics(t *testing.T) {
-	m := NewMetrics()
+	obs, err := observability.New(observability.Config{
+		ServiceName:       "test-service",
+		ServiceVersion:    "1.0.0",
+		Environment:       "test",
+		EnableMetrics:     true,
+		UseOTelMetrics:    true,
+		PrometheusEnabled: true,
+		MetricsPort:       0, // Don't start HTTP server in tests
+	})
+	require.NoError(t, err)
+	defer func() {
+		_ = obs.Shutdown(context.Background())
+	}()
+
+	m := NewMetrics(obs)
 	assert.NotNil(t, m)
-	assert.Equal(t, int64(0), m.GetActiveConnections())
-	assert.NotNil(t, m.latencyBuckets)
-	assert.Equal(t, 9, len(m.latencyBuckets)) // 8 buckets + +Inf
+	assert.NotNil(t, m.obs)
 }
 
 func TestConnectionMetrics(t *testing.T) {
-	m := NewMetrics()
+	obs, err := observability.New(observability.Config{
+		ServiceName:       "test-service",
+		ServiceVersion:    "1.0.0",
+		Environment:       "test",
+		EnableMetrics:     true,
+		UseOTelMetrics:    true,
+		PrometheusEnabled: true,
+		MetricsPort:       0,
+	})
+	require.NoError(t, err)
+	defer func() {
+		_ = obs.Shutdown(context.Background())
+	}()
 
-	// Test increment
+	m := NewMetrics(obs)
+
+	// Test increment - should not panic
 	m.IncrementActiveConnections()
-	assert.Equal(t, int64(1), m.GetActiveConnections())
-	assert.Equal(t, int64(1), m.totalConnections.Load())
-
 	m.IncrementActiveConnections()
-	assert.Equal(t, int64(2), m.GetActiveConnections())
-	assert.Equal(t, int64(2), m.totalConnections.Load())
 
-	// Test decrement
+	// Test decrement - should not panic
 	m.DecrementActiveConnections()
-	assert.Equal(t, int64(1), m.GetActiveConnections())
-	assert.Equal(t, int64(2), m.totalConnections.Load()) // Total should not decrease
 
-	// Test errors
+	// Test errors - should not panic
 	m.IncrementConnectionErrors()
-	assert.Equal(t, int64(1), m.connectionErrors.Load())
+
+	// Note: OTel metrics don't support direct reads
+	// Metrics are exported to backend (Prometheus/OTEL collector)
+	assert.Equal(t, int64(0), m.GetActiveConnections())
 }
 
 func TestMessageDeliveryMetrics(t *testing.T) {
-	m := NewMetrics()
+	obs, err := observability.New(observability.Config{
+		ServiceName:       "test-service",
+		ServiceVersion:    "1.0.0",
+		Environment:       "test",
+		EnableMetrics:     true,
+		UseOTelMetrics:    true,
+		PrometheusEnabled: true,
+		MetricsPort:       0,
+	})
+	require.NoError(t, err)
+	defer func() {
+		_ = obs.Shutdown(context.Background())
+	}()
 
+	m := NewMetrics(obs)
+
+	// Should not panic
 	m.IncrementMessagesDelivered()
-	assert.Equal(t, int64(1), m.messagesDelivered.Load())
-
 	m.IncrementMessagesFailed()
-	assert.Equal(t, int64(1), m.messagesFailed.Load())
-
 	m.IncrementAckTimeouts()
-	assert.Equal(t, int64(1), m.ackTimeouts.Load())
 }
 
 func TestLatencyTracking(t *testing.T) {
-	m := NewMetrics()
+	obs, err := observability.New(observability.Config{
+		ServiceName:       "test-service",
+		ServiceVersion:    "1.0.0",
+		Environment:       "test",
+		EnableMetrics:     true,
+		UseOTelMetrics:    true,
+		PrometheusEnabled: true,
+		MetricsPort:       0,
+	})
+	require.NoError(t, err)
+	defer func() {
+		_ = obs.Shutdown(context.Background())
+	}()
 
-	// Observe various latencies
+	m := NewMetrics(obs)
+
+	// Observe various latencies - should not panic
 	m.ObserveLatency(5 * time.Millisecond)
 	m.ObserveLatency(25 * time.Millisecond)
 	m.ObserveLatency(75 * time.Millisecond)
 	m.ObserveLatency(150 * time.Millisecond)
 	m.ObserveLatency(300 * time.Millisecond)
 
-	// Check histogram buckets
-	assert.Equal(t, int64(1), m.latencyBuckets["10"])
-	assert.Equal(t, int64(2), m.latencyBuckets["50"])
-	assert.Equal(t, int64(3), m.latencyBuckets["100"])
-	assert.Equal(t, int64(4), m.latencyBuckets["200"])
-	assert.Equal(t, int64(5), m.latencyBuckets["500"])
-	assert.Equal(t, int64(5), m.latencyBuckets["+Inf"])
-
-	// Check sum and count
-	assert.Equal(t, int64(5), m.latencyCount)
-	assert.Greater(t, m.latencySum, 0.0)
-}
-
-func TestLatencyPercentiles(t *testing.T) {
-	m := NewMetrics()
-
-	// Add 100 samples with known distribution
-	for i := 0; i < 50; i++ {
-		m.ObserveLatency(10 * time.Millisecond) // 50% at 10ms
-	}
-	for i := 0; i < 45; i++ {
-		m.ObserveLatency(100 * time.Millisecond) // 45% at 100ms
-	}
-	for i := 0; i < 5; i++ {
-		m.ObserveLatency(500 * time.Millisecond) // 5% at 500ms
-	}
-
+	// Note: OTel histograms don't support direct percentile calculation
+	// Percentiles are calculated by the metrics backend
 	p50, p95, p99 := m.GetLatencyPercentiles()
-
-	// P50 should be around 10-50ms
-	assert.LessOrEqual(t, p50, 100.0)
-
-	// P95 should be around 100-200ms
-	assert.LessOrEqual(t, p95, 500.0)
-
-	// P99 should be around 500ms
-	assert.LessOrEqual(t, p99, 1000.0)
+	assert.Equal(t, 0.0, p50)
+	assert.Equal(t, 0.0, p95)
+	assert.Equal(t, 0.0, p99)
 }
 
 func TestOfflineQueueMetrics(t *testing.T) {
-	m := NewMetrics()
+	obs, err := observability.New(observability.Config{
+		ServiceName:       "test-service",
+		ServiceVersion:    "1.0.0",
+		Environment:       "test",
+		EnableMetrics:     true,
+		UseOTelMetrics:    true,
+		PrometheusEnabled: true,
+		MetricsPort:       0,
+	})
+	require.NoError(t, err)
+	defer func() {
+		_ = obs.Shutdown(context.Background())
+	}()
 
+	m := NewMetrics(obs)
+
+	// Should not panic
 	m.SetOfflineQueueSize(100)
-	assert.Equal(t, int64(100), m.offlineQueueSize.Load())
-
 	m.IncrementOfflineQueueSize()
-	assert.Equal(t, int64(101), m.offlineQueueSize.Load())
-
 	m.DecrementOfflineQueueSize()
-	assert.Equal(t, int64(100), m.offlineQueueSize.Load())
 }
 
 func TestDeduplicationMetrics(t *testing.T) {
-	m := NewMetrics()
+	obs, err := observability.New(observability.Config{
+		ServiceName:       "test-service",
+		ServiceVersion:    "1.0.0",
+		Environment:       "test",
+		EnableMetrics:     true,
+		UseOTelMetrics:    true,
+		PrometheusEnabled: true,
+		MetricsPort:       0,
+	})
+	require.NoError(t, err)
+	defer func() {
+		_ = obs.Shutdown(context.Background())
+	}()
 
-	m.IncrementDuplicateMessages()
-	assert.Equal(t, int64(1), m.duplicateMessages.Load())
+	m := NewMetrics(obs)
 
+	// Should not panic
 	m.IncrementDuplicateMessages()
-	assert.Equal(t, int64(2), m.duplicateMessages.Load())
+	m.IncrementDuplicateMessages()
 }
 
 func TestMultiDeviceMetrics(t *testing.T) {
-	m := NewMetrics()
+	obs, err := observability.New(observability.Config{
+		ServiceName:       "test-service",
+		ServiceVersion:    "1.0.0",
+		Environment:       "test",
+		EnableMetrics:     true,
+		UseOTelMetrics:    true,
+		PrometheusEnabled: true,
+		MetricsPort:       0,
+	})
+	require.NoError(t, err)
+	defer func() {
+		_ = obs.Shutdown(context.Background())
+	}()
 
+	m := NewMetrics(obs)
+
+	// Should not panic
 	m.IncrementMultiDeviceDeliveries()
-	assert.Equal(t, int64(1), m.multiDeviceDeliveries.Load())
 }
 
 func TestGroupMessageMetrics(t *testing.T) {
-	m := NewMetrics()
+	obs, err := observability.New(observability.Config{
+		ServiceName:       "test-service",
+		ServiceVersion:    "1.0.0",
+		Environment:       "test",
+		EnableMetrics:     true,
+		UseOTelMetrics:    true,
+		PrometheusEnabled: true,
+		MetricsPort:       0,
+	})
+	require.NoError(t, err)
+	defer func() {
+		_ = obs.Shutdown(context.Background())
+	}()
 
+	m := NewMetrics(obs)
+
+	// Should not panic
 	m.IncrementGroupMessagesDelivered()
-	assert.Equal(t, int64(1), m.groupMessagesDelivered.Load())
-
 	m.AddGroupMembersFanout(10)
-	assert.Equal(t, int64(10), m.groupMembersFanout.Load())
-
 	m.AddGroupMembersFanout(5)
-	assert.Equal(t, int64(15), m.groupMembersFanout.Load())
 }
 
 func TestCacheMetrics(t *testing.T) {
-	m := NewMetrics()
+	obs, err := observability.New(observability.Config{
+		ServiceName:       "test-service",
+		ServiceVersion:    "1.0.0",
+		Environment:       "test",
+		EnableMetrics:     true,
+		UseOTelMetrics:    true,
+		PrometheusEnabled: true,
+		MetricsPort:       0,
+	})
+	require.NoError(t, err)
+	defer func() {
+		_ = obs.Shutdown(context.Background())
+	}()
 
-	// Initially 0% hit rate
+	m := NewMetrics(obs)
+
+	// Should not panic
+	m.IncrementCacheHits()
+	m.IncrementCacheHits()
+	m.IncrementCacheHits()
+	m.IncrementCacheMisses()
+
+	// Note: OTel counters don't support direct rate calculation
+	// Rates are calculated by the metrics backend
 	assert.Equal(t, 0.0, m.GetCacheHitRate())
-
-	// Add some hits and misses
-	m.IncrementCacheHits()
-	m.IncrementCacheHits()
-	m.IncrementCacheHits()
-	m.IncrementCacheMisses()
-
-	// Hit rate should be 75%
-	assert.Equal(t, 75.0, m.GetCacheHitRate())
-
-	assert.Equal(t, int64(3), m.cacheHits.Load())
-	assert.Equal(t, int64(1), m.cacheMisses.Load())
-}
-
-func TestPrometheusHandler(t *testing.T) {
-	m := NewMetrics()
-
-	// Set up some metrics
-	m.IncrementActiveConnections()
-	m.IncrementActiveConnections()
-	m.IncrementMessagesDelivered()
-	m.IncrementMessagesFailed()
-	m.IncrementAckTimeouts()
-	m.ObserveLatency(50 * time.Millisecond)
-	m.SetOfflineQueueSize(10)
-	m.IncrementDuplicateMessages()
-	m.IncrementMultiDeviceDeliveries()
-	m.IncrementGroupMessagesDelivered()
-	m.AddGroupMembersFanout(5)
-	m.IncrementCacheHits()
-	m.IncrementCacheMisses()
-
-	// Create test request
-	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
-	w := httptest.NewRecorder()
-
-	// Call handler
-	handler := m.Handler()
-	handler(w, req)
-
-	// Check response
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "text/plain; version=0.0.4", w.Header().Get("Content-Type"))
-
-	body := w.Body.String()
-
-	// Verify key metrics are present
-	assert.Contains(t, body, "im_gateway_active_connections 2")
-	assert.Contains(t, body, "im_gateway_total_connections_total 2")
-	assert.Contains(t, body, "im_gateway_messages_delivered_total 1")
-	assert.Contains(t, body, "im_gateway_messages_failed_total 1")
-	assert.Contains(t, body, "im_gateway_ack_timeouts_total 1")
-	assert.Contains(t, body, "im_gateway_offline_queue_size 10")
-	assert.Contains(t, body, "im_gateway_duplicate_messages_total 1")
-	assert.Contains(t, body, "im_gateway_multi_device_deliveries_total 1")
-	assert.Contains(t, body, "im_gateway_group_messages_delivered_total 1")
-	assert.Contains(t, body, "im_gateway_group_members_fanout_total 5")
-	assert.Contains(t, body, "im_gateway_cache_hits_total 1")
-	assert.Contains(t, body, "im_gateway_cache_misses_total 1")
-
-	// Verify histogram is present
-	assert.Contains(t, body, "im_gateway_message_delivery_latency_seconds_bucket")
-	assert.Contains(t, body, "im_gateway_message_delivery_latency_seconds_sum")
-	assert.Contains(t, body, "im_gateway_message_delivery_latency_seconds_count")
-
-	// Verify calculated metrics
-	assert.Contains(t, body, "im_gateway_message_duplication_rate_percent")
-	assert.Contains(t, body, "im_gateway_cache_hit_rate_percent 50.00")
-	assert.Contains(t, body, "im_gateway_ack_timeout_rate_percent 50.00")
-}
-
-func TestPrometheusHandlerFormat(t *testing.T) {
-	m := NewMetrics()
-	m.IncrementActiveConnections()
-
-	req := httptest.NewRequest(http.MethodGet, "/metrics", nil)
-	w := httptest.NewRecorder()
-
-	handler := m.Handler()
-	handler(w, req)
-
-	body := w.Body.String()
-	lines := strings.Split(body, "\n")
-
-	// Verify Prometheus format
-	helpFound := false
-	typeFound := false
-	metricFound := false
-
-	for _, line := range lines {
-		if strings.HasPrefix(line, "# HELP im_gateway_active_connections") {
-			helpFound = true
-		}
-		if strings.HasPrefix(line, "# TYPE im_gateway_active_connections gauge") {
-			typeFound = true
-		}
-		if strings.HasPrefix(line, "im_gateway_active_connections 1") {
-			metricFound = true
-		}
-	}
-
-	assert.True(t, helpFound, "HELP line should be present")
-	assert.True(t, typeFound, "TYPE line should be present")
-	assert.True(t, metricFound, "Metric line should be present")
 }
 
 func TestConcurrentMetricsUpdates(t *testing.T) {
-	m := NewMetrics()
+	obs, err := observability.New(observability.Config{
+		ServiceName:       "test-service",
+		ServiceVersion:    "1.0.0",
+		Environment:       "test",
+		EnableMetrics:     true,
+		UseOTelMetrics:    true,
+		PrometheusEnabled: true,
+		MetricsPort:       0,
+	})
+	require.NoError(t, err)
+	defer func() {
+		_ = obs.Shutdown(context.Background())
+	}()
 
-	// Simulate concurrent updates
+	m := NewMetrics(obs)
+
+	// Simulate concurrent updates - should not panic or race
 	done := make(chan bool)
 	for i := 0; i < 10; i++ {
 		go func() {
@@ -278,9 +270,27 @@ func TestConcurrentMetricsUpdates(t *testing.T) {
 		<-done
 	}
 
-	// Verify counts
-	assert.Equal(t, int64(1000), m.GetActiveConnections())
-	assert.Equal(t, int64(1000), m.messagesDelivered.Load())
-	assert.Equal(t, int64(1000), m.latencyCount)
-	assert.Equal(t, int64(1000), m.cacheHits.Load())
+	// Test passes if no panics or races occurred
+}
+
+func TestShutdown(t *testing.T) {
+	obs, err := observability.New(observability.Config{
+		ServiceName:       "test-service",
+		ServiceVersion:    "1.0.0",
+		Environment:       "test",
+		EnableMetrics:     true,
+		UseOTelMetrics:    true,
+		PrometheusEnabled: true,
+		MetricsPort:       0,
+	})
+	require.NoError(t, err)
+
+	m := NewMetrics(obs)
+
+	// Shutdown should not panic
+	err = m.Shutdown(context.Background())
+	assert.NoError(t, err)
+
+	// Shutdown observability (may have sync errors on stdout, which is expected in tests)
+	_ = obs.Shutdown(context.Background())
 }

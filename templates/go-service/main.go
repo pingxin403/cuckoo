@@ -3,13 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	"github.com/pingxin403/cuckoo/libs/observability"
 	"{{MODULE_PATH}}/gen/{{PROTO_PACKAGE}}"
 	"{{MODULE_PATH}}/service"
 	"{{MODULE_PATH}}/storage"
@@ -18,24 +18,49 @@ import (
 )
 
 func main() {
-	// Get port from environment variable or use default
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "{{GRPC_PORT}}"
+	// Initialize observability
+	obs, err := observability.New(observability.Config{
+		ServiceName:       "{{SERVICE_NAME}}",
+		ServiceVersion:    getEnv("SERVICE_VERSION", "1.0.0"),
+		Environment:       getEnv("DEPLOYMENT_ENVIRONMENT", "development"),
+		EnableMetrics:     true,
+		MetricsPort:       9090,
+		PrometheusEnabled: true,
+		LogLevel:          getEnv("LOG_LEVEL", "info"),
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to initialize observability: %v\n", err)
+		// Continue with no-op observability - service should still work
 	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if obs != nil {
+			if err := obs.Shutdown(shutdownCtx); err != nil {
+				fmt.Fprintf(os.Stderr, "Observability shutdown error: %v\n", err)
+			}
+		}
+	}()
+
+	// Get port from environment variable or use default
+	port := getEnv("PORT", "{{GRPC_PORT}}")
 
 	// Create TCP listener
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
 	if err != nil {
-		log.Fatalf("Failed to listen on port %s: %v", port, err)
+		obs.Logger().Error(context.Background(), "Failed to listen",
+			"port", port,
+			"error", err,
+		)
+		os.Exit(1)
 	}
 
 	// Initialize storage
 	store := storage.NewMemoryStore()
-	log.Println("Initialized in-memory store")
+	obs.Logger().Info(context.Background(), "Initialized in-memory store")
 
-	// Create service
-	svc := service.New{{ServiceName}}ServiceServer(store)
+	// Create service with observability
+	svc := service.New{{ServiceName}}ServiceServer(store, obs)
 
 	// Create gRPC server
 	grpcServer := grpc.NewServer()
@@ -52,16 +77,23 @@ func main() {
 
 	// Start server in a goroutine
 	go func() {
-		log.Printf("{{SERVICE_NAME}} listening on port %s", port)
-		log.Println("Service ready to accept requests")
+		obs.Logger().Info(context.Background(), "Service started",
+			"service", "{{SERVICE_NAME}}",
+			"port", port,
+		)
 		if err := grpcServer.Serve(lis); err != nil {
-			log.Fatalf("Failed to serve: %v", err)
+			obs.Logger().Error(context.Background(), "Failed to serve",
+				"error", err,
+			)
+			os.Exit(1)
 		}
 	}()
 
 	// Wait for shutdown signal
 	sig := <-sigChan
-	log.Printf("Received signal: %v. Initiating graceful shutdown...", sig)
+	obs.Logger().Info(context.Background(), "Received shutdown signal",
+		"signal", sig.String(),
+	)
 
 	// Graceful shutdown with timeout
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -76,11 +108,21 @@ func main() {
 
 	select {
 	case <-stopped:
-		log.Println("Server stopped gracefully")
+		obs.Logger().Info(context.Background(), "Server stopped gracefully")
 	case <-shutdownCtx.Done():
-		log.Println("Shutdown timeout exceeded, forcing stop")
+		obs.Logger().Warn(context.Background(), "Shutdown timeout exceeded, forcing stop")
 		grpcServer.Stop()
 	}
 
-	log.Println("{{SERVICE_NAME}} shutdown complete")
+	obs.Logger().Info(context.Background(), "Service shutdown complete",
+		"service", "{{SERVICE_NAME}}",
+	)
+}
+
+// getEnv returns the value of an environment variable or a default value
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
 }

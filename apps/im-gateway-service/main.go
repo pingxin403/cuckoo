@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/pingxin403/cuckoo/apps/im-gateway-service/metrics"
 	"github.com/pingxin403/cuckoo/apps/im-gateway-service/service"
 	"github.com/pingxin403/cuckoo/libs/observability"
 	"github.com/redis/go-redis/v9"
@@ -46,16 +47,20 @@ func main() {
 	var registryClient service.RegistryClient
 	var imClient service.IMServiceClient
 
-	// Initialize observability
+	// Initialize observability with OpenTelemetry metrics
 	obs, err := observability.New(observability.Config{
-		ServiceName:    "im-gateway-service",
-		ServiceVersion: "1.0.0",
-		Environment:    os.Getenv("DEPLOYMENT_ENVIRONMENT"),
-		EnableMetrics:  true,
-		MetricsPort:    9090, // Separate port for metrics
-		EnableTracing:  false,
-		LogLevel:       "info",
-		LogFormat:      "json",
+		ServiceName:         "im-gateway-service",
+		ServiceVersion:      "1.0.0",
+		Environment:         os.Getenv("DEPLOYMENT_ENVIRONMENT"),
+		EnableMetrics:       true,
+		UseOTelMetrics:      true,                                     // Use OpenTelemetry metrics
+		PrometheusEnabled:   true,                                     // Enable Prometheus exporter
+		MetricsPort:         9090,                                     // Separate port for metrics
+		OTLPMetricsEndpoint: os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"), // OTLP endpoint for metrics
+		OTLPInsecure:        true,                                     // Use insecure connection for development
+		EnableTracing:       false,
+		LogLevel:            "info",
+		LogFormat:           "json",
 	})
 	if err != nil {
 		log.Fatalf("Failed to initialize observability: %v", err)
@@ -71,7 +76,11 @@ func main() {
 	obs.Logger().Info(ctx, "Observability initialized",
 		"service", "im-gateway-service",
 		"metrics_port", 9090,
+		"otel_metrics", true,
 	)
+
+	// Create metrics instance with observability
+	gatewayMetrics := metrics.NewMetrics(obs)
 
 	// Create gateway service with default config
 	config := service.DefaultGatewayConfig()
@@ -83,8 +92,8 @@ func main() {
 		config,
 	)
 
-	// TODO: Integrate observability with gateway service
-	// gateway.SetObservability(obs)
+	// TODO: Integrate metrics with gateway service
+	// gateway.SetMetrics(gatewayMetrics)
 
 	// TODO: Start gateway service with Kafka config
 	// kafkaConfig := service.KafkaConfig{...}
@@ -135,6 +144,11 @@ func main() {
 	// Shutdown gateway service
 	if err := gateway.Shutdown(shutdownCtx); err != nil {
 		obs.Logger().Error(shutdownCtx, "Gateway shutdown error", "error", err)
+	}
+
+	// Shutdown metrics
+	if err := gatewayMetrics.Shutdown(shutdownCtx); err != nil {
+		obs.Logger().Error(shutdownCtx, "Metrics shutdown error", "error", err)
 	}
 
 	// Shutdown HTTP server

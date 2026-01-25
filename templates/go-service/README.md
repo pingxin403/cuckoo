@@ -130,8 +130,74 @@ kubectl apply -k deploy/k8s/overlays/production
 
 ### Environment Variables
 
-- `PORT` - gRPC server port (default: {{GRPC_PORT}})
-- `LOG_LEVEL` - Logging level (default: info)
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PORT` | gRPC server port | {{GRPC_PORT}} |
+| `SERVICE_VERSION` | Service version for metrics | 1.0.0 |
+| `DEPLOYMENT_ENVIRONMENT` | Deployment environment | development |
+| `LOG_LEVEL` | Logging level (debug, info, warn, error) | info |
+| `ENABLE_OTEL_METRICS` | Enable OpenTelemetry metrics | false |
+| `ENABLE_OTEL_LOGS` | Enable OpenTelemetry logs | false |
+| `ENABLE_OTEL_TRACING` | Enable distributed tracing | false |
+| `ENABLE_PROMETHEUS` | Enable Prometheus metrics export | true |
+| `ENABLE_PPROF` | Enable pprof profiling endpoints | false |
+| `OTLP_ENDPOINT` | OTLP collector endpoint | - |
+| `METRICS_PORT` | Metrics HTTP server port | 9090 |
+
+## Observability
+
+This service uses the unified observability library (`libs/observability`) for metrics, logging, and tracing.
+
+### Metrics
+
+Metrics are exposed on port 9090 by default:
+
+```bash
+# View metrics
+curl http://localhost:9090/metrics
+```
+
+**Available Metrics:**
+- `{{SERVICE_NAME_SNAKE}}_grpc_requests_total{method, status}` - Total gRPC requests
+- `{{SERVICE_NAME_SNAKE}}_grpc_request_duration_seconds{method}` - gRPC request latency
+- `{{SERVICE_NAME_SNAKE}}_operations_total{operation, status}` - Service operations
+
+### Logging
+
+Structured JSON logging with trace correlation:
+
+```json
+{
+  "level": "info",
+  "ts": "2026-01-25T10:00:00Z",
+  "msg": "Service started",
+  "service": "{{SERVICE_NAME}}",
+  "port": "{{GRPC_PORT}}"
+}
+```
+
+### Tracing
+
+Enable distributed tracing by setting:
+
+```bash
+ENABLE_OTEL_TRACING=true
+OTLP_ENDPOINT=localhost:4317
+```
+
+### Profiling
+
+Enable pprof for performance analysis:
+
+```bash
+ENABLE_PPROF=true
+
+# CPU profile
+go tool pprof http://localhost:9090/debug/pprof/profile
+
+# Memory profile
+go tool pprof http://localhost:9090/debug/pprof/heap
+```
 
 ## Development
 
