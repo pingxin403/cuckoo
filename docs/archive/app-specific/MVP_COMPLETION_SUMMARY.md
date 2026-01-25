@@ -129,8 +129,8 @@ kubectl get svc shortener-service
 ```
 
 ### API Gateway Configuration
-- **Envoy**: Configured in `tools/envoy/envoy-local.yaml` and `tools/envoy/envoy-docker.yaml`
-- **Higress**: Configured in `tools/higress/shortener-route.yaml`
+- **Envoy**: Configured in `deploy/docker/envoy-local-config.yaml` and `deploy/docker/envoy-config.yaml`
+- **Higress**: Configured in `deploy/k8s/services/higress/shortener-route.yaml`
 - **Routes**:
   - `/api/shortener` → gRPC service (port 9092)
   - `/:code` → HTTP redirect (port 8080)
@@ -221,9 +221,9 @@ The following features are marked as optional and can be implemented post-MVP:
 - [Kubernetes Service](./k8s/service.yaml)
 - [ConfigMap](./k8s/configmap.yaml)
 - [Secret Template](./k8s/secret.yaml.template)
-- [Envoy Local Config](../../tools/envoy/envoy-local.yaml)
-- [Envoy Docker Config](../../tools/envoy/envoy-docker.yaml)
-- [Higress Route Config](../../tools/higress/shortener-route.yaml)
+- [Envoy Local Config](../../deploy/docker/envoy-local-config.yaml)
+- [Envoy Docker Config](../../deploy/docker/envoy-config.yaml)
+- [Higress Route Config](../../deploy/k8s/services/higress/shortener-route.yaml)
 
 ### Source Code
 - [gRPC Service Implementation](./service/shortener_service_service.go)

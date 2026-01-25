@@ -33,7 +33,7 @@ Envoy Gateway (localhost:8080)
 - **Network**: monorepo-network
 
 ### Envoy 配置
-- **文件**: `tools/envoy/envoy-docker.yaml`
+- **文件**: `deploy/docker/envoy-config.yaml`
 - **监听端口**: 8080
 - **管理端口**: 9901
 

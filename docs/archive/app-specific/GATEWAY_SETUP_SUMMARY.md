@@ -14,8 +14,8 @@
 - Envoy 网关依赖配置
 
 ### 2. Envoy 配置
-- **本地开发**: `tools/envoy/envoy-local.yaml`
-- **Docker 环境**: `tools/envoy/envoy-docker.yaml`
+- **本地开发**: `deploy/docker/envoy-local-config.yaml`
+- **Docker 环境**: `deploy/docker/envoy-config.yaml`
 
 两个配置文件都包含：
 - `/api/shortener` → gRPC 服务 (端口 9092)
@@ -73,4 +73,4 @@ Envoy Gateway (localhost:8080)
 - [完整验证报告](./GATEWAY_VERIFICATION.md)
 - [API 文档](./docs/API.md)
 - [快速开始指南](./QUICK_START.md)
-- [Higress 配置指南](../../tools/higress/README.md)
+- [Higress 配置指南](../../deploy/k8s/services/higress/README.md)

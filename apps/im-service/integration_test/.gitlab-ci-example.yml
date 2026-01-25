@@ -1,0 +1,118 @@
+# Example GitLab CI Configuration for IM Service Integration Tests
+# Copy this file to .gitlab-ci.yml to enable
+
+stages:
+  - test
+
+variables:
+  MYSQL_ROOT_PASSWORD: password
+  MYSQL_DATABASE: im_chat
+  REDIS_ADDR: redis:6379
+  ETCD_ADDR: etcd:2379
+  KAFKA_ADDR: kafka:9092
+
+im-service-integration-test:
+  stage: test
+  image: golang:1.21
+  
+  services:
+    - name: mysql:8.0
+      alias: mysql
+      command: ["--default-authentication-plugin=mysql_native_password"]
+    
+    - name: redis:7-alpine
+      alias: redis
+    
+    - name: quay.io/coreos/etcd:v3.5.9
+      alias: etcd
+      command:
+        - /usr/local/bin/etcd
+        - --name=etcd0
+        - --advertise-client-urls=http://etcd:2379
+        - --listen-client-urls=http://0.0.0.0:2379
+        - --initial-advertise-peer-urls=http://etcd:2380
+        - --listen-peer-urls=http://0.0.0.0:2380
+        - --initial-cluster=etcd0=http://etcd:2380
+        - --initial-cluster-state=new
+    
+    - name: confluentinc/cp-zookeeper:7.4.0
+      alias: zookeeper
+      variables:
+        ZOOKEEPER_CLIENT_PORT: 2181
+        ZOOKEEPER_TICK_TIME: 2000
+    
+    - name: confluentinc/cp-kafka:7.4.0
+      alias: kafka
+      variables:
+        KAFKA_BROKER_ID: 1
+        KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+        KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+        KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+        KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+  
+  before_script:
+    - cd apps/im-service
+    - go mod download
+    
+    # Wait for services
+    - sleep 30
+    
+    # Load MySQL schema
+    - apt-get update && apt-get install -y mysql-client
+    - for file in migrations/*.sql; do mysql -h mysql -u root -p$MYSQL_ROOT_PASSWORD $MYSQL_DATABASE < "$file"; done
+    
+    # Build and start IM Service
+    - go build -o bin/im-service ./main.go
+    - export MYSQL_HOST=mysql
+    - export MYSQL_PORT=3306
+    - export MYSQL_USER=root
+    - export MYSQL_PASSWORD=$MYSQL_ROOT_PASSWORD
+    - export MYSQL_DATABASE=$MYSQL_DATABASE
+    - export GRPC_PORT=9094
+    - ./bin/im-service &
+    - sleep 10
+  
+  script:
+    - export IM_SERVICE_ADDR="localhost:9094"
+    - export MYSQL_ADDR="root:$MYSQL_ROOT_PASSWORD@tcp(mysql:3306)/$MYSQL_DATABASE"
+    
+    # Create coverage directory
+    - mkdir -p coverage
+    
+    # Run integration tests with coverage
+    - |
+      go test -v -tags=integration ./integration_test/... -timeout 10m \
+        -coverprofile=coverage/integration.out \
+        -covermode=atomic \
+        -coverpkg=./...
+    
+    # Generate coverage reports
+    - go tool cover -html=coverage/integration.out -o coverage/integration.html
+    - go tool cover -func=coverage/integration.out | tee coverage/summary.txt
+  
+  after_script:
+    - cd apps/im-service
+    - echo "Coverage Summary:"
+    - tail -n 1 coverage/summary.txt || echo "No coverage data"
+  
+  artifacts:
+    when: always
+    paths:
+      - apps/im-service/coverage/
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: apps/im-service/coverage/integration.out
+    expire_in: 30 days
+  
+  coverage: '/total:\s+\(statements\)\s+(\d+\.\d+)%/'
+  
+  only:
+    changes:
+      - apps/im-service/**/*
+      - apps/auth-service/**/*
+      - apps/user-service/**/*
+      - libs/**/*
+      - api/v1/**/*
+  
+  timeout: 30m

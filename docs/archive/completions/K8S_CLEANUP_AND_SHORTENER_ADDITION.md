@@ -172,7 +172,7 @@ curl http://localhost:9090/metrics
 
 ## Integration with Higress
 
-The shortener service can be integrated with Higress API Gateway using the existing configuration in `tools/higress/shortener-route.yaml`:
+The shortener service can be integrated with Higress API Gateway using the existing configuration in `deploy/k8s/services/higress/shortener-route.yaml`:
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -270,7 +270,7 @@ deploy/k8s/
 - [Infrastructure README](../deploy/k8s/infra/README.md) - Infrastructure deployment guide
 - [K8s Infra Helm Migration](./K8S_INFRA_HELM_MIGRATION.md) - Helm migration details
 - [Deployment Guide](../deploy/DEPLOYMENT_GUIDE.md) - Complete deployment guide
-- [Higress Configuration](../tools/higress/README.md) - API gateway configuration
+- [Higress Configuration](../deploy/k8s/services/higress/README.md) - API gateway configuration
 - [Shortener Service README](../apps/shortener-service/README.md) - Service documentation
 
 ## References

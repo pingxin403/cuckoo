@@ -14,7 +14,7 @@ The infrastructure consists of:
 
 ### 1. Local Envoy Proxy
 
-**Location**: `tools/envoy/envoy-local.yaml`
+**Location**: `deploy/docker/envoy-local-config.yaml`
 
 **Purpose**: Provides a local API gateway for development that:
 - Routes `/api/hello` to Hello Service (localhost:9090)
@@ -25,7 +25,7 @@ The infrastructure consists of:
 **Usage**:
 ```bash
 # Start Envoy
-envoy -c tools/envoy/envoy-local.yaml
+envoy -c deploy/docker/envoy-local-config.yaml
 
 # Or use the dev script (starts all services)
 ./scripts/dev.sh
@@ -60,7 +60,7 @@ envoy -c tools/envoy/envoy-local.yaml
 
 ### 3. Higress Ingress (Kubernetes)
 
-**Location**: `tools/k8s/ingress.yaml`
+**Location**: `deploy/k8s/services/higress/higress-routes.yaml`
 
 **Purpose**: Production-grade API gateway for Kubernetes with:
 - gRPC and gRPC-Web support
@@ -77,7 +77,7 @@ envoy -c tools/envoy/envoy-local.yaml
 
 **Deployment**:
 ```bash
-kubectl apply -f tools/k8s/ingress.yaml
+kubectl apply -f deploy/k8s/services/higress/higress-routes.yaml
 ```
 
 ### 4. Kustomize Configuration

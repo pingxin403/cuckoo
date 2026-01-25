@@ -162,7 +162,7 @@ patches:  # ✅ 使用新字段
     cp apps/todo-service/k8s/service.yaml k8s/base/todo-service-service.yaml
     
     # Copy ingress
-    cp tools/k8s/ingress.yaml k8s/base/ingress.yaml
+    cp deploy/k8s/services/higress/higress-routes.yaml k8s/base/ingress.yaml
     
     echo "✅ K8s resources prepared"
 ```
@@ -174,7 +174,7 @@ patches:  # ✅ 使用新字段
 mkdir -p k8s/base
 cp apps/hello-service/k8s/*.yaml k8s/base/hello-service-*.yaml
 cp apps/todo-service/k8s/*.yaml k8s/base/todo-service-*.yaml
-cp tools/k8s/ingress.yaml k8s/base/ingress.yaml
+cp deploy/k8s/services/higress/higress-routes.yaml k8s/base/ingress.yaml
 ```
 
 #### C. 条件部署逻辑

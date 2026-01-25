@@ -42,10 +42,15 @@ A multi-language monorepo project demonstrating microservices architecture with 
 │   ├── shortener-service/  # Go URL 短链接服务
 │   └── web/                # React 前端应用
 ├── libs/                   # 共享库
-├── tools/                  # 构建工具和配置
-│   ├── envoy/              # Envoy 代理配置
-│   ├── higress/            # Higress 网关配置
-│   └── k8s/                # Kubernetes 资源
+├── deploy/                 # 部署配置
+│   ├── docker/             # Docker Compose 配置
+│   │   ├── envoy-config.yaml          # Envoy 代理配置
+│   │   └── envoy-local-config.yaml    # 本地 Envoy 配置
+│   └── k8s/                # Kubernetes 配置
+│       ├── infra/          # 基础设施 (etcd, MySQL, Redis, Kafka)
+│       ├── services/       # 应用服务
+│       │   └── higress/    # Higress 网关配置
+│       └── observability/  # 监控和日志
 ├── scripts/                # 构建和开发脚本
 │   └── dev.sh              # 开发模式启动脚本
 ├── templates/              # 服务模板
@@ -720,7 +725,7 @@ kubectl logs -f deployment/hello-service -n production
 - **前端应用** (`/apps/web/`): @frontend-team
 - **Java 服务** (`/apps/hello-service/`): @backend-java-team
 - **Go 服务** (`/apps/todo-service/`): @backend-go-team
-- **基础设施** (`/tools/`, `/k8s/`, `/scripts/`): @platform-team
+- **基础设施** (`/deploy/`, `/scripts/`): @platform-team
 - **文档** (`/docs/`, `README.md`): @platform-team
 
 ### Pull Request 审批要求

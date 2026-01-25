@@ -13,9 +13,9 @@
 - [x] Makefile targets for code generation
 
 ### Infrastructure
-- [x] Local Envoy proxy configuration (`tools/envoy/envoy-local.yaml`)
+- [x] Local Envoy proxy configuration (`deploy/docker/envoy-local-config.yaml`)
 - [x] Development startup script (`scripts/dev.sh`)
-- [x] Higress Ingress configuration (`tools/k8s/ingress.yaml`)
+- [x] Higress Ingress configuration (`deploy/k8s/services/higress/higress-routes.yaml`)
 - [x] Kustomize base configuration (`k8s/base/`)
 - [x] Kustomize development overlay (`k8s/overlays/development/`)
 - [x] Kustomize production overlay (`k8s/overlays/production/`)

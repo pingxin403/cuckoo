@@ -8,6 +8,8 @@ Local development deployment using Docker Compose.
 deploy/docker/
 ├── docker-compose.infra.yml      # Infrastructure only (databases, caches, message queues)
 ├── docker-compose.services.yml   # Application services only
+├── envoy-config.yaml             # Envoy proxy configuration for Docker
+├── envoy-local-config.yaml       # Envoy proxy configuration for local development
 └── README.md                      # This file
 ```
 
@@ -59,7 +61,9 @@ docker compose -f deploy/docker/docker-compose.services.yml up -d
 | Hello Service | hello-service | 9090 | None |
 | TODO Service | todo-service | 9091 | hello-service |
 | Shortener Service | shortener-service | 9092 (gRPC), 8081 (HTTP) | mysql, redis |
-| Envoy Gateway | envoy-gateway | 8080, 9901 | shortener-service |
+| Envoy Gateway | envoy-gateway | 8080 (HTTP/gRPC-Web), 9901 (Admin) | All services |
+
+**Note**: Envoy acts as an API gateway, providing gRPC-Web support and routing to backend services.
 
 ## Common Commands
 
@@ -248,7 +252,20 @@ docker compose -f deploy/docker/docker-compose.observability.yml up -d
 
 ## Related Documentation
 
+### Deployment
 - [Kubernetes Deployment](../k8s/README.md)
 - [Observability Stack](./OBSERVABILITY.md)
 - [IM Service Infrastructure](../../apps/im-service/README.md#infrastructure)
 - [Shortener Service](../../apps/shortener-service/README.md)
+
+### Operations
+- [Operational Runbooks](../../docs/operations/OPERATIONAL_RUNBOOKS.md)
+- [Alerting Guide](../../docs/operations/ALERTING_GUIDE.md)
+- [Centralized Logging](../../docs/operations/CENTRALIZED_LOGGING.md)
+- [SLO Tracking](../../docs/operations/SLO_TRACKING.md)
+
+### Security
+- [Security Documentation](../../docs/security/)
+- [GDPR Compliance](../../docs/security/GDPR_COMPLIANCE.md)
+- [Audit Logging](../../docs/security/AUDIT_LOGGING.md)
+- [TLS Configuration](../../docs/security/TLS_CONFIGURATION.md)

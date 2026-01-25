@@ -87,7 +87,7 @@ Hello Service
 # 方式 2: 分别启动
 # Terminal 1: Envoy
 docker run -d --name envoy-local --network host \
-  -v $(pwd)/tools/envoy:/config \
+  -v $(pwd)/deploy/docker:/config \
   envoyproxy/envoy:v1.30 -c /config/envoy-local.yaml
 
 # Terminal 2: Hello Service

@@ -386,7 +386,7 @@ kubectl delete namespace higress-system
 
 - [Infrastructure README](../deploy/k8s/infra/README.md) - Complete infrastructure guide
 - [Deployment Guide](../deploy/DEPLOYMENT_GUIDE.md) - All environments deployment
-- [Higress Configuration](../tools/higress/README.md) - Higress routing configuration
+- [Higress Configuration](../deploy/k8s/services/higress/README.md) - Higress routing configuration
 - [etcd README](../deploy/k8s/infra/etcd/etcd-README.md) - etcd cluster details (legacy)
 
 ## References

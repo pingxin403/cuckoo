@@ -282,7 +282,7 @@ lsof -ti:8080 | xargs kill -9  # Envoy
 
 2. **Verify configuration**:
    ```bash
-   envoy --mode validate -c tools/envoy/envoy-local.yaml
+   envoy --mode validate -c deploy/docker/envoy-local-config.yaml
    ```
 
 ### grpcurl Not Found

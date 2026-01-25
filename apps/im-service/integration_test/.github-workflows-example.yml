@@ -1,0 +1,174 @@
+# Example GitHub Actions Workflow for IM Service Integration Tests
+# Copy this file to .github/workflows/im-service-integration.yml to enable
+
+name: IM Service Integration Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'apps/im-service/**'
+      - 'apps/auth-service/**'
+      - 'apps/user-service/**'
+      - 'libs/**'
+      - 'api/v1/**'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'apps/im-service/**'
+      - 'apps/auth-service/**'
+      - 'apps/user-service/**'
+      - 'libs/**'
+      - 'api/v1/**'
+
+jobs:
+  integration-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: im_chat
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -u root -ppassword"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+
+      - name: Install dependencies
+        run: |
+          go mod download
+        working-directory: apps/im-service
+
+      - name: Start etcd
+        run: |
+          docker run -d --name etcd \
+            -p 2379:2379 -p 2380:2380 \
+            -e ETCD_NAME=etcd0 \
+            -e ETCD_ADVERTISE_CLIENT_URLS=http://localhost:2379 \
+            -e ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379 \
+            -e ETCD_INITIAL_ADVERTISE_PEER_URLS=http://localhost:2380 \
+            -e ETCD_LISTEN_PEER_URLS=http://0.0.0.0:2380 \
+            -e ETCD_INITIAL_CLUSTER=etcd0=http://localhost:2380 \
+            -e ETCD_INITIAL_CLUSTER_STATE=new \
+            quay.io/coreos/etcd:v3.5.9
+
+      - name: Start Kafka
+        run: |
+          docker run -d --name zookeeper \
+            -p 2181:2181 \
+            -e ZOOKEEPER_CLIENT_PORT=2181 \
+            confluentinc/cp-zookeeper:7.4.0
+          
+          sleep 10
+          
+          docker run -d --name kafka \
+            -p 9092:9092 \
+            -e KAFKA_BROKER_ID=1 \
+            -e KAFKA_ZOOKEEPER_CONNECT=localhost:2181 \
+            -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:9092 \
+            -e KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 \
+            -e KAFKA_AUTO_CREATE_TOPICS_ENABLE=true \
+            --network host \
+            confluentinc/cp-kafka:7.4.0
+
+      - name: Wait for services
+        run: |
+          sleep 30
+
+      - name: Load MySQL schema
+        run: |
+          for file in apps/im-service/migrations/*.sql; do
+            mysql -h 127.0.0.1 -u root -ppassword im_chat < "$file"
+          done
+
+      - name: Build IM Service
+        run: |
+          go build -o bin/im-service ./main.go
+        working-directory: apps/im-service
+
+      - name: Start IM Service
+        run: |
+          export MYSQL_HOST=127.0.0.1
+          export MYSQL_PORT=3306
+          export MYSQL_USER=root
+          export MYSQL_PASSWORD=password
+          export MYSQL_DATABASE=im_chat
+          export REDIS_ADDR=127.0.0.1:6379
+          export ETCD_ENDPOINTS=127.0.0.1:2379
+          export KAFKA_BROKERS=127.0.0.1:9092
+          export GRPC_PORT=9094
+          ./bin/im-service &
+          sleep 10
+        working-directory: apps/im-service
+
+      - name: Run integration tests
+        run: |
+          export IM_SERVICE_ADDR="localhost:9094"
+          export MYSQL_ADDR="root:password@tcp(localhost:3306)/im_chat"
+          export REDIS_ADDR="localhost:6379"
+          export ETCD_ADDR="localhost:2379"
+          export KAFKA_ADDR="localhost:9092"
+          
+          mkdir -p coverage
+          go test -v -tags=integration ./integration_test/... -timeout 10m \
+            -coverprofile=coverage/integration.out \
+            -covermode=atomic \
+            -coverpkg=./...
+        working-directory: apps/im-service
+
+      - name: Generate coverage report
+        run: |
+          go tool cover -html=coverage/integration.out -o coverage/integration.html
+          go tool cover -func=coverage/integration.out
+        working-directory: apps/im-service
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./apps/im-service/coverage/integration.out
+          flags: integration
+          name: im-service-integration
+
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: |
+            apps/im-service/coverage/integration.out
+            apps/im-service/coverage/integration.html
+
+      - name: Show service logs on failure
+        if: failure()
+        run: |
+          echo "=== IM Service Logs ==="
+          docker logs im-service || echo "No logs available"
+          echo "=== Kafka Logs ==="
+          docker logs kafka || echo "No logs available"
+          echo "=== etcd Logs ==="
+          docker logs etcd || echo "No logs available"

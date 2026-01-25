@@ -28,8 +28,7 @@
 /apps/web/ @frontend-team
 
 # 基础设施和工具
-/tools/ @platform-team
-/k8s/ @platform-team
+/deploy/ @platform-team
 /scripts/ @platform-team
 
 # 服务模板

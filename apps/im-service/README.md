@@ -53,6 +53,7 @@ export OFFLINE_WORKER_ENABLED=true
 
 ### Testing
 
+#### Unit Tests
 ```bash
 # Fast unit tests (1 second) - recommended for development
 ./scripts/test-coverage.sh
@@ -65,6 +66,23 @@ make test APP=im
 ```
 
 **Note**: Property-based tests are slow due to TTL waits. See [TESTING.md](TESTING.md) for details.
+
+#### Integration Tests
+```bash
+# Run end-to-end integration tests with Docker Compose
+cd integration_test
+./run-integration-tests.sh
+```
+
+Integration tests validate:
+- Complete message flow (send → route → deliver)
+- Online/offline message handling
+- Group message broadcast
+- Message deduplication
+- Sequence number generation
+- Infrastructure integration (MySQL, Redis, etcd, Kafka)
+
+See [integration_test/README.md](integration_test/README.md) for details.
 
 ### Docker Deployment
 
@@ -375,7 +393,8 @@ For detailed API documentation and read receipt delivery architecture, see:
 
 - **Unit Tests**: 48 tests (fast, < 1 second)
 - **Property Tests**: 14 tests (slow, ~7 minutes)
-- **Total**: 62 tests validating correctness
+- **Integration Tests**: 6 end-to-end tests (2-5 minutes with Docker)
+- **Total**: 68 tests validating correctness and integration
 
 ## Scaling
 

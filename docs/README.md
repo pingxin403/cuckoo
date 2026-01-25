@@ -29,6 +29,20 @@ Welcome to the Monorepo documentation! This index helps you find the information
 - [Deployment Quick Reference](deployment/DEPLOYMENT_QUICK_REFERENCE.md) - Quick deployment commands
 - [Production Operations](deployment/PRODUCTION_OPERATIONS.md) - Operating in production
 
+## 🔧 Operations
+
+- [Operational Runbooks](operations/OPERATIONAL_RUNBOOKS.md) - Incident response and operational procedures
+- [Alerting Guide](operations/ALERTING_GUIDE.md) - Alert configuration and response
+- [Centralized Logging](operations/CENTRALIZED_LOGGING.md) - Log aggregation and analysis
+- [SLO Tracking](operations/SLO_TRACKING.md) - Service level objectives and monitoring
+
+## 🔒 Security
+
+- [Security Overview](security/README.md) - Security documentation index
+- [GDPR Compliance](security/GDPR_COMPLIANCE.md) - GDPR compliance implementation
+- [Audit Logging](security/AUDIT_LOGGING.md) - Audit logging system
+- [TLS Configuration](security/TLS_CONFIGURATION.md) - TLS/SSL setup and management
+
 ## 🔄 CI/CD
 
 - [Dynamic CI Strategy](ci-cd/DYNAMIC_CI_STRATEGY.md) - CI/CD pipeline design
@@ -69,7 +83,20 @@ Historical documents and migration guides are archived in the [archive](archive/
 1. [Deployment Guide](deployment/DEPLOYMENT_GUIDE.md)
 2. [Infrastructure Overview](architecture/INFRASTRUCTURE.md)
 3. [Production Operations](deployment/PRODUCTION_OPERATIONS.md)
-4. [Higress Routing](architecture/HIGRESS_ROUTING_CONFIGURATION.md)
+4. [Operational Runbooks](operations/OPERATIONAL_RUNBOOKS.md)
+5. [Higress Routing](architecture/HIGRESS_ROUTING_CONFIGURATION.md)
+
+### For SRE/Operations
+1. [Operational Runbooks](operations/OPERATIONAL_RUNBOOKS.md)
+2. [Alerting Guide](operations/ALERTING_GUIDE.md)
+3. [SLO Tracking](operations/SLO_TRACKING.md)
+4. [Centralized Logging](operations/CENTRALIZED_LOGGING.md)
+
+### For Security
+1. [Security Overview](security/README.md)
+2. [GDPR Compliance](security/GDPR_COMPLIANCE.md)
+3. [Audit Logging](security/AUDIT_LOGGING.md)
+4. [TLS Configuration](security/TLS_CONFIGURATION.md)
 
 ### For Architects
 1. [System Architecture](architecture/ARCHITECTURE.md)
@@ -132,6 +159,19 @@ docs/
 │   ├── DEPLOYMENT_QUICK_REFERENCE.md
 │   └── PRODUCTION_OPERATIONS.md
 │
+├── operations/                  # Operations and SRE
+│   ├── README.md
+│   ├── OPERATIONAL_RUNBOOKS.md
+│   ├── ALERTING_GUIDE.md
+│   ├── CENTRALIZED_LOGGING.md
+│   └── SLO_TRACKING.md
+│
+├── security/                    # Security documentation
+│   ├── README.md
+│   ├── GDPR_COMPLIANCE.md
+│   ├── AUDIT_LOGGING.md
+│   └── TLS_CONFIGURATION.md
+│
 ├── ci-cd/                       # CI/CD documentation
 │   ├── DYNAMIC_CI_STRATEGY.md
 │   ├── INTEGRATION_TESTS_IMPLEMENTATION.md
@@ -149,6 +189,8 @@ docs/
 │   └── openspec-quality-practices.md
 │
 └── archive/                     # Historical documents
+    ├── README.md
+    ├── TOOLS_DIRECTORY_CLEANUP.md
     ├── migrations/
     ├── completions/
     ├── fixes/
@@ -157,12 +199,12 @@ docs/
 
 ## 📊 Documentation Metrics
 
-- **Active Documents**: 25
+- **Active Documents**: 35
 - **Archived Documents**: 30+
-- **Last Major Cleanup**: 2026-01-22
+- **Last Major Cleanup**: 2026-01-25
 - **Organization**: By topic and purpose
 
 ---
 
-**Last Updated**: 2026-01-22  
+**Last Updated**: 2026-01-25  
 **Maintained By**: Platform Team

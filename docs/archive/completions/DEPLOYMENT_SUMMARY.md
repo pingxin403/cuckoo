@@ -37,7 +37,7 @@ The Monorepo Hello/TODO Services project has been successfully prepared for depl
 **Deliverables:**
 - `scripts/verify-docker-build.sh` - Docker build verification script
 - `docker-compose.yml` - Docker Compose configuration for local testing
-- `tools/envoy/envoy-docker.yaml` - Envoy configuration for Docker
+- `deploy/docker/envoy-config.yaml` - Envoy configuration for Docker
 - `docs/DOCKER_DEPLOYMENT.md` - Comprehensive Docker deployment guide
 - Fixed Dockerfile issues for both services
 
@@ -259,8 +259,8 @@ docker push registry.example.com/todo-service:v1.0.0
 | File | Purpose |
 |------|---------|
 | `docker-compose.yml` | Docker Compose configuration |
-| `tools/envoy/envoy-local.yaml` | Envoy config for local development |
-| `tools/envoy/envoy-docker.yaml` | Envoy config for Docker |
+| `deploy/docker/envoy-local-config.yaml` | Envoy config for local development |
+| `deploy/docker/envoy-config.yaml` | Envoy config for Docker |
 | `k8s/base/kustomization.yaml` | Base Kubernetes configuration |
 | `k8s/overlays/production/kustomization.yaml` | Production overlay |
 | `k8s/overlays/development/kustomization.yaml` | Development overlay |
@@ -294,7 +294,7 @@ docker push registry.example.com/todo-service:v1.0.0
    - Set correct registry URL and image tags
 
 2. **Configure Ingress**
-   - Update `tools/k8s/ingress.yaml` with your domain
+   - Update `deploy/k8s/services/higress/higress-routes.yaml` with your domain
    - Configure TLS certificates
 
 3. **Set Resource Limits**

@@ -101,7 +101,7 @@ services:
       - "8080:8080"  # HTTP/gRPC-Web
       - "9901:9901"  # Admin interface
     volumes:
-      - ../../tools/envoy/envoy-docker.yaml:/etc/envoy/envoy.yaml:ro
+      - ./envoy-config.yaml:/etc/envoy/envoy.yaml:ro
     command: ["-c", "/etc/envoy/envoy.yaml"]
     depends_on:
       - shortener-service
