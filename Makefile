@@ -4,6 +4,7 @@
         dev pre-commit verify-auto-detection \
         infra-up infra-down services-up services-down dev-up dev-down dev-restart infra-logs infra-clean infra-status \
         im-up im-down \
+        observability-up observability-down observability-restart observability-logs observability-status observability-clean \
         k8s-deploy-dev k8s-deploy-prod k8s-infra-deploy k8s-validate
 
 # Default target
@@ -38,6 +39,14 @@ help:
 	@echo "  services-up        - Start application services only"
 	@echo "  services-down      - Stop application services"
 	@echo "  dev-restart        - Restart application services (keep infrastructure running)"
+	@echo ""
+	@echo "  Observability Stack:"
+	@echo "  observability-up   - Start observability stack (OTel, Jaeger, Prometheus, Grafana, Loki)"
+	@echo "  observability-down - Stop observability stack"
+	@echo "  observability-restart - Restart observability stack"
+	@echo "  observability-logs - View observability logs"
+	@echo "  observability-status - Check observability status"
+	@echo "  observability-clean - Clean observability data (WARNING: Deletes all data!)"
 	@echo ""
 	@echo "  Kubernetes Deployment (Production):"
 	@echo "  k8s-deploy-dev     - Deploy to Kubernetes development environment"
@@ -304,6 +313,62 @@ im-down:
 	@docker compose -f deploy/docker/docker-compose.infra.yml \
 	                -f deploy/docker/docker-compose.services.yml down
 	@echo "✅ IM Chat System stopped"
+
+# ===== Observability Stack =====
+
+.PHONY: observability-up observability-down observability-restart observability-logs observability-status
+
+# Start observability stack
+observability-up:
+	@echo "Starting observability stack..."
+	@docker compose -f deploy/docker/docker-compose.observability.yml up -d
+	@echo "✅ Observability stack started"
+	@echo ""
+	@echo "Access UIs:"
+	@echo "  - Grafana:    http://localhost:3000 (admin/admin)"
+	@echo "  - Jaeger:     http://localhost:16686"
+	@echo "  - Prometheus: http://localhost:9090"
+	@echo "  - Loki:       http://localhost:3100"
+	@echo ""
+	@echo "OTLP Endpoints:"
+	@echo "  - gRPC: localhost:4317"
+	@echo "  - HTTP: localhost:4318"
+
+# Stop observability stack
+observability-down:
+	@echo "Stopping observability stack..."
+	@docker compose -f deploy/docker/docker-compose.observability.yml down
+	@echo "✅ Observability stack stopped"
+
+# Restart observability stack
+observability-restart:
+	@echo "Restarting observability stack..."
+	@docker compose -f deploy/docker/docker-compose.observability.yml restart
+	@echo "✅ Observability stack restarted"
+
+# View observability logs
+observability-logs:
+	@echo "Viewing observability logs (Ctrl+C to exit)..."
+	@docker compose -f deploy/docker/docker-compose.observability.yml logs -f
+
+# Check observability status
+observability-status:
+	@echo "Observability Stack Status:"
+	@docker compose -f deploy/docker/docker-compose.observability.yml ps
+
+# Clean observability data (WARNING: Deletes all data!)
+observability-clean:
+	@echo "⚠️  WARNING: This will delete all observability data!"
+	@read -p "Are you sure? [y/N] " -n 1 -r; \
+	echo; \
+	if [[ $$REPLY =~ ^[Yy]$$ ]]; then \
+		docker compose -f deploy/docker/docker-compose.observability.yml down -v; \
+		echo "✅ Observability data cleaned"; \
+	else \
+		echo "Cancelled"; \
+	fi
+
+# ===== End Observability Stack =====
 
 # Restart services (keep infrastructure running)
 dev-restart:

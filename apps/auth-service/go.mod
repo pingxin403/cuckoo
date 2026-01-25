@@ -4,6 +4,7 @@ go 1.22
 
 require (
 	github.com/golang-jwt/jwt/v5 v5.3.0
+	github.com/pingxin403/cuckoo/libs/observability v0.0.0
 	google.golang.org/grpc v1.70.0
 	google.golang.org/protobuf v1.36.4
 )
@@ -15,3 +16,5 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241202173237-19429a94021a // indirect
 	pgregory.net/rapid v1.2.0 // indirect
 )
+
+replace github.com/pingxin403/cuckoo/libs/observability => ../../libs/observability

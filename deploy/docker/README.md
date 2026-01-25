@@ -229,8 +229,26 @@ This Docker Compose setup is for **local development only**. For production:
 8. Configure proper resource limits
 9. Set up backups and disaster recovery
 
+## Observability Stack
+
+For monitoring and observability, see:
+- [Observability Stack Deployment](./OBSERVABILITY.md)
+- [Observability Library](../../libs/observability/README.md)
+
+Quick start:
+```bash
+# Start observability stack
+docker compose -f deploy/docker/docker-compose.observability.yml up -d
+
+# Access UIs
+# Grafana: http://localhost:3000 (admin/admin)
+# Jaeger: http://localhost:16686
+# Prometheus: http://localhost:9090
+```
+
 ## Related Documentation
 
 - [Kubernetes Deployment](../k8s/README.md)
+- [Observability Stack](./OBSERVABILITY.md)
 - [IM Service Infrastructure](../../apps/im-service/README.md#infrastructure)
 - [Shortener Service](../../apps/shortener-service/README.md)

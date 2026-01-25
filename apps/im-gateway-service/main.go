@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/pingxin403/cuckoo/apps/im-gateway-service/service"
+	"github.com/pingxin403/cuckoo/libs/observability"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -45,6 +46,33 @@ func main() {
 	var registryClient service.RegistryClient
 	var imClient service.IMServiceClient
 
+	// Initialize observability
+	obs, err := observability.New(observability.Config{
+		ServiceName:    "im-gateway-service",
+		ServiceVersion: "1.0.0",
+		Environment:    os.Getenv("DEPLOYMENT_ENVIRONMENT"),
+		EnableMetrics:  true,
+		MetricsPort:    9090, // Separate port for metrics
+		EnableTracing:  false,
+		LogLevel:       "info",
+		LogFormat:      "json",
+	})
+	if err != nil {
+		log.Fatalf("Failed to initialize observability: %v", err)
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := obs.Shutdown(shutdownCtx); err != nil {
+			log.Printf("Observability shutdown error: %v", err)
+		}
+	}()
+
+	obs.Logger().Info(ctx, "Observability initialized",
+		"service", "im-gateway-service",
+		"metrics_port", 9090,
+	)
+
 	// Create gateway service with default config
 	config := service.DefaultGatewayConfig()
 	gateway := service.NewGatewayService(
@@ -54,6 +82,9 @@ func main() {
 		redisClient,
 		config,
 	)
+
+	// TODO: Integrate observability with gateway service
+	// gateway.SetObservability(obs)
 
 	// TODO: Start gateway service with Kafka config
 	// kafkaConfig := service.KafkaConfig{...}
@@ -82,17 +113,20 @@ func main() {
 
 	// Start server in a goroutine
 	go func() {
-		log.Printf("im-gateway-service listening on port %s", port)
-		log.Println("WebSocket endpoint: /ws")
-		log.Println("Health endpoint: /health")
+		obs.Logger().Info(ctx, "Starting HTTP server",
+			"port", port,
+			"websocket_endpoint", "/ws",
+			"health_endpoint", "/health",
+		)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			obs.Logger().Error(ctx, "HTTP server error", "error", err)
 			log.Fatalf("Failed to serve: %v", err)
 		}
 	}()
 
 	// Wait for shutdown signal
 	sig := <-sigChan
-	log.Printf("Received signal: %v. Initiating graceful shutdown...", sig)
+	obs.Logger().Info(ctx, "Received shutdown signal", "signal", sig.String())
 
 	// Graceful shutdown with timeout
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -100,13 +134,13 @@ func main() {
 
 	// Shutdown gateway service
 	if err := gateway.Shutdown(shutdownCtx); err != nil {
-		log.Printf("Gateway shutdown error: %v", err)
+		obs.Logger().Error(shutdownCtx, "Gateway shutdown error", "error", err)
 	}
 
 	// Shutdown HTTP server
 	if err := server.Shutdown(shutdownCtx); err != nil {
-		log.Printf("HTTP server shutdown error: %v", err)
+		obs.Logger().Error(shutdownCtx, "HTTP server shutdown error", "error", err)
 	}
 
-	log.Println("im-gateway-service shutdown complete")
+	obs.Logger().Info(shutdownCtx, "Shutdown complete")
 }
