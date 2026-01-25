@@ -262,8 +262,137 @@ kubectl logs -f deployment/auth-service
 
 Supported environment variables:
 
+#### Service Configuration
 - `PORT`: gRPC server port (default: 9095)
-- `LOG_LEVEL`: Logging level (default: info)
+- `JWT_SECRET`: JWT signing secret (required)
+
+#### Observability Configuration
+- `SERVICE_NAME`: Service name for observability (default: auth-service)
+- `SERVICE_VERSION`: Service version (default: 1.0.0)
+- `DEPLOYMENT_ENVIRONMENT`: Deployment environment (default: development)
+- `ENABLE_METRICS`: Enable metrics collection (default: true)
+- `METRICS_PORT`: Metrics HTTP server port (default: 9090)
+- `ENABLE_OTEL_METRICS`: Enable OpenTelemetry metrics export (default: false)
+- `ENABLE_OTEL_LOGS`: Enable OpenTelemetry logs export (default: false)
+- `ENABLE_OTEL_TRACING`: Enable OpenTelemetry tracing (default: false)
+- `ENABLE_PROMETHEUS`: Enable Prometheus metrics export (default: true)
+- `ENABLE_PPROF`: Enable pprof profiling endpoints (default: false)
+- `OTLP_ENDPOINT`: OTLP collector endpoint (default: localhost:4317)
+- `LOG_LEVEL`: Logging level - debug, info, warn, error (default: info)
+- `LOG_FORMAT`: Log format - json or text (default: json)
+
+## Observability
+
+The auth-service integrates with the unified observability library, providing metrics, structured logging, distributed tracing, and profiling capabilities.
+
+### Metrics
+
+The service exposes Prometheus metrics on port 9090 (configurable via `METRICS_PORT`):
+
+```bash
+curl http://localhost:9090/metrics
+```
+
+#### Available Metrics
+
+**Token Validation Metrics:**
+- `auth_token_validations_total{status="success|failure", reason="..."}` - Counter of token validation attempts
+  - Success: Token validated successfully
+  - Failure reasons: `empty_token`, `expired`, `malformed`, `invalid_signature`, `invalid`, `invalid_claims`, `missing_user_id`, `missing_device_id`
+
+**Token Generation Metrics:**
+- `auth_token_generation_total{status="success|failure", reason="..."}` - Counter of token generation attempts
+  - Success: Tokens generated successfully
+  - Failure reasons: `empty_refresh_token`, `expired`, `malformed`, `invalid_signature`, `invalid`, `invalid_claims`, `signing_error`
+
+**gRPC Request Metrics:**
+- `auth_grpc_requests_total{method="ValidateToken|RefreshToken"}` - Counter of gRPC requests by method
+- `auth_grpc_request_duration_seconds{method="ValidateToken|RefreshToken"}` - Histogram of gRPC request duration
+
+All metrics include standard labels:
+- `service_name`: auth-service
+- `service_version`: Service version
+- `environment`: Deployment environment
+
+### Structured Logging
+
+The service uses structured logging with JSON format by default:
+
+```json
+{
+  "timestamp": "2024-01-25T10:30:00Z",
+  "level": "info",
+  "service": "auth-service",
+  "message": "Starting auth-service",
+  "version": "1.0.0"
+}
+```
+
+Log levels can be configured via `LOG_LEVEL` environment variable:
+- `debug`: Detailed debugging information
+- `info`: General informational messages (default)
+- `warn`: Warning messages
+- `error`: Error messages
+
+### OpenTelemetry Integration
+
+The service supports OpenTelemetry for metrics, logs, and traces export to an OTLP collector:
+
+```bash
+# Enable OpenTelemetry metrics export
+ENABLE_OTEL_METRICS=true OTLP_ENDPOINT=localhost:4317 go run .
+
+# Enable OpenTelemetry logs export
+ENABLE_OTEL_LOGS=true OTLP_ENDPOINT=localhost:4317 go run .
+
+# Enable OpenTelemetry tracing
+ENABLE_OTEL_TRACING=true OTLP_ENDPOINT=localhost:4317 go run .
+```
+
+The service will continue to function normally if the OTLP collector is unavailable.
+
+### Profiling (pprof)
+
+When enabled, the service exposes pprof endpoints for performance profiling:
+
+```bash
+# Enable pprof endpoints
+ENABLE_PPROF=true go run .
+
+# Access pprof endpoints
+curl http://localhost:9090/debug/pprof/
+curl http://localhost:9090/debug/pprof/heap
+curl http://localhost:9090/debug/pprof/goroutine
+curl http://localhost:9090/debug/pprof/profile?seconds=30
+```
+
+**Security Note**: pprof endpoints should only be enabled in development or controlled environments.
+
+### Observability Stack
+
+For local development with full observability stack (Prometheus, Jaeger, Grafana):
+
+```bash
+# Start observability stack
+make observability-up
+
+# Start auth-service with OpenTelemetry enabled
+ENABLE_OTEL_METRICS=true \
+ENABLE_OTEL_LOGS=true \
+ENABLE_OTEL_TRACING=true \
+OTLP_ENDPOINT=localhost:4317 \
+go run .
+
+# Access observability UIs
+# Prometheus: http://localhost:9091
+# Jaeger: http://localhost:16686
+# Grafana: http://localhost:3000
+```
+
+For more details, see:
+- [Observability Library Documentation](../../libs/observability/README.md)
+- [OpenTelemetry Guide](../../libs/observability/OPENTELEMETRY_GUIDE.md)
+- [Observability Deployment](../../deploy/docker/OBSERVABILITY.md)
 
 ## Development
 

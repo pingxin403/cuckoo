@@ -35,7 +35,7 @@ func TestProperty_CacheFallbackAndBackfill(t *testing.T) {
 			CreatedAt: time.Now(),
 		})
 
-		cm := NewCacheManager(l1, nil, storage)
+		cm := NewCacheManager(l1, nil, storage, createTestObservability())
 		ctx := context.Background()
 
 		// Property 1: L1 miss → DB query → backfill L1
@@ -98,7 +98,7 @@ func TestProperty_SingleflightRequestCoalescing(t *testing.T) {
 			CreatedAt: time.Now(),
 		})
 
-		cm := NewCacheManager(l1, nil, storage)
+		cm := NewCacheManager(l1, nil, storage, createTestObservability())
 		ctx := context.Background()
 
 		// Launch concurrent requests
@@ -152,7 +152,7 @@ func TestProperty_GracefulDegradation(t *testing.T) {
 		})
 
 		// Create cache manager with nil L2 (Redis unavailable)
-		cm := NewCacheManager(l1, nil, storage)
+		cm := NewCacheManager(l1, nil, storage, createTestObservability())
 		ctx := context.Background()
 
 		// Property: Service should continue operating with L1 and DB

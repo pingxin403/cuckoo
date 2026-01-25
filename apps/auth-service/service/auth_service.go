@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/pingxin403/cuckoo/apps/auth-service/gen/authpb"
+	"github.com/pingxin403/cuckoo/libs/observability"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -23,18 +24,37 @@ type Claims struct {
 type AuthServiceServer struct {
 	authpb.UnimplementedAuthServiceServer
 	jwtSecret []byte
+	obs       observability.Observability
 }
 
 // NewAuthServiceServer creates a new AuthServiceServer
-func NewAuthServiceServer(jwtSecret string) *AuthServiceServer {
+func NewAuthServiceServer(jwtSecret string, obs observability.Observability) *AuthServiceServer {
 	return &AuthServiceServer{
 		jwtSecret: []byte(jwtSecret),
+		obs:       obs,
 	}
 }
 
 // ValidateToken validates a JWT authentication token
 func (s *AuthServiceServer) ValidateToken(ctx context.Context, req *authpb.ValidateTokenRequest) (*authpb.ValidateTokenResponse, error) {
+	startTime := time.Now()
+	defer func() {
+		duration := time.Since(startTime)
+		s.obs.Metrics().RecordDuration("auth_grpc_request_duration_seconds", duration, map[string]string{
+			"method": "ValidateToken",
+		})
+	}()
+
+	// Record request count
+	s.obs.Metrics().IncrementCounter("auth_grpc_requests_total", map[string]string{
+		"method": "ValidateToken",
+	})
+
 	if req.AccessToken == "" {
+		s.obs.Metrics().IncrementCounter("auth_token_validations_total", map[string]string{
+			"status": "failure",
+			"reason": "empty_token",
+		})
 		return &authpb.ValidateTokenResponse{
 			Valid:        false,
 			ErrorCode:    authpb.AuthErrorCode_AUTH_ERROR_CODE_INVALID_TOKEN,
@@ -55,18 +75,30 @@ func (s *AuthServiceServer) ValidateToken(ctx context.Context, req *authpb.Valid
 		// Check for specific error types using errors.Is
 		switch {
 		case errors.Is(err, jwt.ErrTokenExpired):
+			s.obs.Metrics().IncrementCounter("auth_token_validations_total", map[string]string{
+				"status": "failure",
+				"reason": "expired",
+			})
 			return &authpb.ValidateTokenResponse{
 				Valid:        false,
 				ErrorCode:    authpb.AuthErrorCode_AUTH_ERROR_CODE_TOKEN_EXPIRED,
 				ErrorMessage: "Token has expired",
 			}, nil
 		case errors.Is(err, jwt.ErrTokenMalformed):
+			s.obs.Metrics().IncrementCounter("auth_token_validations_total", map[string]string{
+				"status": "failure",
+				"reason": "malformed",
+			})
 			return &authpb.ValidateTokenResponse{
 				Valid:        false,
 				ErrorCode:    authpb.AuthErrorCode_AUTH_ERROR_CODE_MALFORMED_TOKEN,
 				ErrorMessage: "Token is malformed",
 			}, nil
 		case errors.Is(err, jwt.ErrTokenSignatureInvalid):
+			s.obs.Metrics().IncrementCounter("auth_token_validations_total", map[string]string{
+				"status": "failure",
+				"reason": "invalid_signature",
+			})
 			return &authpb.ValidateTokenResponse{
 				Valid:        false,
 				ErrorCode:    authpb.AuthErrorCode_AUTH_ERROR_CODE_INVALID_SIGNATURE,
@@ -74,6 +106,10 @@ func (s *AuthServiceServer) ValidateToken(ctx context.Context, req *authpb.Valid
 			}, nil
 		default:
 			// Generic invalid token error
+			s.obs.Metrics().IncrementCounter("auth_token_validations_total", map[string]string{
+				"status": "failure",
+				"reason": "invalid",
+			})
 			return &authpb.ValidateTokenResponse{
 				Valid:        false,
 				ErrorCode:    authpb.AuthErrorCode_AUTH_ERROR_CODE_INVALID_TOKEN,
@@ -85,6 +121,10 @@ func (s *AuthServiceServer) ValidateToken(ctx context.Context, req *authpb.Valid
 	// Extract claims
 	claims, ok := token.Claims.(*Claims)
 	if !ok || !token.Valid {
+		s.obs.Metrics().IncrementCounter("auth_token_validations_total", map[string]string{
+			"status": "failure",
+			"reason": "invalid_claims",
+		})
 		return &authpb.ValidateTokenResponse{
 			Valid:        false,
 			ErrorCode:    authpb.AuthErrorCode_AUTH_ERROR_CODE_MALFORMED_TOKEN,
@@ -94,6 +134,10 @@ func (s *AuthServiceServer) ValidateToken(ctx context.Context, req *authpb.Valid
 
 	// Validate required fields
 	if claims.UserID == "" {
+		s.obs.Metrics().IncrementCounter("auth_token_validations_total", map[string]string{
+			"status": "failure",
+			"reason": "missing_user_id",
+		})
 		return &authpb.ValidateTokenResponse{
 			Valid:        false,
 			ErrorCode:    authpb.AuthErrorCode_AUTH_ERROR_CODE_MISSING_CLAIMS,
@@ -102,6 +146,10 @@ func (s *AuthServiceServer) ValidateToken(ctx context.Context, req *authpb.Valid
 	}
 
 	if claims.DeviceID == "" {
+		s.obs.Metrics().IncrementCounter("auth_token_validations_total", map[string]string{
+			"status": "failure",
+			"reason": "missing_device_id",
+		})
 		return &authpb.ValidateTokenResponse{
 			Valid:        false,
 			ErrorCode:    authpb.AuthErrorCode_AUTH_ERROR_CODE_MISSING_CLAIMS,
@@ -110,6 +158,9 @@ func (s *AuthServiceServer) ValidateToken(ctx context.Context, req *authpb.Valid
 	}
 
 	// Token is valid
+	s.obs.Metrics().IncrementCounter("auth_token_validations_total", map[string]string{
+		"status": "success",
+	})
 	return &authpb.ValidateTokenResponse{
 		Valid:    true,
 		UserId:   claims.UserID,
@@ -119,7 +170,24 @@ func (s *AuthServiceServer) ValidateToken(ctx context.Context, req *authpb.Valid
 
 // RefreshToken generates a new access token using a refresh token
 func (s *AuthServiceServer) RefreshToken(ctx context.Context, req *authpb.RefreshTokenRequest) (*authpb.RefreshTokenResponse, error) {
+	startTime := time.Now()
+	defer func() {
+		duration := time.Since(startTime)
+		s.obs.Metrics().RecordDuration("auth_grpc_request_duration_seconds", duration, map[string]string{
+			"method": "RefreshToken",
+		})
+	}()
+
+	// Record request count
+	s.obs.Metrics().IncrementCounter("auth_grpc_requests_total", map[string]string{
+		"method": "RefreshToken",
+	})
+
 	if req.RefreshToken == "" {
+		s.obs.Metrics().IncrementCounter("auth_token_generation_total", map[string]string{
+			"status": "failure",
+			"reason": "empty_refresh_token",
+		})
 		return nil, status.Error(codes.InvalidArgument, "refresh_token is required")
 	}
 
@@ -136,21 +204,37 @@ func (s *AuthServiceServer) RefreshToken(ctx context.Context, req *authpb.Refres
 		// Check for specific error types using errors.Is
 		switch {
 		case errors.Is(err, jwt.ErrTokenExpired):
+			s.obs.Metrics().IncrementCounter("auth_token_generation_total", map[string]string{
+				"status": "failure",
+				"reason": "expired",
+			})
 			return &authpb.RefreshTokenResponse{
 				ErrorCode:    authpb.AuthErrorCode_AUTH_ERROR_CODE_TOKEN_EXPIRED,
 				ErrorMessage: "Refresh token has expired",
 			}, nil
 		case errors.Is(err, jwt.ErrTokenMalformed):
+			s.obs.Metrics().IncrementCounter("auth_token_generation_total", map[string]string{
+				"status": "failure",
+				"reason": "malformed",
+			})
 			return &authpb.RefreshTokenResponse{
 				ErrorCode:    authpb.AuthErrorCode_AUTH_ERROR_CODE_INVALID_REFRESH_TOKEN,
 				ErrorMessage: "Refresh token is malformed",
 			}, nil
 		case errors.Is(err, jwt.ErrTokenSignatureInvalid):
+			s.obs.Metrics().IncrementCounter("auth_token_generation_total", map[string]string{
+				"status": "failure",
+				"reason": "invalid_signature",
+			})
 			return &authpb.RefreshTokenResponse{
 				ErrorCode:    authpb.AuthErrorCode_AUTH_ERROR_CODE_INVALID_REFRESH_TOKEN,
 				ErrorMessage: "Refresh token signature is invalid",
 			}, nil
 		default:
+			s.obs.Metrics().IncrementCounter("auth_token_generation_total", map[string]string{
+				"status": "failure",
+				"reason": "invalid",
+			})
 			return &authpb.RefreshTokenResponse{
 				ErrorCode:    authpb.AuthErrorCode_AUTH_ERROR_CODE_INVALID_REFRESH_TOKEN,
 				ErrorMessage: fmt.Sprintf("Invalid refresh token: %v", err),
@@ -161,6 +245,10 @@ func (s *AuthServiceServer) RefreshToken(ctx context.Context, req *authpb.Refres
 	// Extract claims
 	claims, ok := token.Claims.(*Claims)
 	if !ok || !token.Valid {
+		s.obs.Metrics().IncrementCounter("auth_token_generation_total", map[string]string{
+			"status": "failure",
+			"reason": "invalid_claims",
+		})
 		return &authpb.RefreshTokenResponse{
 			ErrorCode:    authpb.AuthErrorCode_AUTH_ERROR_CODE_INVALID_REFRESH_TOKEN,
 			ErrorMessage: "Invalid refresh token claims",
@@ -181,6 +269,10 @@ func (s *AuthServiceServer) RefreshToken(ctx context.Context, req *authpb.Refres
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
 	accessTokenString, err := accessToken.SignedString(s.jwtSecret)
 	if err != nil {
+		s.obs.Metrics().IncrementCounter("auth_token_generation_total", map[string]string{
+			"status": "failure",
+			"reason": "signing_error",
+		})
 		return &authpb.RefreshTokenResponse{
 			ErrorCode:    authpb.AuthErrorCode_AUTH_ERROR_CODE_INTERNAL_ERROR,
 			ErrorMessage: fmt.Sprintf("Failed to generate access token: %v", err),
@@ -201,12 +293,19 @@ func (s *AuthServiceServer) RefreshToken(ctx context.Context, req *authpb.Refres
 	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
 	refreshTokenString, err := refreshToken.SignedString(s.jwtSecret)
 	if err != nil {
+		s.obs.Metrics().IncrementCounter("auth_token_generation_total", map[string]string{
+			"status": "failure",
+			"reason": "signing_error",
+		})
 		return &authpb.RefreshTokenResponse{
 			ErrorCode:    authpb.AuthErrorCode_AUTH_ERROR_CODE_INTERNAL_ERROR,
 			ErrorMessage: fmt.Sprintf("Failed to generate refresh token: %v", err),
 		}, nil
 	}
 
+	s.obs.Metrics().IncrementCounter("auth_token_generation_total", map[string]string{
+		"status": "success",
+	})
 	return &authpb.RefreshTokenResponse{
 		AccessToken:  accessTokenString,
 		RefreshToken: refreshTokenString,

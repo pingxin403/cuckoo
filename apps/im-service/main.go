@@ -16,17 +16,44 @@ import (
 	"github.com/pingxin403/cuckoo/apps/im-service/readreceipt"
 	"github.com/pingxin403/cuckoo/apps/im-service/storage"
 	"github.com/pingxin403/cuckoo/apps/im-service/worker"
+	"github.com/pingxin403/cuckoo/libs/observability"
 	"google.golang.org/grpc"
 )
 
 func main() {
-	log.Println("Starting IM Service...")
+	// Initialize observability first
+	obs, err := observability.New(observability.Config{
+		ServiceName:    getEnv("SERVICE_NAME", "im-service"),
+		ServiceVersion: getEnv("SERVICE_VERSION", "1.0.0"),
+		Environment:    getEnv("DEPLOYMENT_ENVIRONMENT", "development"),
+		EnableMetrics:  getEnvBool("ENABLE_METRICS", true),
+		MetricsPort:    getEnvInt("METRICS_PORT", 9090),
+		LogLevel:       getEnv("LOG_LEVEL", "info"),
+		LogFormat:      getEnv("LOG_FORMAT", "json"),
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to initialize observability: %v\n", err)
+		os.Exit(1)
+	}
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := obs.Shutdown(shutdownCtx); err != nil {
+			log.Printf("Observability shutdown error: %v", err)
+		}
+	}()
+
+	ctx := context.Background()
+	obs.Logger().Info(ctx, "Starting IM Service",
+		"service", "im-service",
+		"version", getEnv("SERVICE_VERSION", "1.0.0"),
+	)
 
 	// Load configuration from environment
 	config := loadConfig()
 
 	// Initialize shared dependencies
-	log.Println("Initializing shared dependencies...")
+	obs.Logger().Info(ctx, "Initializing shared dependencies")
 
 	// Create storage
 	store, err := storage.NewOfflineStore(storage.Config{
@@ -36,10 +63,11 @@ func main() {
 		ConnMaxLifetime: config.DBConnMaxLifetime,
 	})
 	if err != nil {
-		log.Fatalf("Failed to create offline store: %v", err)
+		obs.Logger().Error(ctx, "Failed to create offline store", "error", err)
+		os.Exit(1)
 	}
 	defer func() { _ = store.Close() }()
-	log.Println("✓ Connected to database")
+	obs.Logger().Info(ctx, "Connected to database")
 
 	// Create dedup service
 	dedupService := dedup.NewDedupService(dedup.Config{
@@ -53,10 +81,12 @@ func main() {
 	// Test Redis connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	if err := dedupService.Ping(ctx); err != nil {
-		log.Fatalf("Failed to connect to Redis: %v", err)
+		obs.Logger().Error(ctx, "Failed to connect to Redis", "error", err)
+		cancel()
+		os.Exit(1)
 	}
 	cancel()
-	log.Println("✓ Connected to Redis")
+	obs.Logger().Info(ctx, "Connected to Redis")
 
 	// Start gRPC server for message routing
 	grpcServer := grpc.NewServer()
@@ -65,20 +95,22 @@ func main() {
 
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", config.GRPCPort))
 	if err != nil {
-		log.Fatalf("Failed to listen on port %d: %v", config.GRPCPort, err)
+		obs.Logger().Error(ctx, "Failed to listen", "port", config.GRPCPort, "error", err)
+		os.Exit(1)
 	}
 
 	go func() {
-		log.Printf("✓ gRPC server listening on port %d", config.GRPCPort)
+		obs.Logger().Info(ctx, "gRPC server listening", "port", config.GRPCPort)
 		if err := grpcServer.Serve(listener); err != nil {
-			log.Fatalf("Failed to serve gRPC: %v", err)
+			obs.Logger().Error(ctx, "Failed to serve gRPC", "error", err)
+			os.Exit(1)
 		}
 	}()
 
 	// Start offline worker (background component)
 	var offlineWorker *worker.OfflineWorker
 	if config.OfflineWorkerEnabled {
-		log.Println("Starting offline worker component...")
+		obs.Logger().Info(ctx, "Starting offline worker component")
 		offlineWorker, err = worker.NewOfflineWorker(
 			worker.WorkerConfig{
 				KafkaBrokers:  config.KafkaBrokers,
@@ -94,19 +126,21 @@ func main() {
 			dedupService,
 		)
 		if err != nil {
-			log.Fatalf("Failed to create offline worker: %v", err)
+			obs.Logger().Error(ctx, "Failed to create offline worker", "error", err)
+			os.Exit(1)
 		}
 
 		if err := offlineWorker.Start(); err != nil {
-			log.Fatalf("Failed to start offline worker: %v", err)
+			obs.Logger().Error(ctx, "Failed to start offline worker", "error", err)
+			os.Exit(1)
 		}
-		log.Println("✓ Offline worker started")
+		obs.Logger().Info(ctx, "Offline worker started")
 	} else {
-		log.Println("⚠ Offline worker disabled (OFFLINE_WORKER_ENABLED=false)")
+		obs.Logger().Warn(ctx, "Offline worker disabled", "reason", "OFFLINE_WORKER_ENABLED=false")
 	}
 
 	// Initialize read receipt service
-	log.Println("Initializing read receipt service...")
+	obs.Logger().Info(ctx, "Initializing read receipt service")
 	var readReceiptService *readreceipt.ReadReceiptService
 	if config.ReadReceiptKafkaEnabled {
 		readReceiptService = readreceipt.NewReadReceiptServiceWithKafka(
@@ -114,43 +148,44 @@ func main() {
 			config.KafkaBrokers,
 			config.ReadReceiptTopic,
 		)
-		log.Println("✓ Read receipt service initialized with Kafka support")
+		obs.Logger().Info(ctx, "Read receipt service initialized with Kafka support")
 	} else {
 		readReceiptService = readreceipt.NewReadReceiptService(store.GetDB())
-		log.Println("✓ Read receipt service initialized (Kafka disabled)")
+		obs.Logger().Info(ctx, "Read receipt service initialized", "kafka_enabled", false)
 	}
 	defer func() { _ = readReceiptService.Close() }()
 
 	readReceiptHandler := readreceipt.NewHTTPHandler(readReceiptService)
-	log.Println("✓ Read receipt HTTP handler initialized")
+	obs.Logger().Info(ctx, "Read receipt HTTP handler initialized")
 
 	// Start HTTP server for health checks, metrics, and read receipts
-	go startHTTPServer(offlineWorker, readReceiptHandler, config.HTTPPort)
+	go startHTTPServer(obs, offlineWorker, readReceiptHandler, config.HTTPPort)
 
-	log.Println("✓ IM Service started successfully")
-	log.Printf("  - gRPC server: :%d", config.GRPCPort)
-	log.Printf("  - HTTP server: :%d", config.HTTPPort)
-	log.Printf("  - Offline worker: %v", config.OfflineWorkerEnabled)
+	obs.Logger().Info(ctx, "IM Service started successfully",
+		"grpc_port", config.GRPCPort,
+		"http_port", config.HTTPPort,
+		"offline_worker_enabled", config.OfflineWorkerEnabled,
+	)
 
 	// Wait for interrupt signal
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	<-sigChan
 
-	log.Println("Shutting down IM Service...")
+	obs.Logger().Info(ctx, "Shutting down IM Service")
 
 	// Graceful shutdown
 	if offlineWorker != nil {
-		log.Println("Stopping offline worker...")
+		obs.Logger().Info(ctx, "Stopping offline worker")
 		if err := offlineWorker.Stop(); err != nil {
-			log.Printf("Error stopping worker: %v", err)
+			obs.Logger().Error(ctx, "Error stopping worker", "error", err)
 		}
 	}
 
-	log.Println("Stopping gRPC server...")
+	obs.Logger().Info(ctx, "Stopping gRPC server")
 	grpcServer.GracefulStop()
 
-	log.Println("IM Service stopped")
+	obs.Logger().Info(ctx, "IM Service stopped")
 }
 
 // Config holds application configuration
@@ -244,17 +279,43 @@ func buildDatabaseDSN() string {
 }
 
 // startHTTPServer starts HTTP server for health checks, metrics, and read receipts
-func startHTTPServer(w *worker.OfflineWorker, readReceiptHandler *readreceipt.HTTPHandler, port int) {
+func startHTTPServer(obs observability.Observability, w *worker.OfflineWorker, readReceiptHandler *readreceipt.HTTPHandler, port int) {
+	ctx := context.Background()
 	mux := http.NewServeMux()
 
+	// Middleware to track HTTP metrics
+	metricsMiddleware := func(path string, handler http.HandlerFunc) http.HandlerFunc {
+		return func(rw http.ResponseWriter, r *http.Request) {
+			start := time.Now()
+
+			// Create a response writer wrapper to capture status code
+			wrappedWriter := &responseWriter{ResponseWriter: rw, statusCode: http.StatusOK}
+
+			// Call the actual handler
+			handler(wrappedWriter, r)
+
+			// Record metrics
+			duration := time.Since(start).Seconds()
+			status := fmt.Sprintf("%d", wrappedWriter.statusCode)
+
+			obs.Metrics().IncrementCounter("http_requests_total", map[string]string{
+				"path":   path,
+				"status": status,
+			})
+			obs.Metrics().RecordHistogram("http_request_duration_seconds", duration, map[string]string{
+				"path": path,
+			})
+		}
+	}
+
 	// Health check endpoint
-	mux.HandleFunc("/health", func(rw http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/health", metricsMiddleware("/health", func(rw http.ResponseWriter, r *http.Request) {
 		rw.WriteHeader(http.StatusOK)
 		_, _ = rw.Write([]byte("OK"))
-	})
+	}))
 
 	// Readiness check endpoint
-	mux.HandleFunc("/ready", func(rw http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/ready", metricsMiddleware("/ready", func(rw http.ResponseWriter, r *http.Request) {
 		// Check if worker is processing messages (if enabled)
 		if w != nil {
 			stats := w.GetStats()
@@ -266,10 +327,10 @@ func startHTTPServer(w *worker.OfflineWorker, readReceiptHandler *readreceipt.HT
 		}
 		rw.WriteHeader(http.StatusOK)
 		_, _ = rw.Write([]byte("READY"))
-	})
+	}))
 
 	// Stats endpoint
-	mux.HandleFunc("/stats", func(rw http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/stats", metricsMiddleware("/stats", func(rw http.ResponseWriter, r *http.Request) {
 		if w == nil {
 			rw.Header().Set("Content-Type", "application/json")
 			rw.WriteHeader(http.StatusOK)
@@ -291,53 +352,44 @@ func startHTTPServer(w *worker.OfflineWorker, readReceiptHandler *readreceipt.HT
 		}`, stats.MessagesProcessed, stats.MessagesDeduplicated,
 			stats.MessagesPersisted, stats.BatchWrites,
 			stats.Errors, stats.AvgBatchSize)
-	})
+	}))
 
-	// Metrics endpoint (Prometheus format)
-	mux.HandleFunc("/metrics", func(rw http.ResponseWriter, r *http.Request) {
+	// Metrics endpoint (Prometheus format) - use observability library's handler
+	// Note: The observability library already exposes metrics on the configured MetricsPort (9090)
+	// This endpoint provides backward compatibility and worker-specific metrics
+	mux.HandleFunc("/metrics", metricsMiddleware("/metrics", func(rw http.ResponseWriter, r *http.Request) {
 		rw.Header().Set("Content-Type", "text/plain")
 		rw.WriteHeader(http.StatusOK)
 
-		if w == nil {
-			_, _ = fmt.Fprintf(rw, "# HELP im_service_offline_worker_enabled Whether offline worker is enabled\n")
-			_, _ = fmt.Fprintf(rw, "# TYPE im_service_offline_worker_enabled gauge\n")
-			_, _ = fmt.Fprintf(rw, "im_service_offline_worker_enabled 0\n")
-			return
+		// Worker-specific metrics (if enabled)
+		if w != nil {
+			stats := w.GetStats()
+			// Use observability library metrics instead of custom implementation
+			obs.Metrics().SetGauge("offline_worker_enabled", 1, nil)
+			obs.Metrics().SetGauge("messages_processed", float64(stats.MessagesProcessed), nil)
+			obs.Metrics().SetGauge("messages_deduplicated", float64(stats.MessagesDeduplicated), nil)
+			obs.Metrics().SetGauge("messages_persisted", float64(stats.MessagesPersisted), nil)
+			obs.Metrics().SetGauge("batch_writes", float64(stats.BatchWrites), nil)
+			obs.Metrics().SetGauge("errors", float64(stats.Errors), nil)
+			obs.Metrics().SetGauge("batch_size_avg", stats.AvgBatchSize, nil)
+		} else {
+			obs.Metrics().SetGauge("offline_worker_enabled", 0, nil)
 		}
 
-		stats := w.GetStats()
-		_, _ = fmt.Fprintf(rw, "# HELP im_service_offline_worker_enabled Whether offline worker is enabled\n")
-		_, _ = fmt.Fprintf(rw, "# TYPE im_service_offline_worker_enabled gauge\n")
-		_, _ = fmt.Fprintf(rw, "im_service_offline_worker_enabled 1\n")
-		_, _ = fmt.Fprintf(rw, "# HELP im_service_messages_processed_total Total messages consumed from Kafka\n")
-		_, _ = fmt.Fprintf(rw, "# TYPE im_service_messages_processed_total counter\n")
-		_, _ = fmt.Fprintf(rw, "im_service_messages_processed_total %d\n", stats.MessagesProcessed)
-		_, _ = fmt.Fprintf(rw, "# HELP im_service_messages_deduplicated_total Total messages skipped due to duplicates\n")
-		_, _ = fmt.Fprintf(rw, "# TYPE im_service_messages_deduplicated_total counter\n")
-		_, _ = fmt.Fprintf(rw, "im_service_messages_deduplicated_total %d\n", stats.MessagesDeduplicated)
-		_, _ = fmt.Fprintf(rw, "# HELP im_service_messages_persisted_total Total messages written to database\n")
-		_, _ = fmt.Fprintf(rw, "# TYPE im_service_messages_persisted_total counter\n")
-		_, _ = fmt.Fprintf(rw, "im_service_messages_persisted_total %d\n", stats.MessagesPersisted)
-		_, _ = fmt.Fprintf(rw, "# HELP im_service_batch_writes_total Total batch write operations\n")
-		_, _ = fmt.Fprintf(rw, "# TYPE im_service_batch_writes_total counter\n")
-		_, _ = fmt.Fprintf(rw, "im_service_batch_writes_total %d\n", stats.BatchWrites)
-		_, _ = fmt.Fprintf(rw, "# HELP im_service_errors_total Total errors encountered\n")
-		_, _ = fmt.Fprintf(rw, "# TYPE im_service_errors_total counter\n")
-		_, _ = fmt.Fprintf(rw, "im_service_errors_total %d\n", stats.Errors)
-		_, _ = fmt.Fprintf(rw, "# HELP im_service_batch_size_avg Average number of messages per batch\n")
-		_, _ = fmt.Fprintf(rw, "# TYPE im_service_batch_size_avg gauge\n")
-		_, _ = fmt.Fprintf(rw, "im_service_batch_size_avg %.2f\n", stats.AvgBatchSize)
-	})
+		// Redirect to observability library's metrics endpoint
+		_, _ = rw.Write([]byte("# Metrics are available on the observability metrics port (default: 9090)\n"))
+		_, _ = rw.Write([]byte("# Worker metrics have been recorded and will be exported via the observability library\n"))
+	}))
 
 	// Read Receipt API endpoints
-	mux.HandleFunc("/api/v1/messages/read", readReceiptHandler.HandleMarkAsRead)
-	mux.HandleFunc("/api/v1/messages/unread/count", readReceiptHandler.HandleGetUnreadCount)
-	mux.HandleFunc("/api/v1/messages/unread", readReceiptHandler.HandleGetUnreadMessages)
-	mux.HandleFunc("/api/v1/messages/receipts", readReceiptHandler.HandleGetReadReceipts)
-	mux.HandleFunc("/api/v1/conversations/read", readReceiptHandler.HandleMarkConversationAsRead)
+	mux.HandleFunc("/api/v1/messages/read", metricsMiddleware("/api/v1/messages/read", readReceiptHandler.HandleMarkAsRead))
+	mux.HandleFunc("/api/v1/messages/unread/count", metricsMiddleware("/api/v1/messages/unread/count", readReceiptHandler.HandleGetUnreadCount))
+	mux.HandleFunc("/api/v1/messages/unread", metricsMiddleware("/api/v1/messages/unread", readReceiptHandler.HandleGetUnreadMessages))
+	mux.HandleFunc("/api/v1/messages/receipts", metricsMiddleware("/api/v1/messages/receipts", readReceiptHandler.HandleGetReadReceipts))
+	mux.HandleFunc("/api/v1/conversations/read", metricsMiddleware("/api/v1/conversations/read", readReceiptHandler.HandleMarkConversationAsRead))
 
 	addr := fmt.Sprintf(":%d", port)
-	log.Printf("✓ HTTP server listening on %s", addr)
+	obs.Logger().Info(ctx, "HTTP server listening", "address", addr)
 
 	server := &http.Server{
 		Addr:         addr,
@@ -348,8 +400,20 @@ func startHTTPServer(w *worker.OfflineWorker, readReceiptHandler *readreceipt.HT
 	}
 
 	if err := server.ListenAndServe(); err != nil {
-		log.Fatalf("HTTP server failed: %v", err)
+		obs.Logger().Error(ctx, "HTTP server failed", "error", err)
+		os.Exit(1)
 	}
+}
+
+// responseWriter wraps http.ResponseWriter to capture status code
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.statusCode = code
+	rw.ResponseWriter.WriteHeader(code)
 }
 
 // Helper functions

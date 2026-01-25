@@ -7,10 +7,21 @@ import (
 	"time"
 
 	"github.com/pingxin403/cuckoo/apps/user-service/gen/userpb"
+	"github.com/pingxin403/cuckoo/libs/observability"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+// Helper function to create a test observability instance
+func createTestObservability() observability.Observability {
+	obs, _ := observability.New(observability.Config{
+		ServiceName:   "user-service-test",
+		EnableMetrics: false,
+		LogLevel:      "error",
+	})
+	return obs
+}
 
 // MockUserStore implements UserStore for testing
 type MockUserStore struct {
@@ -153,7 +164,8 @@ func (m *MockUserStore) ValidateGroupMembership(ctx context.Context, userID, gro
 // Test GetUser
 func TestGetUser_Success(t *testing.T) {
 	store := NewMockUserStore()
-	svc := NewUserServiceServer(store)
+	obs := createTestObservability()
+	svc := NewUserServiceServer(store, obs)
 
 	req := &userpb.GetUserRequest{
 		UserId: "user001",
@@ -171,7 +183,8 @@ func TestGetUser_Success(t *testing.T) {
 
 func TestGetUser_NotFound(t *testing.T) {
 	store := NewMockUserStore()
-	svc := NewUserServiceServer(store)
+	obs := createTestObservability()
+	svc := NewUserServiceServer(store, obs)
 
 	req := &userpb.GetUserRequest{
 		UserId: "nonexistent",
@@ -187,7 +200,8 @@ func TestGetUser_NotFound(t *testing.T) {
 
 func TestGetUser_EmptyUserID(t *testing.T) {
 	store := NewMockUserStore()
-	svc := NewUserServiceServer(store)
+	obs := createTestObservability()
+	svc := NewUserServiceServer(store, obs)
 
 	req := &userpb.GetUserRequest{
 		UserId: "",
@@ -203,7 +217,8 @@ func TestGetUser_EmptyUserID(t *testing.T) {
 // Test BatchGetUsers
 func TestBatchGetUsers_Success(t *testing.T) {
 	store := NewMockUserStore()
-	svc := NewUserServiceServer(store)
+	obs := createTestObservability()
+	svc := NewUserServiceServer(store, obs)
 
 	req := &userpb.BatchGetUsersRequest{
 		UserIds: []string{"user001", "user002", "user003"},
@@ -221,7 +236,8 @@ func TestBatchGetUsers_Success(t *testing.T) {
 
 func TestBatchGetUsers_PartialResults(t *testing.T) {
 	store := NewMockUserStore()
-	svc := NewUserServiceServer(store)
+	obs := createTestObservability()
+	svc := NewUserServiceServer(store, obs)
 
 	req := &userpb.BatchGetUsersRequest{
 		UserIds: []string{"user001", "nonexistent1", "user002", "nonexistent2"},
@@ -240,7 +256,8 @@ func TestBatchGetUsers_PartialResults(t *testing.T) {
 
 func TestBatchGetUsers_EmptyRequest(t *testing.T) {
 	store := NewMockUserStore()
-	svc := NewUserServiceServer(store)
+	obs := createTestObservability()
+	svc := NewUserServiceServer(store, obs)
 
 	req := &userpb.BatchGetUsersRequest{
 		UserIds: []string{},
@@ -255,7 +272,8 @@ func TestBatchGetUsers_EmptyRequest(t *testing.T) {
 
 func TestBatchGetUsers_TooManyIDs(t *testing.T) {
 	store := NewMockUserStore()
-	svc := NewUserServiceServer(store)
+	obs := createTestObservability()
+	svc := NewUserServiceServer(store, obs)
 
 	// Create 101 user IDs
 	userIDs := make([]string, 101)
@@ -277,7 +295,8 @@ func TestBatchGetUsers_TooManyIDs(t *testing.T) {
 // Test GetGroupMembers
 func TestGetGroupMembers_Success(t *testing.T) {
 	store := NewMockUserStore()
-	svc := NewUserServiceServer(store)
+	obs := createTestObservability()
+	svc := NewUserServiceServer(store, obs)
 
 	req := &userpb.GetGroupMembersRequest{
 		GroupId: "group001",
@@ -295,7 +314,8 @@ func TestGetGroupMembers_Success(t *testing.T) {
 
 func TestGetGroupMembers_WithPagination(t *testing.T) {
 	store := NewMockUserStore()
-	svc := NewUserServiceServer(store)
+	obs := createTestObservability()
+	svc := NewUserServiceServer(store, obs)
 
 	// First page
 	req := &userpb.GetGroupMembersRequest{
@@ -327,7 +347,8 @@ func TestGetGroupMembers_WithPagination(t *testing.T) {
 
 func TestGetGroupMembers_EmptyGroupID(t *testing.T) {
 	store := NewMockUserStore()
-	svc := NewUserServiceServer(store)
+	obs := createTestObservability()
+	svc := NewUserServiceServer(store, obs)
 
 	req := &userpb.GetGroupMembersRequest{
 		GroupId: "",
@@ -343,7 +364,8 @@ func TestGetGroupMembers_EmptyGroupID(t *testing.T) {
 
 func TestGetGroupMembers_DefaultLimit(t *testing.T) {
 	store := NewMockUserStore()
-	svc := NewUserServiceServer(store)
+	obs := createTestObservability()
+	svc := NewUserServiceServer(store, obs)
 
 	req := &userpb.GetGroupMembersRequest{
 		GroupId: "group001",
@@ -358,7 +380,8 @@ func TestGetGroupMembers_DefaultLimit(t *testing.T) {
 
 func TestGetGroupMembers_MaxLimit(t *testing.T) {
 	store := NewMockUserStore()
-	svc := NewUserServiceServer(store)
+	obs := createTestObservability()
+	svc := NewUserServiceServer(store, obs)
 
 	req := &userpb.GetGroupMembersRequest{
 		GroupId: "group001",
@@ -375,7 +398,8 @@ func TestGetGroupMembers_MaxLimit(t *testing.T) {
 // Test ValidateGroupMembership
 func TestValidateGroupMembership_IsMember(t *testing.T) {
 	store := NewMockUserStore()
-	svc := NewUserServiceServer(store)
+	obs := createTestObservability()
+	svc := NewUserServiceServer(store, obs)
 
 	req := &userpb.ValidateGroupMembershipRequest{
 		UserId:  "user001",
@@ -394,7 +418,8 @@ func TestValidateGroupMembership_IsMember(t *testing.T) {
 
 func TestValidateGroupMembership_NotMember(t *testing.T) {
 	store := NewMockUserStore()
-	svc := NewUserServiceServer(store)
+	obs := createTestObservability()
+	svc := NewUserServiceServer(store, obs)
 
 	req := &userpb.ValidateGroupMembershipRequest{
 		UserId:  "user001",
@@ -410,7 +435,8 @@ func TestValidateGroupMembership_NotMember(t *testing.T) {
 
 func TestValidateGroupMembership_EmptyUserID(t *testing.T) {
 	store := NewMockUserStore()
-	svc := NewUserServiceServer(store)
+	obs := createTestObservability()
+	svc := NewUserServiceServer(store, obs)
 
 	req := &userpb.ValidateGroupMembershipRequest{
 		UserId:  "",
@@ -426,7 +452,8 @@ func TestValidateGroupMembership_EmptyUserID(t *testing.T) {
 
 func TestValidateGroupMembership_EmptyGroupID(t *testing.T) {
 	store := NewMockUserStore()
-	svc := NewUserServiceServer(store)
+	obs := createTestObservability()
+	svc := NewUserServiceServer(store, obs)
 
 	req := &userpb.ValidateGroupMembershipRequest{
 		UserId:  "user001",

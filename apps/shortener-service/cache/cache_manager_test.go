@@ -7,7 +7,19 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/pingxin403/cuckoo/libs/observability"
 )
+
+// createTestObservability creates a test observability instance
+func createTestObservability() observability.Observability {
+	obs, _ := observability.New(observability.Config{
+		ServiceName:   "shortener-service-test",
+		EnableMetrics: false,
+		LogLevel:      "error",
+	})
+	return obs
+}
 
 // MockStorage implements Storage interface for testing
 type MockStorage struct {
@@ -78,7 +90,7 @@ func TestCacheManagerSingleflight(t *testing.T) {
 	}
 	storage.Set("test123", testMapping)
 
-	cm := NewCacheManager(l1, nil, storage)
+	cm := NewCacheManager(l1, nil, storage, createTestObservability())
 
 	// Launch 100 concurrent requests for the same key
 	const numRequests = 100
@@ -153,7 +165,7 @@ func TestCacheManagerFallback(t *testing.T) {
 	}
 	storage.Set("test456", testMapping)
 
-	cm := NewCacheManager(l1, nil, storage)
+	cm := NewCacheManager(l1, nil, storage, createTestObservability())
 	ctx := context.Background()
 
 	// First request: L1 miss → DB query → backfill L1
@@ -196,7 +208,7 @@ func TestCacheManagerDelete(t *testing.T) {
 	defer l1.Close()
 
 	storage := NewMockStorage()
-	cm := NewCacheManager(l1, nil, storage)
+	cm := NewCacheManager(l1, nil, storage, createTestObservability())
 	ctx := context.Background()
 
 	// Set a value in L1

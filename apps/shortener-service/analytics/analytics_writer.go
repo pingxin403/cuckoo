@@ -6,10 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pingxin403/cuckoo/apps/shortener-service/logger"
-	"github.com/pingxin403/cuckoo/apps/shortener-service/metrics"
+	"github.com/pingxin403/cuckoo/libs/observability"
 	"github.com/segmentio/kafka-go"
-	"go.uber.org/zap"
 )
 
 // ClickEvent represents a click event for analytics
@@ -33,6 +31,7 @@ type AnalyticsWriter struct {
 	numWorkers   int
 	closed       bool
 	closeMu      sync.Mutex
+	obs          observability.Observability
 }
 
 // Config holds configuration for AnalyticsWriter
@@ -45,7 +44,7 @@ type Config struct {
 
 // NewAnalyticsWriter creates a new AnalyticsWriter
 // Requirements: 7.1, 7.2, 7.5
-func NewAnalyticsWriter(config Config) *AnalyticsWriter {
+func NewAnalyticsWriter(config Config, obs observability.Observability) *AnalyticsWriter {
 	// Set defaults
 	if config.NumWorkers == 0 {
 		config.NumWorkers = 4
@@ -77,6 +76,7 @@ func NewAnalyticsWriter(config Config) *AnalyticsWriter {
 		ctx:          ctx,
 		cancel:       cancel,
 		numWorkers:   config.NumWorkers,
+		obs:          obs,
 	}
 
 	// Start worker goroutines
@@ -86,15 +86,12 @@ func NewAnalyticsWriter(config Config) *AnalyticsWriter {
 		go aw.worker(i)
 	}
 
-	// Safe logging (logger may not be initialized in tests)
-	if logger.Log != nil {
-		logger.Log.Info("Analytics writer initialized",
-			zap.Strings("brokers", config.KafkaBrokers),
-			zap.String("topic", config.Topic),
-			zap.Int("workers", config.NumWorkers),
-			zap.Int("buffer_size", config.BufferSize),
-		)
-	}
+	obs.Logger().Info(ctx, "Analytics writer initialized",
+		"brokers", config.KafkaBrokers,
+		"topic", config.Topic,
+		"workers", config.NumWorkers,
+		"buffer_size", config.BufferSize,
+	)
 
 	return aw
 }
@@ -108,12 +105,10 @@ func (aw *AnalyticsWriter) LogClick(event ClickEvent) {
 	default:
 		// Buffer full, drop event and increment metric
 		// Requirements: 7.5 - Handle Kafka failures gracefully
-		metrics.ErrorsTotal.WithLabelValues("analytics_buffer_full").Inc()
-		if logger.Log != nil {
-			logger.Log.Warn("Analytics buffer full, dropping event",
-				zap.String("short_code", event.ShortCode),
-			)
-		}
+		aw.obs.Metrics().IncrementCounter("shortener_errors_total", map[string]string{"type": "analytics_buffer_full"})
+		aw.obs.Logger().Warn(context.Background(), "Analytics buffer full, dropping event",
+			"short_code", event.ShortCode,
+		)
 	}
 }
 
@@ -122,9 +117,8 @@ func (aw *AnalyticsWriter) LogClick(event ClickEvent) {
 func (aw *AnalyticsWriter) worker(id int) {
 	defer aw.wg.Done()
 
-	if logger.Log != nil {
-		logger.Log.Info("Analytics worker started", zap.Int("worker_id", id))
-	}
+	ctx := context.Background()
+	aw.obs.Logger().Info(ctx, "Analytics worker started", "worker_id", id)
 
 	for {
 		select {
@@ -132,13 +126,11 @@ func (aw *AnalyticsWriter) worker(id int) {
 			// Marshal event to JSON
 			data, err := json.Marshal(event)
 			if err != nil {
-				metrics.ErrorsTotal.WithLabelValues("analytics_marshal_error").Inc()
-				if logger.Log != nil {
-					logger.Log.Error("Failed to marshal click event",
-						zap.Error(err),
-						zap.String("short_code", event.ShortCode),
-					)
-				}
+				aw.obs.Metrics().IncrementCounter("shortener_errors_total", map[string]string{"type": "analytics_marshal_error"})
+				aw.obs.Logger().Error(ctx, "Failed to marshal click event",
+					"error", err,
+					"short_code", event.ShortCode,
+				)
 				continue
 			}
 
@@ -157,21 +149,17 @@ func (aw *AnalyticsWriter) worker(id int) {
 
 			if err != nil {
 				// Requirements: 7.5 - Drop events on Kafka failure, increment metric
-				metrics.ErrorsTotal.WithLabelValues("analytics_kafka_write_error").Inc()
-				if logger.Log != nil {
-					logger.Log.Warn("Failed to write click event to Kafka",
-						zap.Error(err),
-						zap.String("short_code", event.ShortCode),
-					)
-				}
+				aw.obs.Metrics().IncrementCounter("shortener_errors_total", map[string]string{"type": "analytics_kafka_write_error"})
+				aw.obs.Logger().Warn(ctx, "Failed to write click event to Kafka",
+					"error", err,
+					"short_code", event.ShortCode,
+				)
 			} else {
-				metrics.ClickEventsLogged.Inc()
+				aw.obs.Metrics().IncrementCounter("shortener_click_events_logged_total", nil)
 			}
 
 		case <-aw.ctx.Done():
-			if logger.Log != nil {
-				logger.Log.Info("Analytics worker stopping", zap.Int("worker_id", id))
-			}
+			aw.obs.Logger().Info(ctx, "Analytics worker stopping", "worker_id", id)
 			return
 		}
 	}
@@ -188,9 +176,8 @@ func (aw *AnalyticsWriter) Close() error {
 	}
 	aw.closed = true
 
-	if logger.Log != nil {
-		logger.Log.Info("Shutting down analytics writer")
-	}
+	ctx := context.Background()
+	aw.obs.Logger().Info(ctx, "Shutting down analytics writer")
 
 	// Cancel context to stop workers
 	aw.cancel()
@@ -203,15 +190,11 @@ func (aw *AnalyticsWriter) Close() error {
 
 	// Close Kafka writer
 	if err := aw.writer.Close(); err != nil {
-		if logger.Log != nil {
-			logger.Log.Error("Error closing Kafka writer", zap.Error(err))
-		}
+		aw.obs.Logger().Error(ctx, "Error closing Kafka writer", "error", err)
 		return err
 	}
 
-	if logger.Log != nil {
-		logger.Log.Info("Analytics writer shut down complete")
-	}
+	aw.obs.Logger().Info(ctx, "Analytics writer shut down complete")
 	return nil
 }
 

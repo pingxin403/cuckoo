@@ -2,11 +2,18 @@ package metrics
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
 )
+
+// writeMetric writes a metric line to the writer, ignoring errors
+// since metric output failures are not recoverable
+func writeMetric(w io.Writer, format string, args ...interface{}) {
+	_, _ = fmt.Fprintf(w, format, args...)
+}
 
 // Metrics holds all Prometheus metrics for the gateway service
 type Metrics struct {
@@ -256,56 +263,56 @@ func (m *Metrics) Handler() http.HandlerFunc {
 		w.Header().Set("Content-Type", "text/plain; version=0.0.4")
 
 		// Connection metrics
-		fmt.Fprintf(w, "# HELP im_gateway_active_connections Current number of active WebSocket connections\n")
-		fmt.Fprintf(w, "# TYPE im_gateway_active_connections gauge\n")
-		fmt.Fprintf(w, "im_gateway_active_connections %d\n", m.activeConnections.Load())
+		writeMetric(w, "# HELP im_gateway_active_connections Current number of active WebSocket connections\n")
+		writeMetric(w, "# TYPE im_gateway_active_connections gauge\n")
+		writeMetric(w, "im_gateway_active_connections %d\n", m.activeConnections.Load())
 
-		fmt.Fprintf(w, "# HELP im_gateway_total_connections_total Total number of connections established\n")
-		fmt.Fprintf(w, "# TYPE im_gateway_total_connections_total counter\n")
-		fmt.Fprintf(w, "im_gateway_total_connections_total %d\n", m.totalConnections.Load())
+		writeMetric(w, "# HELP im_gateway_total_connections_total Total number of connections established\n")
+		writeMetric(w, "# TYPE im_gateway_total_connections_total counter\n")
+		writeMetric(w, "im_gateway_total_connections_total %d\n", m.totalConnections.Load())
 
-		fmt.Fprintf(w, "# HELP im_gateway_connection_errors_total Total number of connection errors\n")
-		fmt.Fprintf(w, "# TYPE im_gateway_connection_errors_total counter\n")
-		fmt.Fprintf(w, "im_gateway_connection_errors_total %d\n", m.connectionErrors.Load())
+		writeMetric(w, "# HELP im_gateway_connection_errors_total Total number of connection errors\n")
+		writeMetric(w, "# TYPE im_gateway_connection_errors_total counter\n")
+		writeMetric(w, "im_gateway_connection_errors_total %d\n", m.connectionErrors.Load())
 
 		// Message delivery metrics
-		fmt.Fprintf(w, "# HELP im_gateway_messages_delivered_total Total number of messages successfully delivered\n")
-		fmt.Fprintf(w, "# TYPE im_gateway_messages_delivered_total counter\n")
-		fmt.Fprintf(w, "im_gateway_messages_delivered_total %d\n", m.messagesDelivered.Load())
+		writeMetric(w, "# HELP im_gateway_messages_delivered_total Total number of messages successfully delivered\n")
+		writeMetric(w, "# TYPE im_gateway_messages_delivered_total counter\n")
+		writeMetric(w, "im_gateway_messages_delivered_total %d\n", m.messagesDelivered.Load())
 
-		fmt.Fprintf(w, "# HELP im_gateway_messages_failed_total Total number of message delivery failures\n")
-		fmt.Fprintf(w, "# TYPE im_gateway_messages_failed_total counter\n")
-		fmt.Fprintf(w, "im_gateway_messages_failed_total %d\n", m.messagesFailed.Load())
+		writeMetric(w, "# HELP im_gateway_messages_failed_total Total number of message delivery failures\n")
+		writeMetric(w, "# TYPE im_gateway_messages_failed_total counter\n")
+		writeMetric(w, "im_gateway_messages_failed_total %d\n", m.messagesFailed.Load())
 
-		fmt.Fprintf(w, "# HELP im_gateway_ack_timeouts_total Total number of ACK timeouts\n")
-		fmt.Fprintf(w, "# TYPE im_gateway_ack_timeouts_total counter\n")
-		fmt.Fprintf(w, "im_gateway_ack_timeouts_total %d\n", m.ackTimeouts.Load())
+		writeMetric(w, "# HELP im_gateway_ack_timeouts_total Total number of ACK timeouts\n")
+		writeMetric(w, "# TYPE im_gateway_ack_timeouts_total counter\n")
+		writeMetric(w, "im_gateway_ack_timeouts_total %d\n", m.ackTimeouts.Load())
 
 		// Latency histogram
 		m.latencyMu.RLock()
-		fmt.Fprintf(w, "# HELP im_gateway_message_delivery_latency_seconds Message delivery latency histogram\n")
-		fmt.Fprintf(w, "# TYPE im_gateway_message_delivery_latency_seconds histogram\n")
+		writeMetric(w, "# HELP im_gateway_message_delivery_latency_seconds Message delivery latency histogram\n")
+		writeMetric(w, "# TYPE im_gateway_message_delivery_latency_seconds histogram\n")
 		for _, le := range []string{"10", "50", "100", "200", "500", "1000", "2000", "5000", "+Inf"} {
 			leValue := le
 			if le != "+Inf" {
 				leValue = fmt.Sprintf("0.%s", le) // Convert ms to seconds
 			}
-			fmt.Fprintf(w, "im_gateway_message_delivery_latency_seconds_bucket{le=\"%s\"} %d\n",
+			writeMetric(w, "im_gateway_message_delivery_latency_seconds_bucket{le=\"%s\"} %d\n",
 				leValue, m.latencyBuckets[le])
 		}
-		fmt.Fprintf(w, "im_gateway_message_delivery_latency_seconds_sum %.6f\n", m.latencySum)
-		fmt.Fprintf(w, "im_gateway_message_delivery_latency_seconds_count %d\n", m.latencyCount)
+		writeMetric(w, "im_gateway_message_delivery_latency_seconds_sum %.6f\n", m.latencySum)
+		writeMetric(w, "im_gateway_message_delivery_latency_seconds_count %d\n", m.latencyCount)
 		m.latencyMu.RUnlock()
 
 		// Offline queue metrics
-		fmt.Fprintf(w, "# HELP im_gateway_offline_queue_size Current size of offline message queue\n")
-		fmt.Fprintf(w, "# TYPE im_gateway_offline_queue_size gauge\n")
-		fmt.Fprintf(w, "im_gateway_offline_queue_size %d\n", m.offlineQueueSize.Load())
+		writeMetric(w, "# HELP im_gateway_offline_queue_size Current size of offline message queue\n")
+		writeMetric(w, "# TYPE im_gateway_offline_queue_size gauge\n")
+		writeMetric(w, "im_gateway_offline_queue_size %d\n", m.offlineQueueSize.Load())
 
 		// Deduplication metrics
-		fmt.Fprintf(w, "# HELP im_gateway_duplicate_messages_total Total number of duplicate messages detected\n")
-		fmt.Fprintf(w, "# TYPE im_gateway_duplicate_messages_total counter\n")
-		fmt.Fprintf(w, "im_gateway_duplicate_messages_total %d\n", m.duplicateMessages.Load())
+		writeMetric(w, "# HELP im_gateway_duplicate_messages_total Total number of duplicate messages detected\n")
+		writeMetric(w, "# TYPE im_gateway_duplicate_messages_total counter\n")
+		writeMetric(w, "im_gateway_duplicate_messages_total %d\n", m.duplicateMessages.Load())
 
 		// Calculate duplication rate
 		totalMessages := m.messagesDelivered.Load() + m.duplicateMessages.Load()
@@ -313,36 +320,36 @@ func (m *Metrics) Handler() http.HandlerFunc {
 		if totalMessages > 0 {
 			dupRate = float64(m.duplicateMessages.Load()) / float64(totalMessages) * 100
 		}
-		fmt.Fprintf(w, "# HELP im_gateway_message_duplication_rate_percent Percentage of duplicate messages\n")
-		fmt.Fprintf(w, "# TYPE im_gateway_message_duplication_rate_percent gauge\n")
-		fmt.Fprintf(w, "im_gateway_message_duplication_rate_percent %.2f\n", dupRate)
+		writeMetric(w, "# HELP im_gateway_message_duplication_rate_percent Percentage of duplicate messages\n")
+		writeMetric(w, "# TYPE im_gateway_message_duplication_rate_percent gauge\n")
+		writeMetric(w, "im_gateway_message_duplication_rate_percent %.2f\n", dupRate)
 
 		// Multi-device metrics
-		fmt.Fprintf(w, "# HELP im_gateway_multi_device_deliveries_total Total number of multi-device message deliveries\n")
-		fmt.Fprintf(w, "# TYPE im_gateway_multi_device_deliveries_total counter\n")
-		fmt.Fprintf(w, "im_gateway_multi_device_deliveries_total %d\n", m.multiDeviceDeliveries.Load())
+		writeMetric(w, "# HELP im_gateway_multi_device_deliveries_total Total number of multi-device message deliveries\n")
+		writeMetric(w, "# TYPE im_gateway_multi_device_deliveries_total counter\n")
+		writeMetric(w, "im_gateway_multi_device_deliveries_total %d\n", m.multiDeviceDeliveries.Load())
 
 		// Group message metrics
-		fmt.Fprintf(w, "# HELP im_gateway_group_messages_delivered_total Total number of group messages delivered\n")
-		fmt.Fprintf(w, "# TYPE im_gateway_group_messages_delivered_total counter\n")
-		fmt.Fprintf(w, "im_gateway_group_messages_delivered_total %d\n", m.groupMessagesDelivered.Load())
+		writeMetric(w, "# HELP im_gateway_group_messages_delivered_total Total number of group messages delivered\n")
+		writeMetric(w, "# TYPE im_gateway_group_messages_delivered_total counter\n")
+		writeMetric(w, "im_gateway_group_messages_delivered_total %d\n", m.groupMessagesDelivered.Load())
 
-		fmt.Fprintf(w, "# HELP im_gateway_group_members_fanout_total Total number of group member fanouts\n")
-		fmt.Fprintf(w, "# TYPE im_gateway_group_members_fanout_total counter\n")
-		fmt.Fprintf(w, "im_gateway_group_members_fanout_total %d\n", m.groupMembersFanout.Load())
+		writeMetric(w, "# HELP im_gateway_group_members_fanout_total Total number of group member fanouts\n")
+		writeMetric(w, "# TYPE im_gateway_group_members_fanout_total counter\n")
+		writeMetric(w, "im_gateway_group_members_fanout_total %d\n", m.groupMembersFanout.Load())
 
 		// Cache metrics
-		fmt.Fprintf(w, "# HELP im_gateway_cache_hits_total Total number of cache hits\n")
-		fmt.Fprintf(w, "# TYPE im_gateway_cache_hits_total counter\n")
-		fmt.Fprintf(w, "im_gateway_cache_hits_total %d\n", m.cacheHits.Load())
+		writeMetric(w, "# HELP im_gateway_cache_hits_total Total number of cache hits\n")
+		writeMetric(w, "# TYPE im_gateway_cache_hits_total counter\n")
+		writeMetric(w, "im_gateway_cache_hits_total %d\n", m.cacheHits.Load())
 
-		fmt.Fprintf(w, "# HELP im_gateway_cache_misses_total Total number of cache misses\n")
-		fmt.Fprintf(w, "# TYPE im_gateway_cache_misses_total counter\n")
-		fmt.Fprintf(w, "im_gateway_cache_misses_total %d\n", m.cacheMisses.Load())
+		writeMetric(w, "# HELP im_gateway_cache_misses_total Total number of cache misses\n")
+		writeMetric(w, "# TYPE im_gateway_cache_misses_total counter\n")
+		writeMetric(w, "im_gateway_cache_misses_total %d\n", m.cacheMisses.Load())
 
-		fmt.Fprintf(w, "# HELP im_gateway_cache_hit_rate_percent Cache hit rate percentage\n")
-		fmt.Fprintf(w, "# TYPE im_gateway_cache_hit_rate_percent gauge\n")
-		fmt.Fprintf(w, "im_gateway_cache_hit_rate_percent %.2f\n", m.GetCacheHitRate())
+		writeMetric(w, "# HELP im_gateway_cache_hit_rate_percent Cache hit rate percentage\n")
+		writeMetric(w, "# TYPE im_gateway_cache_hit_rate_percent gauge\n")
+		writeMetric(w, "im_gateway_cache_hit_rate_percent %.2f\n", m.GetCacheHitRate())
 
 		// ACK timeout rate
 		totalDeliveries := m.messagesDelivered.Load() + m.messagesFailed.Load()
@@ -350,8 +357,8 @@ func (m *Metrics) Handler() http.HandlerFunc {
 		if totalDeliveries > 0 {
 			ackTimeoutRate = float64(m.ackTimeouts.Load()) / float64(totalDeliveries) * 100
 		}
-		fmt.Fprintf(w, "# HELP im_gateway_ack_timeout_rate_percent Percentage of ACK timeouts\n")
-		fmt.Fprintf(w, "# TYPE im_gateway_ack_timeout_rate_percent gauge\n")
-		fmt.Fprintf(w, "im_gateway_ack_timeout_rate_percent %.2f\n", ackTimeoutRate)
+		writeMetric(w, "# HELP im_gateway_ack_timeout_rate_percent Percentage of ACK timeouts\n")
+		writeMetric(w, "# TYPE im_gateway_ack_timeout_rate_percent gauge\n")
+		writeMetric(w, "im_gateway_ack_timeout_rate_percent %.2f\n", ackTimeoutRate)
 	}
 }

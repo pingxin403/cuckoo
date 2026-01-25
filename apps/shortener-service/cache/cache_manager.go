@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pingxin403/cuckoo/apps/shortener-service/metrics"
+	"github.com/pingxin403/cuckoo/libs/observability"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -31,14 +31,16 @@ type CacheManager struct {
 	l2      *L2Cache
 	storage Storage
 	sf      singleflight.Group
+	obs     observability.Observability
 }
 
 // NewCacheManager creates a new cache manager
-func NewCacheManager(l1 *L1Cache, l2 *L2Cache, storage Storage) *CacheManager {
+func NewCacheManager(l1 *L1Cache, l2 *L2Cache, storage Storage, obs observability.Observability) *CacheManager {
 	return &CacheManager{
 		l1:      l1,
 		l2:      l2,
 		storage: storage,
+		obs:     obs,
 	}
 }
 
@@ -66,21 +68,25 @@ func (cm *CacheManager) Get(ctx context.Context, shortCode string) (*URLMapping,
 func (cm *CacheManager) getWithFallback(ctx context.Context, shortCode string) (*URLMapping, error) {
 	// Try L1 cache first
 	if mapping := cm.l1.Get(shortCode); mapping != nil {
-		metrics.CacheHits.WithLabelValues("L1").Inc()
+		cm.obs.Metrics().IncrementCounter("shortener_cache_hits_total", map[string]string{"layer": "L1"})
+		cm.obs.Metrics().IncrementCounter("shortener_cache_operations_total", map[string]string{"operation": "hit", "layer": "l1"})
 		return mapping, nil
 	}
-	metrics.CacheMisses.WithLabelValues("L1").Inc()
+	cm.obs.Metrics().IncrementCounter("shortener_cache_misses_total", map[string]string{"layer": "L1"})
+	cm.obs.Metrics().IncrementCounter("shortener_cache_operations_total", map[string]string{"operation": "miss", "layer": "l1"})
 
 	// Try L2 cache
 	if cm.l2 != nil {
 		mapping, err := cm.l2.Get(ctx, shortCode)
 		if err == nil && mapping != nil {
-			metrics.CacheHits.WithLabelValues("L2").Inc()
+			cm.obs.Metrics().IncrementCounter("shortener_cache_hits_total", map[string]string{"layer": "L2"})
+			cm.obs.Metrics().IncrementCounter("shortener_cache_operations_total", map[string]string{"operation": "hit", "layer": "l2"})
 			// Backfill L1 cache
 			cm.l1.Set(mapping.ShortCode, mapping.LongURL, mapping.CreatedAt)
 			return mapping, nil
 		}
-		metrics.CacheMisses.WithLabelValues("L2").Inc()
+		cm.obs.Metrics().IncrementCounter("shortener_cache_misses_total", map[string]string{"layer": "L2"})
+		cm.obs.Metrics().IncrementCounter("shortener_cache_operations_total", map[string]string{"operation": "miss", "layer": "l2"})
 		// Continue to DB on L2 miss or error (graceful degradation)
 	}
 

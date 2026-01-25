@@ -7,9 +7,20 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/pingxin403/cuckoo/apps/auth-service/gen/authpb"
+	"github.com/pingxin403/cuckoo/libs/observability"
 )
 
 const testSecret = "test-secret-key-for-testing-only"
+
+// Helper function to create a test observability instance
+func createTestObservability() observability.Observability {
+	obs, _ := observability.New(observability.Config{
+		ServiceName:   "auth-service-test",
+		EnableMetrics: false,
+		LogLevel:      "error",
+	})
+	return obs
+}
 
 // Helper function to generate a valid token
 func generateTestToken(userID, deviceID string, expiry time.Duration) string {
@@ -45,7 +56,8 @@ func generateInvalidSignatureToken(userID, deviceID string) string {
 
 func TestValidateToken_ValidToken(t *testing.T) {
 	// Arrange
-	service := NewAuthServiceServer(testSecret)
+	obs := createTestObservability()
+	service := NewAuthServiceServer(testSecret, obs)
 	ctx := context.Background()
 
 	userID := "user123"
@@ -76,7 +88,8 @@ func TestValidateToken_ValidToken(t *testing.T) {
 
 func TestValidateToken_ExpiredToken(t *testing.T) {
 	// Arrange
-	service := NewAuthServiceServer(testSecret)
+	obs := createTestObservability()
+	service := NewAuthServiceServer(testSecret, obs)
 	ctx := context.Background()
 
 	// Generate an expired token (expired 1 hour ago)
@@ -103,7 +116,8 @@ func TestValidateToken_ExpiredToken(t *testing.T) {
 
 func TestValidateToken_InvalidSignature(t *testing.T) {
 	// Arrange
-	service := NewAuthServiceServer(testSecret)
+	obs := createTestObservability()
+	service := NewAuthServiceServer(testSecret, obs)
 	ctx := context.Background()
 
 	token := generateInvalidSignatureToken("user123", "device456")
@@ -129,7 +143,8 @@ func TestValidateToken_InvalidSignature(t *testing.T) {
 
 func TestValidateToken_EmptyToken(t *testing.T) {
 	// Arrange
-	service := NewAuthServiceServer(testSecret)
+	obs := createTestObservability()
+	service := NewAuthServiceServer(testSecret, obs)
 	ctx := context.Background()
 
 	req := &authpb.ValidateTokenRequest{
@@ -153,7 +168,8 @@ func TestValidateToken_EmptyToken(t *testing.T) {
 
 func TestValidateToken_MalformedToken(t *testing.T) {
 	// Arrange
-	service := NewAuthServiceServer(testSecret)
+	obs := createTestObservability()
+	service := NewAuthServiceServer(testSecret, obs)
 	ctx := context.Background()
 
 	req := &authpb.ValidateTokenRequest{
@@ -177,7 +193,8 @@ func TestValidateToken_MalformedToken(t *testing.T) {
 
 func TestValidateToken_MissingUserID(t *testing.T) {
 	// Arrange
-	service := NewAuthServiceServer(testSecret)
+	obs := createTestObservability()
+	service := NewAuthServiceServer(testSecret, obs)
 	ctx := context.Background()
 
 	// Generate token without user_id
@@ -204,7 +221,8 @@ func TestValidateToken_MissingUserID(t *testing.T) {
 
 func TestValidateToken_MissingDeviceID(t *testing.T) {
 	// Arrange
-	service := NewAuthServiceServer(testSecret)
+	obs := createTestObservability()
+	service := NewAuthServiceServer(testSecret, obs)
 	ctx := context.Background()
 
 	// Generate token without device_id
@@ -231,7 +249,8 @@ func TestValidateToken_MissingDeviceID(t *testing.T) {
 
 func TestRefreshToken_ValidRefreshToken(t *testing.T) {
 	// Arrange
-	service := NewAuthServiceServer(testSecret)
+	obs := createTestObservability()
+	service := NewAuthServiceServer(testSecret, obs)
 	ctx := context.Background()
 
 	userID := "user123"
@@ -277,7 +296,8 @@ func TestRefreshToken_ValidRefreshToken(t *testing.T) {
 
 func TestRefreshToken_ExpiredRefreshToken(t *testing.T) {
 	// Arrange
-	service := NewAuthServiceServer(testSecret)
+	obs := createTestObservability()
+	service := NewAuthServiceServer(testSecret, obs)
 	ctx := context.Background()
 
 	// Generate an expired refresh token
@@ -304,7 +324,8 @@ func TestRefreshToken_ExpiredRefreshToken(t *testing.T) {
 
 func TestRefreshToken_InvalidRefreshToken(t *testing.T) {
 	// Arrange
-	service := NewAuthServiceServer(testSecret)
+	obs := createTestObservability()
+	service := NewAuthServiceServer(testSecret, obs)
 	ctx := context.Background()
 
 	req := &authpb.RefreshTokenRequest{
@@ -328,7 +349,8 @@ func TestRefreshToken_InvalidRefreshToken(t *testing.T) {
 
 func TestRefreshToken_EmptyRefreshToken(t *testing.T) {
 	// Arrange
-	service := NewAuthServiceServer(testSecret)
+	obs := createTestObservability()
+	service := NewAuthServiceServer(testSecret, obs)
 	ctx := context.Background()
 
 	req := &authpb.RefreshTokenRequest{
@@ -346,7 +368,8 @@ func TestRefreshToken_EmptyRefreshToken(t *testing.T) {
 
 func TestRefreshToken_PreservesUserID(t *testing.T) {
 	// Arrange
-	service := NewAuthServiceServer(testSecret)
+	obs := createTestObservability()
+	service := NewAuthServiceServer(testSecret, obs)
 	ctx := context.Background()
 
 	userID := "user123"

@@ -55,6 +55,24 @@ The service will listen on port 9091.
 - `PORT`: gRPC server port (default: 9091)
 - `HELLO_SERVICE_ADDR`: Hello service address (default: localhost:9090)
 
+#### Observability Configuration
+
+The service uses the unified observability library for metrics, logging, and tracing:
+
+- `SERVICE_NAME`: Service name for observability (default: todo-service)
+- `SERVICE_VERSION`: Service version (default: 1.0.0)
+- `DEPLOYMENT_ENVIRONMENT`: Deployment environment (default: development)
+- `ENABLE_METRICS`: Enable Prometheus metrics (default: true)
+- `METRICS_PORT`: Metrics HTTP server port (default: 9090)
+- `LOG_LEVEL`: Logging level - debug, info, warn, error (default: info)
+- `LOG_FORMAT`: Log format - json or text (default: json)
+- `ENABLE_TRACING`: Enable OpenTelemetry tracing (default: false)
+- `OTLP_ENDPOINT`: OpenTelemetry collector endpoint (default: localhost:4317)
+- `ENABLE_PPROF`: Enable pprof profiling endpoints (default: false)
+- `PPROF_PORT`: pprof HTTP server port (default: 6060)
+
+For more details, see the [Observability Library Documentation](../../libs/observability/README.md).
+
 ### Build
 
 ```bash
@@ -90,6 +108,68 @@ The service implements the following gRPC methods:
 - `DeleteTodo`: Delete a TODO item
 
 For detailed API definitions, refer to `api/v1/todo.proto`.
+
+## Observability
+
+The service integrates with the unified observability library providing metrics, structured logging, and optional tracing.
+
+### Metrics
+
+The service exposes Prometheus metrics on port 9090 (configurable via `METRICS_PORT`):
+
+#### TODO Operation Metrics
+
+- `todo_operations_total{operation, status}`: Counter for TODO operations
+  - `operation`: create, get, update, delete, list
+  - `status`: success, failure
+
+- `todo_items_total`: Gauge for total number of TODO items
+
+#### gRPC Metrics
+
+- `todo_grpc_requests_total{method, status}`: Counter for gRPC requests
+  - `method`: CreateTodo, ListTodos, UpdateTodo, DeleteTodo
+  - `status`: ok, invalid_argument, not_found, internal
+
+- `todo_grpc_request_duration_seconds{method}`: Histogram for gRPC request duration
+
+### Structured Logging
+
+The service uses structured JSON logging with the following fields:
+
+```json
+{
+  "timestamp": "2024-01-25T10:30:00Z",
+  "level": "info",
+  "service": "todo-service",
+  "message": "Starting todo-service",
+  "version": "1.0.0"
+}
+```
+
+Log levels can be controlled via the `LOG_LEVEL` environment variable.
+
+### OpenTelemetry Integration
+
+Enable distributed tracing by setting:
+
+```bash
+export ENABLE_TRACING=true
+export OTLP_ENDPOINT=localhost:4317
+```
+
+Traces will be exported to the configured OpenTelemetry collector.
+
+### Performance Profiling
+
+Enable pprof profiling endpoints:
+
+```bash
+export ENABLE_PPROF=true
+export PPROF_PORT=6060
+```
+
+Access profiling data at `http://localhost:6060/debug/pprof/`.
 
 ## Testing
 

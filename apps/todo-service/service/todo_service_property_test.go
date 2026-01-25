@@ -22,7 +22,8 @@ func TestProperty_TodoCreationReturnsUniqueIDs(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		// Arrange
 		store := storage.NewMemoryStore()
-		service := NewTodoServiceServer(store)
+		obs := createTestObservability()
+		service := NewTodoServiceServer(store, obs)
 		ctx := context.Background()
 
 		// Generate a list of TODO titles (can have duplicates)
@@ -71,7 +72,8 @@ func TestProperty_TodoCRUDRoundTripConsistency(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		// Arrange
 		store := storage.NewMemoryStore()
-		service := NewTodoServiceServer(store)
+		obs := createTestObservability()
+		service := NewTodoServiceServer(store, obs)
 		ctx := context.Background()
 
 		// Generate random TODO data with non-empty titles
@@ -209,7 +211,8 @@ func TestProperty_ListContainsAllCreatedTodos(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		// Arrange
 		store := storage.NewMemoryStore()
-		service := NewTodoServiceServer(store)
+		obs := createTestObservability()
+		service := NewTodoServiceServer(store, obs)
 		ctx := context.Background()
 
 		// Generate random number of TODOs
@@ -271,7 +274,8 @@ func TestProperty_UpdatePreservesID(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		// Arrange
 		store := storage.NewMemoryStore()
-		service := NewTodoServiceServer(store)
+		obs := createTestObservability()
+		service := NewTodoServiceServer(store, obs)
 		ctx := context.Background()
 
 		// Create a TODO
@@ -336,7 +340,8 @@ func TestProperty_DeleteNonExistentTodoFails(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		// Arrange
 		store := storage.NewMemoryStore()
-		service := NewTodoServiceServer(store)
+		obs := createTestObservability()
+		service := NewTodoServiceServer(store, obs)
 		ctx := context.Background()
 
 		// Generate a random non-empty ID that doesn't exist

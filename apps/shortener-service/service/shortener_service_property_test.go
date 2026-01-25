@@ -17,7 +17,18 @@ import (
 	pb "github.com/pingxin403/cuckoo/apps/shortener-service/gen/shortener_servicepb"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/idgen"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/storage"
+	"github.com/pingxin403/cuckoo/libs/observability"
 )
+
+// createTestObservability creates a test observability instance
+func createTestObservability() observability.Observability {
+	obs, _ := observability.New(observability.Config{
+		ServiceName:   "shortener-service-test",
+		EnableMetrics: false,
+		LogLevel:      "error",
+	})
+	return obs
+}
 
 // TestProperty_MultiStoreWriteConsistency verifies Property 7: Multi-Store Write Consistency
 // Feature: url-shortener-service, Property 7: Multi-Store Write Consistency
@@ -49,10 +60,10 @@ func TestProperty_MultiStoreWriteConsistency(t *testing.T) {
 		require.NoError(t, err)
 
 		// Create cache manager (without L2 for simplicity)
-		cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: mockStore.MockStorage})
+		cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: mockStore.MockStorage}, createTestObservability())
 
 		// Create service
-		service := NewShortenerServiceImpl(mockStore, idGen, validator, cacheManager)
+		service := NewShortenerServiceImpl(mockStore, idGen, validator, cacheManager, createTestObservability())
 
 		// Generate random valid URL
 		domain := rapid.StringMatching(`^[a-z0-9-]+$`).Draw(t, "domain")

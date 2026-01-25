@@ -3,7 +3,19 @@ package analytics
 import (
 	"testing"
 	"time"
+
+	"github.com/pingxin403/cuckoo/libs/observability"
 )
+
+// createTestObservability creates a test observability instance
+func createTestObservability() observability.Observability {
+	obs, _ := observability.New(observability.Config{
+		ServiceName:   "shortener-service-test",
+		EnableMetrics: false,
+		LogLevel:      "error",
+	})
+	return obs
+}
 
 // Test event buffering
 // Requirements: 7.2
@@ -14,7 +26,7 @@ func TestAnalyticsWriter_EventBuffering(t *testing.T) {
 		NumWorkers:   2,
 		BufferSize:   10,
 	}
-	aw := NewAnalyticsWriter(config)
+	aw := NewAnalyticsWriter(config, createTestObservability())
 	defer func() { _ = aw.Close() }()
 
 	// Log events
@@ -47,7 +59,7 @@ func TestAnalyticsWriter_WorkerPool(t *testing.T) {
 		NumWorkers:   4,
 		BufferSize:   100,
 	}
-	aw := NewAnalyticsWriter(config)
+	aw := NewAnalyticsWriter(config, createTestObservability())
 	defer func() { _ = aw.Close() }()
 
 	// Verify worker count
@@ -67,7 +79,7 @@ func TestAnalyticsWriter_KafkaFailureHandling(t *testing.T) {
 		NumWorkers:   1,
 		BufferSize:   10,
 	}
-	aw := NewAnalyticsWriter(config)
+	aw := NewAnalyticsWriter(config, createTestObservability())
 	defer func() { _ = aw.Close() }()
 
 	// Log event - should not panic even if Kafka is unavailable
@@ -94,7 +106,7 @@ func TestAnalyticsWriter_BufferFull(t *testing.T) {
 		NumWorkers:   0, // No workers to process events
 		BufferSize:   5,
 	}
-	aw := NewAnalyticsWriter(config)
+	aw := NewAnalyticsWriter(config, createTestObservability())
 	defer func() { _ = aw.Close() }()
 
 	// Fill buffer beyond capacity
@@ -128,7 +140,7 @@ func TestAnalyticsWriter_GracefulShutdown(t *testing.T) {
 		NumWorkers:   2,
 		BufferSize:   100,
 	}
-	aw := NewAnalyticsWriter(config)
+	aw := NewAnalyticsWriter(config, createTestObservability())
 
 	// Log some events
 	for i := 0; i < 10; i++ {
@@ -167,7 +179,7 @@ func TestAnalyticsWriter_Stats(t *testing.T) {
 		NumWorkers:   3,
 		BufferSize:   50,
 	}
-	aw := NewAnalyticsWriter(config)
+	aw := NewAnalyticsWriter(config, createTestObservability())
 	defer func() { _ = aw.Close() }()
 
 	stats := aw.Stats()
@@ -194,7 +206,7 @@ func TestAnalyticsWriter_DefaultConfig(t *testing.T) {
 		KafkaBrokers: []string{"localhost:9092"},
 		// NumWorkers, BufferSize, Topic not specified - should use defaults
 	}
-	aw := NewAnalyticsWriter(config)
+	aw := NewAnalyticsWriter(config, createTestObservability())
 	defer func() { _ = aw.Close() }()
 
 	stats := aw.Stats()
@@ -243,7 +255,7 @@ func TestAnalyticsWriter_ConcurrentLogging(t *testing.T) {
 		NumWorkers:   4,
 		BufferSize:   100,
 	}
-	aw := NewAnalyticsWriter(config)
+	aw := NewAnalyticsWriter(config, createTestObservability())
 	defer func() { _ = aw.Close() }()
 
 	// Log events concurrently

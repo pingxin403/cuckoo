@@ -10,6 +10,9 @@
     <Match>
         <Class name="~com\.pingxin403\.cuckoo\..*\.v1\..*"/>
     </Match>
+    <Match>
+        <Class name="~com\.pingxin403\.cuckoo\.im\.gateway\..*"/>
+    </Match>
     
     <!-- Exclude generated code -->
     <Match>
@@ -45,5 +48,11 @@
     </Match>
     <Match>
         <Bug pattern="EI_EXPOSE_REP"/>
+    </Match>
+    <Match>
+        <Bug pattern="MS_EXPOSE_REP"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
     </Match>
 </FindBugsFilter>

@@ -3,8 +3,9 @@ syntax = "proto3";
 package im_gateway_servicepb;
 
 option go_package = "github.com/pingxin403/cuckoo/apps/im-gateway-service/gen/im_gateway_servicepb";
-option java_package = ".proto";
+option java_package = "com.pingxin403.cuckoo.im.gateway";
 option java_multiple_files = true;
+option java_outer_classname = "ImGatewayServiceProto";
 
 // im-gateway-service service
 service UimUgatewayUserviceService {

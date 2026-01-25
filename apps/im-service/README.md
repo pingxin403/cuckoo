@@ -131,6 +131,18 @@ See [storage/README.md](storage/README.md) for details.
 
 The service is configured via environment variables:
 
+### Observability
+- `SERVICE_NAME`: Service name for observability (default: im-service)
+- `SERVICE_VERSION`: Service version (default: 1.0.0)
+- `DEPLOYMENT_ENVIRONMENT`: Deployment environment (default: development)
+- `ENABLE_METRICS`: Enable Prometheus metrics (default: true)
+- `METRICS_PORT`: Prometheus metrics port (default: 9090)
+- `LOG_LEVEL`: Logging level - debug, info, warn, error (default: info)
+- `LOG_FORMAT`: Log format - json or text (default: json)
+- `ENABLE_TRACING`: Enable distributed tracing (default: false)
+- `OTLP_ENDPOINT`: OpenTelemetry collector endpoint (optional)
+- `OTLP_INSECURE`: Use insecure connection to OTLP collector (default: true)
+
 ### gRPC Server
 - `GRPC_PORT`: gRPC server port (default: 9094)
 
@@ -172,7 +184,101 @@ The service exposes HTTP endpoints for monitoring:
 - `GET /health`: Liveness probe (always returns 200 OK)
 - `GET /ready`: Readiness probe (checks worker health)
 - `GET /stats`: JSON statistics about worker performance
-- `GET /metrics`: Prometheus-format metrics
+- `GET /metrics`: Prometheus-format metrics (redirects to observability library metrics on port 9090)
+
+## Observability
+
+The IM Service uses the unified observability library for metrics, logging, and tracing.
+
+### Metrics
+
+The service exposes Prometheus metrics on port 9090 (configurable via `METRICS_PORT`):
+
+**HTTP Metrics:**
+- `http_requests_total{path, status}`: Total HTTP requests by path and status code
+- `http_request_duration_seconds{path}`: HTTP request duration histogram
+
+**Worker Metrics (when offline worker is enabled):**
+- `offline_worker_enabled`: Whether offline worker is enabled (0 or 1)
+- `messages_processed`: Total messages consumed from Kafka
+- `messages_deduplicated`: Total messages skipped due to duplicates
+- `messages_persisted`: Total messages written to database
+- `batch_writes`: Total batch write operations
+- `errors`: Total errors encountered
+- `batch_size_avg`: Average number of messages per batch
+
+**Access Metrics:**
+```bash
+# Prometheus format
+curl http://localhost:9090/metrics
+
+# Worker stats (JSON)
+curl http://localhost:8080/stats
+```
+
+### Logging
+
+The service uses structured JSON logging with configurable log levels:
+
+```bash
+# Set log level
+export LOG_LEVEL=debug  # debug, info, warn, error
+
+# Set log format
+export LOG_FORMAT=json  # json or text
+```
+
+**Log Fields:**
+- `timestamp`: ISO 8601 timestamp
+- `level`: Log level (debug, info, warn, error)
+- `service`: Service name (im-service)
+- `message`: Log message
+- Additional context fields (port, error, etc.)
+
+### Tracing (Optional)
+
+Distributed tracing can be enabled by setting `ENABLE_TRACING=true` and configuring an OpenTelemetry collector:
+
+```bash
+export ENABLE_TRACING=true
+export OTLP_ENDPOINT=localhost:4317
+export OTLP_INSECURE=true
+```
+
+### Observability Configuration Example
+
+```bash
+# Development (verbose logging, metrics enabled)
+export SERVICE_NAME=im-service
+export DEPLOYMENT_ENVIRONMENT=development
+export LOG_LEVEL=debug
+export LOG_FORMAT=text
+export ENABLE_METRICS=true
+export METRICS_PORT=9090
+
+# Production (structured logging, metrics + tracing)
+export SERVICE_NAME=im-service
+export DEPLOYMENT_ENVIRONMENT=production
+export LOG_LEVEL=info
+export LOG_FORMAT=json
+export ENABLE_METRICS=true
+export METRICS_PORT=9090
+export ENABLE_TRACING=true
+export OTLP_ENDPOINT=otel-collector:4317
+export OTLP_INSECURE=false
+```
+
+### Graceful Shutdown
+
+The service implements graceful shutdown with a 5-second timeout for observability cleanup:
+
+1. Receives SIGTERM/SIGINT signal
+2. Stops accepting new requests
+3. Stops offline worker (if enabled)
+4. Flushes metrics and logs
+5. Closes observability connections
+6. Stops gRPC server
+7. Exits
 
 ## Read Receipt API
 
