@@ -2,6 +2,9 @@
         build test lint lint-fix format docker-build run clean list-apps create \
         test-coverage verify-coverage test-services \
         dev pre-commit verify-auto-detection \
+        deps deps-update deps-clean deps-verify deps-audit deps-status \
+        deps-go deps-java deps-node deps-proto \
+        deps-update-go deps-update-java deps-update-node \
         infra-up infra-down services-up services-down dev-up dev-down dev-restart infra-logs infra-clean infra-status \
         im-up im-down \
         observability-up observability-down observability-restart observability-logs observability-status observability-clean \
@@ -18,6 +21,17 @@ help:
 	@echo "  verify-auto-detection - Verify app type auto-detection works correctly"
 	@echo "  proto              - Generate code from Protobuf definitions (all languages)"
 	@echo "  verify-proto       - Verify generated code is up to date (for CI)"
+	@echo ""
+	@echo "  Unified Dependency Management:"
+	@echo "  deps               - Install all dependencies (Go, Java, Node.js)"
+	@echo "  deps-update        - Update all dependencies"
+	@echo "  deps-clean         - Clean all dependencies"
+	@echo "  deps-verify        - Verify dependency integrity"
+	@echo "  deps-audit         - Security audit for all dependencies"
+	@echo "  deps-status        - Show dependency status"
+	@echo "  deps-go            - Install Go dependencies only"
+	@echo "  deps-java          - Install Java dependencies only"
+	@echo "  deps-node          - Install Node.js dependencies only"
 	@echo ""
 	@echo "  Quality & Testing:"
 	@echo "  pre-commit         - Run all pre-commit quality checks (lint, test, security)"
@@ -92,6 +106,62 @@ help:
 init:
 	@echo "Initializing development environment..."
 	@./scripts/init.sh
+
+# ===== Unified Dependency Management =====
+
+# Install all dependencies
+deps:
+	@echo "📦 Installing all dependencies..."
+	@./scripts/deps-manager.sh install all
+
+# Update all dependencies
+deps-update:
+	@echo "🔄 Updating all dependencies..."
+	@./scripts/deps-manager.sh update all
+
+# Clean all dependencies
+deps-clean:
+	@echo "🧹 Cleaning all dependencies..."
+	@./scripts/deps-manager.sh clean all
+
+# Verify dependency integrity
+deps-verify:
+	@echo "✅ Verifying all dependencies..."
+	@./scripts/deps-manager.sh verify all
+
+# Security audit
+deps-audit:
+	@echo "🔒 Auditing dependencies for security issues..."
+	@./scripts/deps-manager.sh audit all
+
+# Dependency status
+deps-status:
+	@echo "📊 Dependency status..."
+	@./scripts/deps-manager.sh status all
+
+# Language-specific dependency management
+deps-go:
+	@./scripts/deps-manager.sh install go
+
+deps-java:
+	@./scripts/deps-manager.sh install java
+
+deps-node:
+	@./scripts/deps-manager.sh install node
+
+deps-proto:
+	@./scripts/deps-manager.sh install proto
+
+deps-update-go:
+	@./scripts/deps-manager.sh update go
+
+deps-update-java:
+	@./scripts/deps-manager.sh update java
+
+deps-update-node:
+	@./scripts/deps-manager.sh update node
+
+# ===== End Unified Dependency Management =====
 
 # Environment check
 check-env:
