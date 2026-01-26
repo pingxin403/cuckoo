@@ -52,8 +52,4 @@ go test ./... $TEST_TAGS -coverprofile=coverage.out -timeout="$TIMEOUT"
 COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}')
 echo -e "${GREEN}Test coverage: ${COVERAGE}${NC}"
 
-# Run linter
-echo -e "${BLUE}Running linter...${NC}"
-golangci-lint run ./...
-
 echo -e "${GREEN}=== All checks passed! ===${NC}"

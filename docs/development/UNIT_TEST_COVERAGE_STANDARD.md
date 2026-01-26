@@ -23,6 +23,12 @@
 适用服务：
 - `im-gateway-service` (依赖 Kafka、WebSocket、Redis/etcd)
 
+#### 特殊服务（使用不同的测试脚本）
+- **im-service**: 使用自定义测试脚本，不强制覆盖率阈值
+  - 支持属性测试（property-based testing）
+  - 可选的 linter 检查
+  - 使用 `--with-property-tests` 标志运行完整测试套件
+
 ### Java 服务
 - **整体覆盖率**: 80% 最低要求
 - **服务类覆盖率**: 90% 最低要求
@@ -146,9 +152,27 @@ OVERALL_COVERAGE=$(echo "$FILTERED_COVERAGE" | \
 
 ## 测试覆盖率脚本
 
+### 职责分离
+
+测试覆盖率脚本（`scripts/test-coverage.sh`）应该**只负责测试和覆盖率检查**，不应该包含其他检查：
+
+✅ **应该包含**：
+- 运行单元测试
+- 生成覆盖率报告
+- 验证覆盖率阈值
+
+❌ **不应该包含**：
+- Linting 检查（使用 `make lint` 或 CI 中的独立步骤）
+- 代码格式化（使用 `make format`）
+- 安全扫描（使用独立工具）
+
 ### Go 服务标准脚本
 
-每个 Go 服务应该有 `scripts/test-coverage.sh` 脚本：
+每个 Go 服务应该有 `scripts/test-coverage.sh` 脚本。有两种类型的脚本：
+
+#### 类型 1: 标准覆盖率脚本（auth-service, user-service, im-gateway-service）
+
+这些服务使用标准的覆盖率检查脚本，强制执行覆盖率阈值：
 
 ```bash
 #!/bin/bash
