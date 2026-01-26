@@ -23,6 +23,8 @@ Welcome to the Monorepo documentation! This index helps you find the information
 
 - [Code Quality Standards](development/CODE_QUALITY.md) - Coding standards and best practices
 - [Testing Guide](development/TESTING_GUIDE.md) - How to write and run tests
+- [Unit Test Coverage Standard](development/UNIT_TEST_COVERAGE_STANDARD.md) - Coverage requirements and exclusion rules
+- [Property Testing](development/PROPERTY_TESTING.md) - Property-based testing guide
 - [Linting Guide](development/LINTING_GUIDE.md) - Linting rules and configuration
 - [Create App Guide](development/CREATE_APP_GUIDE.md) - How to create new applications
 - [Service Creation Automation](development/SERVICE_CREATION_AUTOMATION.md) - Automated service creation details
@@ -84,7 +86,8 @@ Historical documents and migration guides are archived in the [archive](archive/
 2. [Configuration System Guide](CONFIG_SYSTEM_GUIDE.md)
 3. [Code Quality](development/CODE_QUALITY.md)
 4. [Testing Guide](development/TESTING_GUIDE.md)
-5. [Quick Reference](QUICK_REFERENCE.md)
+5. [Unit Test Coverage Standard](development/UNIT_TEST_COVERAGE_STANDARD.md)
+6. [Quick Reference](QUICK_REFERENCE.md)
 
 ### For DevOps
 1. [Deployment Guide](deployment/DEPLOYMENT_GUIDE.md)
@@ -160,6 +163,7 @@ docs/
 ├── development/                 # Development guides
 │   ├── CODE_QUALITY.md
 │   ├── TESTING_GUIDE.md
+│   ├── UNIT_TEST_COVERAGE_STANDARD.md
 │   ├── LINTING_GUIDE.md
 │   ├── CREATE_APP_GUIDE.md
 │   ├── SERVICE_CREATION_AUTOMATION.md
@@ -214,7 +218,7 @@ docs/
 
 ## 📊 Documentation Metrics
 
-- **Active Documents**: 31
+- **Active Documents**: 32
 - **Archived Documents**: 37+
 - **Last Major Cleanup**: 2026-01-26
 - **Organization**: By topic and purpose
@@ -222,5 +226,5 @@ docs/
 
 ---
 
-**Last Updated**: 2026-01-25  
+**Last Updated**: 2026-01-26  
 **Maintained By**: Platform Team

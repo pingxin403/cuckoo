@@ -6,7 +6,9 @@ This guide explains how to write, run, and verify tests in the monorepo, includi
 
 The monorepo enforces test coverage requirements to ensure code quality:
 - **Overall coverage**: 80% minimum
-- **Service/Logic classes**: 90% minimum
+- **Service/Logic classes**: 85-90% minimum
+
+For detailed coverage standards and exclusion rules, see [Unit Test Coverage Standard](./UNIT_TEST_COVERAGE_STANDARD.md).
 
 ## Running Tests
 
@@ -187,6 +189,8 @@ describe('HelloForm', () => {
 
 ## Coverage Configuration
 
+For detailed coverage calculation rules and exclusion patterns, see [Unit Test Coverage Standard](./UNIT_TEST_COVERAGE_STANDARD.md).
+
 ### Java (JaCoCo)
 
 Coverage is configured in `build.gradle`:
@@ -216,30 +220,12 @@ jacocoTestCoverageVerification {
 
 ### Go
 
-Coverage is verified by `scripts/test-coverage.sh`:
+Coverage is verified by `scripts/test-coverage.sh`. See [Unit Test Coverage Standard](./UNIT_TEST_COVERAGE_STANDARD.md) for the complete script template and exclusion rules.
 
-```bash
-#!/bin/bash
-# Run tests with coverage
-go test -v -race -coverprofile=coverage.out ./...
-
-# Generate HTML report
-go tool cover -html=coverage.out -o coverage.html
-
-# Check overall coverage (80%)
-COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
-if (( $(echo "$COVERAGE < 80" | bc -l) )); then
-    echo "Overall coverage $COVERAGE% is below 80%"
-    exit 1
-fi
-
-# Check service/storage coverage (90%)
-SERVICE_COVERAGE=$(go tool cover -func=coverage.out | grep -E '(service|storage)' | awk '{sum+=$3; count++} END {print sum/count}')
-if (( $(echo "$SERVICE_COVERAGE < 90" | bc -l) )); then
-    echo "Service/storage coverage $SERVICE_COVERAGE% is below 90%"
-    exit 1
-fi
-```
+Key points:
+- Excludes generated code (`/gen/`), `main.go`, `/config/`, and `/storage/`
+- Verifies 80% overall coverage (65% for services with external dependencies)
+- Verifies 85% service package coverage (55% for services with external dependencies)
 
 ## CI/CD Integration
 
@@ -282,6 +268,8 @@ The pre-commit hook:
 - TypeScript: Use `describe` and `it` with clear descriptions
 
 ### What to Test
+
+For a complete guide on what should be covered by unit tests vs integration tests, see [Unit Test Coverage Standard](./UNIT_TEST_COVERAGE_STANDARD.md#单元测试-vs-集成测试).
 
 **DO test:**
 - Business logic and validation
