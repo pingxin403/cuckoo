@@ -43,12 +43,21 @@ These documents capture app-specific milestones and fixes.
 ### Other Historical Documents
 - `ARCHITECTURE_SCALABILITY_ANALYSIS.md` - Early scalability analysis
 - `CHECKLIST.md` - Old project checklist
+- `CONFIG_DOCUMENTATION_CLEANUP.md` - Configuration documentation cleanup report
+- `DOCUMENTATION_CLEANUP_ROUND3.md` - Third round documentation cleanup report
 - `LOCAL_SETUP_VERIFICATION.md` - Initial setup verification
 - `MAKEFILE_PROTO_OPTIMIZATION.md` - Makefile optimization history
 - `PRE_COMMIT_HOOK_IMPROVEMENTS.md` - Pre-commit hook evolution
 - `PROTO_GENERATION_STRATEGY.md` - Proto generation strategy history
 - `PROTO_HYBRID_STRATEGY.md` - Proto hybrid approach documentation
 - `PROTO_TOOLS_VERSION.md` - Proto tools version requirements
+
+### Proposals (`proposals/`)
+Archived proposals that have been implemented:
+- `OBSERVABILITY_LIBRARY_PROPOSAL.md` - Observability library design (implemented in `libs/observability/`)
+
+### Configuration (`CONFIG_MIGRATION_GUIDE.md`)
+Configuration migration guide - all services have been migrated to the unified configuration library
 
 ## Why Archive?
 
@@ -121,6 +130,11 @@ archive/
 │   ├── INTEGRATION_TEST_SUMMARY.md
 │   ├── MVP_COMPLETION_SUMMARY.md
 │   └── TASK_STATUS_SUMMARY.md
+├── proposals/                   # Implemented proposals
+│   └── OBSERVABILITY_LIBRARY_PROPOSAL.md
+├── CONFIG_DOCUMENTATION_CLEANUP.md  # Configuration cleanup report
+├── CONFIG_MIGRATION_GUIDE.md    # Configuration migration guide (all services migrated)
+├── DOCUMENTATION_CLEANUP_ROUND3.md  # Third round cleanup report
 └── [other historical files]     # Miscellaneous historical docs
 ```
 
@@ -136,5 +150,5 @@ For new documentation, always create files in the appropriate active directory, 
 
 ---
 
-**Last Updated**: 2026-01-22  
+**Last Updated**: 2026-01-26  
 **Archive Created**: 2026-01-22

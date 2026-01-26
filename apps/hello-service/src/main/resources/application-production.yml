@@ -1,0 +1,28 @@
+# Hello Service - Production Environment
+
+grpc:
+  server:
+    port: 9090
+
+spring:
+  application:
+    name: hello-service
+
+logging:
+  level:
+    root: INFO
+    com.pingxin403.cuckoo: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} %-5level [%thread] %logger{36} - %msg%n"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+  server:
+    port: 9091

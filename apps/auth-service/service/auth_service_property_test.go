@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/pingxin403/cuckoo/apps/auth-service/gen/authpb"
+	"github.com/pingxin403/cuckoo/api/gen/authpb"
 	"pgregory.net/rapid"
 )
 

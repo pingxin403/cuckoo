@@ -18,11 +18,21 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 echo -e "${GREEN}=== IM Service Integration Tests ===${NC}"
 echo ""
 
+# Detect docker compose command
+if command -v docker-compose &> /dev/null; then
+    DOCKER_COMPOSE="docker-compose"
+elif command -v docker &> /dev/null && docker compose version &> /dev/null; then
+    DOCKER_COMPOSE="docker compose"
+else
+    echo -e "${RED}Error: Neither 'docker-compose' nor 'docker compose' found${NC}"
+    exit 1
+fi
+
 # Function to cleanup
 cleanup() {
     echo -e "${YELLOW}Cleaning up test environment...${NC}"
     cd "$SCRIPT_DIR"
-    docker-compose -f docker-compose.test.yml down -v
+    $DOCKER_COMPOSE -f docker-compose.test.yml down -v
     echo -e "${GREEN}Cleanup complete${NC}"
 }
 
@@ -32,12 +42,12 @@ trap cleanup EXIT
 # Step 1: Start infrastructure services
 echo -e "${YELLOW}Step 1: Starting infrastructure services...${NC}"
 cd "$SCRIPT_DIR"
-docker-compose -f docker-compose.test.yml up -d mysql redis etcd zookeeper kafka
+$DOCKER_COMPOSE -f docker-compose.test.yml up -d mysql redis etcd zookeeper kafka
 
 # Wait for services to be healthy
 echo -e "${YELLOW}Waiting for services to be healthy...${NC}"
 for i in {1..60}; do
-    if docker-compose -f docker-compose.test.yml ps | grep -q "unhealthy"; then
+    if $DOCKER_COMPOSE -f docker-compose.test.yml ps | grep -q "unhealthy"; then
         echo -n "."
         sleep 2
     else
@@ -48,29 +58,29 @@ for i in {1..60}; do
     
     if [ $i -eq 60 ]; then
         echo -e "${RED}Timeout waiting for services to be healthy${NC}"
-        docker-compose -f docker-compose.test.yml ps
-        docker-compose -f docker-compose.test.yml logs
+        $DOCKER_COMPOSE -f docker-compose.test.yml ps
+        $DOCKER_COMPOSE -f docker-compose.test.yml logs
         exit 1
     fi
 done
 
 # Step 2: Create Kafka topics
 echo -e "${YELLOW}Step 2: Creating Kafka topics...${NC}"
-docker-compose -f docker-compose.test.yml exec -T kafka kafka-topics \
+$DOCKER_COMPOSE -f docker-compose.test.yml exec -T kafka kafka-topics \
     --create --if-not-exists \
     --bootstrap-server localhost:9092 \
     --topic group_msg \
     --partitions 3 \
     --replication-factor 1
 
-docker-compose -f docker-compose.test.yml exec -T kafka kafka-topics \
+$DOCKER_COMPOSE -f docker-compose.test.yml exec -T kafka kafka-topics \
     --create --if-not-exists \
     --bootstrap-server localhost:9092 \
     --topic offline_msg \
     --partitions 3 \
     --replication-factor 1
 
-docker-compose -f docker-compose.test.yml exec -T kafka kafka-topics \
+$DOCKER_COMPOSE -f docker-compose.test.yml exec -T kafka kafka-topics \
     --create --if-not-exists \
     --bootstrap-server localhost:9092 \
     --topic membership_change \
@@ -82,12 +92,12 @@ echo -e "${GREEN}Kafka topics created${NC}"
 # Step 3: Build and start IM Service
 echo -e "${YELLOW}Step 3: Building and starting IM Service...${NC}"
 cd "$PROJECT_ROOT"
-docker-compose -f apps/im-service/integration_test/docker-compose.test.yml up -d im-service
+$DOCKER_COMPOSE -f apps/im-service/integration_test/docker-compose.test.yml up -d im-service
 
 # Wait for IM Service to be healthy
 echo -e "${YELLOW}Waiting for IM Service to be ready...${NC}"
 for i in {1..30}; do
-    if docker-compose -f apps/im-service/integration_test/docker-compose.test.yml ps im-service | grep -q "healthy"; then
+    if $DOCKER_COMPOSE -f apps/im-service/integration_test/docker-compose.test.yml ps im-service | grep -q "healthy"; then
         echo -e "${GREEN}IM Service is ready${NC}"
         break
     fi
@@ -96,7 +106,7 @@ for i in {1..30}; do
     
     if [ $i -eq 30 ]; then
         echo -e "${RED}Timeout waiting for IM Service${NC}"
-        docker-compose -f apps/im-service/integration_test/docker-compose.test.yml logs im-service
+        $DOCKER_COMPOSE -f apps/im-service/integration_test/docker-compose.test.yml logs im-service
         exit 1
     fi
 done
@@ -154,7 +164,7 @@ else
     echo ""
     echo -e "${RED}=== Integration tests failed ===${NC}"
     echo -e "${YELLOW}Showing service logs:${NC}"
-    docker-compose -f integration_test/docker-compose.test.yml logs im-service
+    $DOCKER_COMPOSE -f integration_test/docker-compose.test.yml logs im-service
 fi
 
 exit $TEST_EXIT_CODE

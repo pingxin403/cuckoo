@@ -1,0 +1,19 @@
+# User Service - Staging Environment
+
+server:
+  port: 9096
+  host: "0.0.0.0"
+
+database:
+  # 通过环境变量设置: DATABASE_HOST, DATABASE_PORT
+  user: "user_service"
+  # 通过环境变量设置: DATABASE_PASSWORD
+  database: "user_db"
+  max_open_conns: 20
+  max_idle_conns: 8
+
+observability:
+  service_name: "user-service"
+  environment: "staging"
+  log_level: "info"
+  log_format: "json"

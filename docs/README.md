@@ -7,6 +7,12 @@ Welcome to the Monorepo documentation! This index helps you find the information
 - [Getting Started Guide](GETTING_STARTED.md) - Quick start guide for new developers
 - [Quick Reference](QUICK_REFERENCE.md) - Common commands and workflows
 
+## ⚙️ Configuration
+
+- [Configuration System Guide](CONFIG_SYSTEM_GUIDE.md) - Complete configuration system documentation
+- [Multi-Env Config Quick Reference](MULTI_ENV_CONFIG_QUICK_REFERENCE.md) - Quick reference for environment configuration
+- [Configuration Library](../libs/config/README.md) - Configuration library API documentation
+
 ## 🏗️ Architecture
 
 - [System Architecture](architecture/ARCHITECTURE.md) - Overall system design and components
@@ -75,9 +81,10 @@ Historical documents and migration guides are archived in the [archive](archive/
 
 ### For New Developers
 1. [Getting Started](GETTING_STARTED.md)
-2. [Code Quality](development/CODE_QUALITY.md)
-3. [Testing Guide](development/TESTING_GUIDE.md)
-4. [Quick Reference](QUICK_REFERENCE.md)
+2. [Configuration System Guide](CONFIG_SYSTEM_GUIDE.md)
+3. [Code Quality](development/CODE_QUALITY.md)
+4. [Testing Guide](development/TESTING_GUIDE.md)
+5. [Quick Reference](QUICK_REFERENCE.md)
 
 ### For DevOps
 1. [Deployment Guide](deployment/DEPLOYMENT_GUIDE.md)
@@ -112,6 +119,7 @@ When creating or updating documentation:
 3. **Keep it up-to-date** - update docs when code changes
 4. **Link to related docs** for context
 5. **Use proper markdown formatting**
+6. **Archive completed proposals and reports** - move to `archive/` directory
 
 ## 🤝 Contributing
 
@@ -139,6 +147,10 @@ docs/
 ├── README.md                    # This file
 ├── GETTING_STARTED.md           # Getting started guide
 ├── QUICK_REFERENCE.md           # Quick reference
+├── CONFIG_SYSTEM_GUIDE.md       # Configuration system guide
+├── MULTI_ENV_CONFIG_QUICK_REFERENCE.md # Multi-env config reference
+├── DOCUMENTATION_CONSOLIDATION_SUMMARY.md # First cleanup summary
+├── DOCUMENTATION_MAINTENANCE_HISTORY.md # Maintenance history
 │
 ├── architecture/                # Architecture documentation
 │   ├── ARCHITECTURE.md
@@ -152,6 +164,8 @@ docs/
 │   ├── CREATE_APP_GUIDE.md
 │   ├── SERVICE_CREATION_AUTOMATION.md
 │   ├── APP_MANAGEMENT.md
+│   ├── APP_STANDARDIZATION_COMPLETE.md
+│   ├── PROPERTY_TESTING.md
 │   └── MAKEFILE_GUIDE.md
 │
 ├── deployment/                  # Deployment documentation
@@ -162,7 +176,7 @@ docs/
 ├── operations/                  # Operations and SRE
 │   ├── README.md
 │   ├── OPERATIONAL_RUNBOOKS.md
-│   ├── ALERTING_GUIDE.md
+│   ├── MONITORING_ALERTING_GUIDE.md
 │   ├── CENTRALIZED_LOGGING.md
 │   └── SLO_TRACKING.md
 │
@@ -190,19 +204,21 @@ docs/
 │
 └── archive/                     # Historical documents
     ├── README.md
-    ├── TOOLS_DIRECTORY_CLEANUP.md
+    ├── CONFIG_DOCUMENTATION_CLEANUP.md
     ├── migrations/
     ├── completions/
     ├── fixes/
-    └── app-specific/
+    ├── app-specific/
+    └── proposals/
 ```
 
 ## 📊 Documentation Metrics
 
-- **Active Documents**: 35
-- **Archived Documents**: 30+
-- **Last Major Cleanup**: 2026-01-25
+- **Active Documents**: 31
+- **Archived Documents**: 37+
+- **Last Major Cleanup**: 2026-01-26
 - **Organization**: By topic and purpose
+- **Maintenance**: [Documentation Maintenance History](DOCUMENTATION_MAINTENANCE_HISTORY.md)
 
 ---
 

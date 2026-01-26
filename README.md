@@ -820,6 +820,13 @@ cd apps/todo-service && go run .
 - [应用管理](docs/development/APP_MANAGEMENT.md) - 应用管理系统使用指南
 - [Makefile 指南](docs/development/MAKEFILE_GUIDE.md) - Makefile 使用和 Proto 生成
 
+### ⚙️ 配置文档
+
+- [配置系统完整指南](docs/CONFIG_SYSTEM_GUIDE.md) ⭐ - 配置系统完整文档
+- [多环境配置快速参考](docs/MULTI_ENV_CONFIG_QUICK_REFERENCE.md) - 配置命令速查
+- [配置迁移指南](docs/CONFIG_MIGRATION_GUIDE.md) - 服务配置迁移步骤
+- [配置文档索引](docs/CONFIG_DOCUMENTATION_INDEX.md) - 配置文档导航
+
 ### 🚢 部署文档
 
 - [部署指南](docs/deployment/DEPLOYMENT_GUIDE.md) - 所有环境的完整部署指南

@@ -1,0 +1,16 @@
+# Auth Service - Production Environment
+
+server:
+  port: 9095
+  host: "0.0.0.0"
+
+observability:
+  service_name: "auth-service"
+  environment: "production"
+  log_level: "info"
+  log_format: "json"
+
+jwt:
+  # 必须通过环境变量设置: JWT_SECRET
+  expiration: 1h
+  refresh_expiration: 72h

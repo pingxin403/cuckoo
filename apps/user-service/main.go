@@ -9,7 +9,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/pingxin403/cuckoo/apps/user-service/gen/userpb"
+	"github.com/pingxin403/cuckoo/api/gen/userpb"
+	"github.com/pingxin403/cuckoo/apps/user-service/config"
 	"github.com/pingxin403/cuckoo/apps/user-service/service"
 	"github.com/pingxin403/cuckoo/apps/user-service/storage"
 	"github.com/pingxin403/cuckoo/libs/observability"
@@ -18,15 +19,22 @@ import (
 )
 
 func main() {
+	// Load configuration
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to load configuration: %v\n", err)
+		os.Exit(1)
+	}
+
 	// Initialize observability
 	obs, err := observability.New(observability.Config{
-		ServiceName:    getEnv("SERVICE_NAME", "user-service"),
-		ServiceVersion: getEnv("SERVICE_VERSION", "1.0.0"),
-		Environment:    getEnv("DEPLOYMENT_ENVIRONMENT", "development"),
-		EnableMetrics:  getEnvBool("ENABLE_METRICS", true),
-		MetricsPort:    getEnvInt("METRICS_PORT", 9090),
-		LogLevel:       getEnv("LOG_LEVEL", "info"),
-		LogFormat:      getEnv("LOG_FORMAT", "json"),
+		ServiceName:    cfg.Observability.ServiceName,
+		ServiceVersion: cfg.Observability.ServiceVersion,
+		Environment:    cfg.Observability.Environment,
+		EnableMetrics:  cfg.Observability.EnableMetrics,
+		MetricsPort:    cfg.Observability.MetricsPort,
+		LogLevel:       cfg.Observability.LogLevel,
+		LogFormat:      cfg.Observability.LogFormat,
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to initialize observability: %v\n", err)
@@ -42,33 +50,20 @@ func main() {
 
 	ctx := context.Background()
 	obs.Logger().Info(ctx, "Starting user-service",
-		"service", "user-service",
-		"version", getEnv("SERVICE_VERSION", "1.0.0"),
+		"service", cfg.Observability.ServiceName,
+		"version", cfg.Observability.ServiceVersion,
+		"port", cfg.Server.Port,
 	)
 
-	// Get port from environment variable or use default
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "9096"
-	}
-
-	// Get MySQL DSN from environment variable
-	mysqlDSN := os.Getenv("MYSQL_DSN")
-	if mysqlDSN == "" {
-		// Default DSN for local development
-		mysqlDSN = "im_service:im_password@tcp(localhost:3306)/im_chat?parseTime=true"
-		obs.Logger().Info(ctx, "MYSQL_DSN not set, using default", "dsn", mysqlDSN)
-	}
-
 	// Create TCP listener
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", port))
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", cfg.Server.Port))
 	if err != nil {
-		obs.Logger().Error(ctx, "Failed to listen", "port", port, "error", err)
+		obs.Logger().Error(ctx, "Failed to listen", "port", cfg.Server.Port, "error", err)
 		os.Exit(1)
 	}
 
 	// Initialize MySQL storage
-	store, err := storage.NewMySQLStore(mysqlDSN)
+	store, err := storage.NewMySQLStore(cfg.GetDSN())
 	if err != nil {
 		obs.Logger().Error(ctx, "Failed to initialize MySQL store", "error", err)
 		os.Exit(1)
@@ -98,7 +93,7 @@ func main() {
 
 	// Start server in a goroutine
 	go func() {
-		obs.Logger().Info(ctx, "user-service listening", "port", port)
+		obs.Logger().Info(ctx, "user-service listening", "port", cfg.Server.Port)
 		obs.Logger().Info(ctx, "Service ready to accept requests")
 		if err := grpcServer.Serve(lis); err != nil {
 			obs.Logger().Error(ctx, "Failed to serve", "error", err)
@@ -130,29 +125,4 @@ func main() {
 	}
 
 	obs.Logger().Info(shutdownCtx, "user-service shutdown complete")
-}
-
-// Helper functions for environment variables
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
-}
-
-func getEnvInt(key string, defaultValue int) int {
-	if value := os.Getenv(key); value != "" {
-		var intValue int
-		if _, err := fmt.Sscanf(value, "%d", &intValue); err == nil {
-			return intValue
-		}
-	}
-	return defaultValue
-}
-
-func getEnvBool(key string, defaultValue bool) bool {
-	if value := os.Getenv(key); value != "" {
-		return value == "true" || value == "1" || value == "yes"
-	}
-	return defaultValue
 }

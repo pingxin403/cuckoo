@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pingxin403/cuckoo/apps/user-service/gen/userpb"
+	"github.com/pingxin403/cuckoo/api/gen/userpb"
 	"pgregory.net/rapid"
 )
 
@@ -18,7 +18,7 @@ func TestProperty_BatchGetUsersReturnsAllExisting(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		store := NewMockUserStore()
 		obs := createTestObservability()
-	svc := NewUserServiceServer(store, obs)
+		svc := NewUserServiceServer(store, obs)
 
 		// Generate a random subset of existing user IDs
 		existingIDs := []string{"user001", "user002", "user003"}
@@ -71,7 +71,7 @@ func TestProperty_GroupMembershipValidationConsistent(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		store := NewMockUserStore()
 		obs := createTestObservability()
-	svc := NewUserServiceServer(store, obs)
+		svc := NewUserServiceServer(store, obs)
 
 		// Test with known members and non-members
 		testCases := []struct {
@@ -120,7 +120,7 @@ func TestProperty_PaginationReturnsAllMembersWithoutDuplicates(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		store := NewMockUserStore()
 		obs := createTestObservability()
-	svc := NewUserServiceServer(store, obs)
+		svc := NewUserServiceServer(store, obs)
 
 		// Use a random page size between 1 and 5
 		// Safe conversion: rapid.IntRange returns int, we need int32
@@ -192,7 +192,7 @@ func TestProperty_GetUserConsistentAcrossCalls(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		store := NewMockUserStore()
 		obs := createTestObservability()
-	svc := NewUserServiceServer(store, obs)
+		svc := NewUserServiceServer(store, obs)
 
 		// Pick a random existing user
 		userIDs := []string{"user001", "user002", "user003"}
@@ -240,7 +240,7 @@ func TestProperty_BatchGetUsersNotFoundList(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		store := NewMockUserStore()
 		obs := createTestObservability()
-	svc := NewUserServiceServer(store, obs)
+		svc := NewUserServiceServer(store, obs)
 
 		// Generate a mix of existing and non-existing user IDs
 		existingIDs := []string{"user001", "user002", "user003"}
@@ -303,7 +303,7 @@ func TestProperty_GroupMemberRolesPreserved(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		store := NewMockUserStore()
 		obs := createTestObservability()
-	svc := NewUserServiceServer(store, obs)
+		svc := NewUserServiceServer(store, obs)
 
 		// Known member roles in group001
 		expectedRoles := map[string]userpb.GroupRole{
@@ -344,7 +344,7 @@ func TestProperty_EmptyBatchRequestReturnsEmpty(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		store := NewMockUserStore()
 		obs := createTestObservability()
-	svc := NewUserServiceServer(store, obs)
+		svc := NewUserServiceServer(store, obs)
 
 		req := &userpb.BatchGetUsersRequest{
 			UserIds: []string{},
@@ -371,7 +371,7 @@ func TestProperty_GroupMembersTotalCountConsistent(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		store := NewMockUserStore()
 		obs := createTestObservability()
-	svc := NewUserServiceServer(store, obs)
+		svc := NewUserServiceServer(store, obs)
 
 		// Use a random page size
 		// Safe conversion: rapid.IntRange returns int, we need int32

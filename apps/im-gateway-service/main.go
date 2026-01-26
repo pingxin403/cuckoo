@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/pingxin403/cuckoo/apps/im-gateway-service/config"
 	"github.com/pingxin403/cuckoo/apps/im-gateway-service/metrics"
 	"github.com/pingxin403/cuckoo/apps/im-gateway-service/service"
 	"github.com/pingxin403/cuckoo/libs/observability"
@@ -17,19 +18,18 @@ import (
 )
 
 func main() {
-	// Get port from environment variable or use default
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "9093"
+	// Load configuration
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to load configuration: %v\n", err)
+		os.Exit(1)
 	}
 
 	// Initialize Redis client
-	redisAddr := os.Getenv("REDIS_ADDR")
-	if redisAddr == "" {
-		redisAddr = "localhost:6379"
-	}
 	redisClient := redis.NewClient(&redis.Options{
-		Addr: redisAddr,
+		Addr:     cfg.Redis.Addr,
+		Password: cfg.Redis.Password,
+		DB:       cfg.Redis.DB,
 	})
 	defer func() { _ = redisClient.Close() }()
 
@@ -49,18 +49,18 @@ func main() {
 
 	// Initialize observability with OpenTelemetry metrics
 	obs, err := observability.New(observability.Config{
-		ServiceName:         "im-gateway-service",
-		ServiceVersion:      "1.0.0",
-		Environment:         os.Getenv("DEPLOYMENT_ENVIRONMENT"),
-		EnableMetrics:       true,
+		ServiceName:         cfg.Observability.ServiceName,
+		ServiceVersion:      cfg.Observability.ServiceVersion,
+		Environment:         cfg.Observability.Environment,
+		EnableMetrics:       cfg.Observability.EnableMetrics,
 		UseOTelMetrics:      true,                                     // Use OpenTelemetry metrics
 		PrometheusEnabled:   true,                                     // Enable Prometheus exporter
-		MetricsPort:         9090,                                     // Separate port for metrics
+		MetricsPort:         cfg.Observability.MetricsPort,            // Separate port for metrics
 		OTLPMetricsEndpoint: os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"), // OTLP endpoint for metrics
 		OTLPInsecure:        true,                                     // Use insecure connection for development
 		EnableTracing:       false,
-		LogLevel:            "info",
-		LogFormat:           "json",
+		LogLevel:            cfg.Observability.LogLevel,
+		LogFormat:           cfg.Observability.LogFormat,
 	})
 	if err != nil {
 		log.Fatalf("Failed to initialize observability: %v", err)
@@ -74,8 +74,9 @@ func main() {
 	}()
 
 	obs.Logger().Info(ctx, "Observability initialized",
-		"service", "im-gateway-service",
-		"metrics_port", 9090,
+		"service", cfg.Observability.ServiceName,
+		"version", cfg.Observability.ServiceVersion,
+		"metrics_port", cfg.Observability.MetricsPort,
 		"otel_metrics", true,
 	)
 
@@ -83,13 +84,13 @@ func main() {
 	gatewayMetrics := metrics.NewMetrics(obs)
 
 	// Create gateway service with default config
-	config := service.DefaultGatewayConfig()
+	gatewayConfig := service.DefaultGatewayConfig()
 	gateway := service.NewGatewayService(
 		authClient,
 		registryClient,
 		imClient,
 		redisClient,
-		config,
+		gatewayConfig,
 	)
 
 	// TODO: Integrate metrics with gateway service
@@ -109,7 +110,7 @@ func main() {
 	})
 
 	server := &http.Server{
-		Addr:         fmt.Sprintf(":%s", port),
+		Addr:         fmt.Sprintf(":%d", cfg.Server.HTTPPort),
 		Handler:      mux,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
@@ -123,7 +124,7 @@ func main() {
 	// Start server in a goroutine
 	go func() {
 		obs.Logger().Info(ctx, "Starting HTTP server",
-			"port", port,
+			"port", cfg.Server.HTTPPort,
 			"websocket_endpoint", "/ws",
 			"health_endpoint", "/health",
 		)

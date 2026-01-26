@@ -8,10 +8,10 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
+	"github.com/pingxin403/cuckoo/apps/im-service/config"
 	"github.com/pingxin403/cuckoo/apps/im-service/dedup"
 	"github.com/pingxin403/cuckoo/apps/im-service/readreceipt"
 	"github.com/pingxin403/cuckoo/apps/im-service/storage"
@@ -21,15 +21,22 @@ import (
 )
 
 func main() {
+	// Load configuration
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to load configuration: %v\n", err)
+		os.Exit(1)
+	}
+
 	// Initialize observability first
 	obs, err := observability.New(observability.Config{
-		ServiceName:    getEnv("SERVICE_NAME", "im-service"),
-		ServiceVersion: getEnv("SERVICE_VERSION", "1.0.0"),
-		Environment:    getEnv("DEPLOYMENT_ENVIRONMENT", "development"),
-		EnableMetrics:  getEnvBool("ENABLE_METRICS", true),
-		MetricsPort:    getEnvInt("METRICS_PORT", 9090),
-		LogLevel:       getEnv("LOG_LEVEL", "info"),
-		LogFormat:      getEnv("LOG_FORMAT", "json"),
+		ServiceName:    cfg.Observability.ServiceName,
+		ServiceVersion: cfg.Observability.ServiceVersion,
+		Environment:    cfg.Observability.Environment,
+		EnableMetrics:  cfg.Observability.EnableMetrics,
+		MetricsPort:    cfg.Observability.MetricsPort,
+		LogLevel:       cfg.Observability.LogLevel,
+		LogFormat:      cfg.Observability.LogFormat,
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to initialize observability: %v\n", err)
@@ -45,22 +52,21 @@ func main() {
 
 	ctx := context.Background()
 	obs.Logger().Info(ctx, "Starting IM Service",
-		"service", "im-service",
-		"version", getEnv("SERVICE_VERSION", "1.0.0"),
+		"service", cfg.Observability.ServiceName,
+		"version", cfg.Observability.ServiceVersion,
+		"grpc_port", cfg.Server.GRPCPort,
+		"http_port", cfg.Server.HTTPPort,
 	)
-
-	// Load configuration from environment
-	config := loadConfig()
 
 	// Initialize shared dependencies
 	obs.Logger().Info(ctx, "Initializing shared dependencies")
 
 	// Create storage
 	store, err := storage.NewOfflineStore(storage.Config{
-		DSN:             config.DatabaseDSN,
-		MaxOpenConns:    config.DBMaxOpenConns,
-		MaxIdleConns:    config.DBMaxIdleConns,
-		ConnMaxLifetime: config.DBConnMaxLifetime,
+		DSN:             cfg.GetDatabaseDSN(),
+		MaxOpenConns:    cfg.Database.MaxOpenConns,
+		MaxIdleConns:    cfg.Database.MaxIdleConns,
+		ConnMaxLifetime: cfg.Database.ConnMaxLifetime,
 	})
 	if err != nil {
 		obs.Logger().Error(ctx, "Failed to create offline store", "error", err)
@@ -71,10 +77,10 @@ func main() {
 
 	// Create dedup service
 	dedupService := dedup.NewDedupService(dedup.Config{
-		RedisAddr:     config.RedisAddr,
-		RedisPassword: config.RedisPassword,
-		RedisDB:       config.RedisDB,
-		TTL:           config.MessageTTL,
+		RedisAddr:     cfg.Redis.Addr,
+		RedisPassword: cfg.Redis.Password,
+		RedisDB:       cfg.Redis.DB,
+		TTL:           cfg.OfflineWorker.MessageTTL,
 	})
 	defer func() { _ = dedupService.Close() }()
 
@@ -93,14 +99,14 @@ func main() {
 	// TODO: Register IM Service gRPC handlers here when Task 9 is implemented
 	// pb.RegisterIMServiceServer(grpcServer, imService)
 
-	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", config.GRPCPort))
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", cfg.Server.GRPCPort))
 	if err != nil {
-		obs.Logger().Error(ctx, "Failed to listen", "port", config.GRPCPort, "error", err)
+		obs.Logger().Error(ctx, "Failed to listen", "port", cfg.Server.GRPCPort, "error", err)
 		os.Exit(1)
 	}
 
 	go func() {
-		obs.Logger().Info(ctx, "gRPC server listening", "port", config.GRPCPort)
+		obs.Logger().Info(ctx, "gRPC server listening", "port", cfg.Server.GRPCPort)
 		if err := grpcServer.Serve(listener); err != nil {
 			obs.Logger().Error(ctx, "Failed to serve gRPC", "error", err)
 			os.Exit(1)
@@ -109,18 +115,18 @@ func main() {
 
 	// Start offline worker (background component)
 	var offlineWorker *worker.OfflineWorker
-	if config.OfflineWorkerEnabled {
+	if cfg.OfflineWorker.Enabled {
 		obs.Logger().Info(ctx, "Starting offline worker component")
 		offlineWorker, err = worker.NewOfflineWorker(
 			worker.WorkerConfig{
-				KafkaBrokers:  config.KafkaBrokers,
-				ConsumerGroup: config.ConsumerGroup,
-				Topic:         config.Topic,
-				BatchSize:     config.BatchSize,
-				BatchTimeout:  config.BatchTimeout,
-				MaxRetries:    config.MaxRetries,
-				RetryBackoff:  config.RetryBackoff,
-				MessageTTL:    config.MessageTTL,
+				KafkaBrokers:  cfg.Kafka.Brokers,
+				ConsumerGroup: cfg.Kafka.ConsumerGroup,
+				Topic:         cfg.Kafka.Topic,
+				BatchSize:     cfg.OfflineWorker.BatchSize,
+				BatchTimeout:  cfg.OfflineWorker.BatchTimeout,
+				MaxRetries:    cfg.OfflineWorker.MaxRetries,
+				RetryBackoff:  cfg.OfflineWorker.RetryBackoff,
+				MessageTTL:    cfg.OfflineWorker.MessageTTL,
 			},
 			store,
 			dedupService,
@@ -142,11 +148,11 @@ func main() {
 	// Initialize read receipt service
 	obs.Logger().Info(ctx, "Initializing read receipt service")
 	var readReceiptService *readreceipt.ReadReceiptService
-	if config.ReadReceiptKafkaEnabled {
+	if cfg.ReadReceipt.KafkaEnabled {
 		readReceiptService = readreceipt.NewReadReceiptServiceWithKafka(
 			store.GetDB(),
-			config.KafkaBrokers,
-			config.ReadReceiptTopic,
+			cfg.Kafka.Brokers,
+			cfg.ReadReceipt.Topic,
 		)
 		obs.Logger().Info(ctx, "Read receipt service initialized with Kafka support")
 	} else {
@@ -159,12 +165,12 @@ func main() {
 	obs.Logger().Info(ctx, "Read receipt HTTP handler initialized")
 
 	// Start HTTP server for health checks, metrics, and read receipts
-	go startHTTPServer(obs, offlineWorker, readReceiptHandler, config.HTTPPort)
+	go startHTTPServer(obs, offlineWorker, readReceiptHandler, cfg.Server.HTTPPort)
 
 	obs.Logger().Info(ctx, "IM Service started successfully",
-		"grpc_port", config.GRPCPort,
-		"http_port", config.HTTPPort,
-		"offline_worker_enabled", config.OfflineWorkerEnabled,
+		"grpc_port", cfg.Server.GRPCPort,
+		"http_port", cfg.Server.HTTPPort,
+		"offline_worker_enabled", cfg.OfflineWorker.Enabled,
 	)
 
 	// Wait for interrupt signal
@@ -186,96 +192,6 @@ func main() {
 	grpcServer.GracefulStop()
 
 	obs.Logger().Info(ctx, "IM Service stopped")
-}
-
-// Config holds application configuration
-type Config struct {
-	// gRPC server
-	GRPCPort int
-
-	// HTTP server
-	HTTPPort int
-
-	// Kafka
-	KafkaBrokers  []string
-	ConsumerGroup string
-	Topic         string
-
-	// Database
-	DatabaseDSN       string
-	DBMaxOpenConns    int
-	DBMaxIdleConns    int
-	DBConnMaxLifetime time.Duration
-
-	// Redis
-	RedisAddr     string
-	RedisPassword string
-	RedisDB       int
-
-	// Offline Worker
-	OfflineWorkerEnabled bool
-	BatchSize            int
-	BatchTimeout         time.Duration
-	MaxRetries           int
-	RetryBackoff         []time.Duration
-	MessageTTL           time.Duration
-
-	// Read Receipt
-	ReadReceiptKafkaEnabled bool
-	ReadReceiptTopic        string
-}
-
-// loadConfig loads configuration from environment variables
-func loadConfig() Config {
-	config := Config{
-		// gRPC server defaults
-		GRPCPort: getEnvInt("GRPC_PORT", 9094),
-
-		// HTTP server defaults
-		HTTPPort: getEnvInt("HTTP_PORT", 8080),
-
-		// Kafka defaults
-		KafkaBrokers:  parseStringSlice(getEnv("KAFKA_BROKERS", "localhost:9092")),
-		ConsumerGroup: getEnv("KAFKA_CONSUMER_GROUP", "im-service-offline-workers"),
-		Topic:         getEnv("KAFKA_TOPIC", "offline_msg"),
-
-		// Database defaults
-		DatabaseDSN:       buildDatabaseDSN(),
-		DBMaxOpenConns:    getEnvInt("DB_MAX_OPEN_CONNS", 25),
-		DBMaxIdleConns:    getEnvInt("DB_MAX_IDLE_CONNS", 5),
-		DBConnMaxLifetime: getEnvDuration("DB_CONN_MAX_LIFETIME", 5*time.Minute),
-
-		// Redis defaults
-		RedisAddr:     getEnv("REDIS_ADDR", "localhost:6379"),
-		RedisPassword: getEnv("REDIS_PASSWORD", ""),
-		RedisDB:       getEnvInt("REDIS_DB", 2),
-
-		// Offline Worker defaults
-		OfflineWorkerEnabled: getEnvBool("OFFLINE_WORKER_ENABLED", true),
-		BatchSize:            getEnvInt("BATCH_SIZE", 100),
-		BatchTimeout:         getEnvDuration("BATCH_TIMEOUT", 5*time.Second),
-		MaxRetries:           getEnvInt("MAX_RETRIES", 5),
-		RetryBackoff:         parseRetryBackoff(getEnv("RETRY_BACKOFF", "1s,2s,4s,8s,16s")),
-		MessageTTL:           getEnvDuration("MESSAGE_TTL", 7*24*time.Hour),
-
-		// Read Receipt defaults
-		ReadReceiptKafkaEnabled: getEnvBool("READ_RECEIPT_KAFKA_ENABLED", true),
-		ReadReceiptTopic:        getEnv("READ_RECEIPT_TOPIC", "read_receipt_events"),
-	}
-
-	return config
-}
-
-// buildDatabaseDSN builds MySQL DSN from environment variables
-func buildDatabaseDSN() string {
-	host := getEnv("DB_HOST", "localhost")
-	port := getEnv("DB_PORT", "3306")
-	user := getEnv("DB_USER", "im_service")
-	password := getEnv("DB_PASSWORD", "")
-	dbName := getEnv("DB_NAME", "im_chat")
-
-	return fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&charset=utf8mb4",
-		user, password, host, port, dbName)
 }
 
 // startHTTPServer starts HTTP server for health checks, metrics, and read receipts
@@ -414,61 +330,4 @@ type responseWriter struct {
 func (rw *responseWriter) WriteHeader(code int) {
 	rw.statusCode = code
 	rw.ResponseWriter.WriteHeader(code)
-}
-
-// Helper functions
-
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
-}
-
-func getEnvInt(key string, defaultValue int) int {
-	if value := os.Getenv(key); value != "" {
-		var intValue int
-		if _, err := fmt.Sscanf(value, "%d", &intValue); err == nil {
-			return intValue
-		}
-	}
-	return defaultValue
-}
-
-func getEnvBool(key string, defaultValue bool) bool {
-	if value := os.Getenv(key); value != "" {
-		return value == "true" || value == "1" || value == "yes"
-	}
-	return defaultValue
-}
-
-func getEnvDuration(key string, defaultValue time.Duration) time.Duration {
-	if value := os.Getenv(key); value != "" {
-		if duration, err := time.ParseDuration(value); err == nil {
-			return duration
-		}
-	}
-	return defaultValue
-}
-
-func parseStringSlice(s string) []string {
-	parts := strings.Split(s, ",")
-	result := make([]string, 0, len(parts))
-	for _, part := range parts {
-		if trimmed := strings.TrimSpace(part); trimmed != "" {
-			result = append(result, trimmed)
-		}
-	}
-	return result
-}
-
-func parseRetryBackoff(s string) []time.Duration {
-	parts := parseStringSlice(s)
-	result := make([]time.Duration, 0, len(parts))
-	for _, part := range parts {
-		if duration, err := time.ParseDuration(part); err == nil {
-			result = append(result, duration)
-		}
-	}
-	return result
 }

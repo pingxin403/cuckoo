@@ -1,0 +1,39 @@
+# Shortener Service - Production Environment
+
+server:
+  grpc_port: 9092
+  http_port: 8080
+  host: "0.0.0.0"
+
+database:
+  # 必须通过环境变量设置:
+  # DATABASE_HOST, DATABASE_PORT, DATABASE_USER, DATABASE_PASSWORD, DATABASE_DATABASE
+  max_open_conns: 25
+  max_idle_conns: 10
+
+redis:
+  # 必须通过环境变量设置: REDIS_ADDR
+  db: 0
+  pool_size: 50
+
+kafka:
+  # 必须通过环境变量设置: KAFKA_BROKERS
+  topic: "url-clicks"
+  num_workers: 8
+  buffer_size: 50000
+
+observability:
+  service_name: "shortener-service"
+  environment: "production"
+  log_level: "info"
+  log_format: "json"
+  enable_metrics: true
+  metrics_port: 9090
+
+rate_limiter:
+  requests_per_minute: 1000
+
+cache:
+  l1_max_cost: 104857600  # 100MB
+  l1_num_counters: 1000000
+  l2_ttl: 3600  # 1 hour

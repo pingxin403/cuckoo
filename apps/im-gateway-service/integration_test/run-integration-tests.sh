@@ -18,11 +18,21 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 echo -e "${GREEN}=== IM Gateway Service Dependency Integration Tests ===${NC}"
 echo ""
 
+# Detect docker compose command
+if command -v docker-compose &> /dev/null; then
+    DOCKER_COMPOSE="docker-compose"
+elif command -v docker &> /dev/null && docker compose version &> /dev/null; then
+    DOCKER_COMPOSE="docker compose"
+else
+    echo -e "${RED}Error: Neither 'docker-compose' nor 'docker compose' found${NC}"
+    exit 1
+fi
+
 # Function to cleanup
 cleanup() {
     echo -e "${YELLOW}Cleaning up test environment...${NC}"
     cd "$SCRIPT_DIR"
-    docker-compose -f docker-compose.test.yml down -v
+    $DOCKER_COMPOSE -f docker-compose.test.yml down -v
     echo -e "${GREEN}Cleanup complete${NC}"
 }
 
@@ -32,18 +42,18 @@ trap cleanup EXIT
 # Step 1: Start all services
 echo -e "${YELLOW}Step 1: Starting all services...${NC}"
 cd "$SCRIPT_DIR"
-docker-compose -f docker-compose.test.yml up -d
+$DOCKER_COMPOSE -f docker-compose.test.yml up -d
 
 # Wait for services to be healthy
 echo -e "${YELLOW}Waiting for services to be healthy...${NC}"
 for i in {1..90}; do
-    if docker-compose -f docker-compose.test.yml ps | grep -q "unhealthy"; then
+    if $DOCKER_COMPOSE -f docker-compose.test.yml ps | grep -q "unhealthy"; then
         echo -n "."
         sleep 2
     else
         # Check if all services are up
-        RUNNING=$(docker-compose -f docker-compose.test.yml ps --services --filter "status=running" | wc -l)
-        TOTAL=$(docker-compose -f docker-compose.test.yml ps --services | wc -l)
+        RUNNING=$($DOCKER_COMPOSE -f docker-compose.test.yml ps --services --filter "status=running" | wc -l)
+        TOTAL=$($DOCKER_COMPOSE -f docker-compose.test.yml ps --services | wc -l)
         
         if [ "$RUNNING" -eq "$TOTAL" ]; then
             echo ""

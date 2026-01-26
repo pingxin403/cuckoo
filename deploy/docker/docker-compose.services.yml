@@ -144,6 +144,7 @@ services:
       - "9096:9096"
     environment:
       - PORT=9096
+      - MYSQL_DSN=im_service:im_service_password@tcp(mysql:3306)/im_chat?parseTime=true
       - MYSQL_HOST=mysql
       - MYSQL_PORT=3306
       - MYSQL_DATABASE=im_chat
@@ -241,10 +242,10 @@ services:
     image: im-gateway-service:latest
     container_name: im-gateway-service
     ports:
-      - "9093:9093"  # gRPC
+      - "9097:9097"  # gRPC
       - "8082:8080"  # WebSocket
     environment:
-      - GRPC_PORT=9093
+      - GRPC_PORT=9097
       - WEBSOCKET_PORT=8080
       - ETCD_ENDPOINTS=etcd:2379
       - KAFKA_BROKERS=kafka:9092

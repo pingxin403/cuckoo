@@ -1,0 +1,39 @@
+# IM Gateway Service - Testing Environment
+
+server:
+  http_port: 8080
+  grpc_port: 9097
+  host: "0.0.0.0"
+
+redis:
+  addr: "redis-test:6379"
+  db: 0
+  pool_size: 20
+
+kafka:
+  brokers:
+    - "kafka-test:9092"
+  consumer_group: "im-gateway-testing"
+
+etcd:
+  endpoints:
+    - "etcd-test:2379"
+
+observability:
+  service_name: "im-gateway-service"
+  environment: "testing"
+  log_level: "info"
+  log_format: "json"
+
+service_discovery:
+  auth_service_addr: "auth-service:9095"
+  im_service_addr: "im-service:9094"
+  user_service_addr: "user-service:9096"
+
+connection:
+  max_connections: 5000
+  heartbeat_interval: 30s
+  heartbeat_timeout: 90s
+
+cache:
+  large_group_threshold: 1000

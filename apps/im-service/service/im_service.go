@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pingxin403/cuckoo/api/gen/impb"
 	"github.com/pingxin403/cuckoo/apps/im-service/dedup"
 	"github.com/pingxin403/cuckoo/apps/im-service/filter"
-	impb "github.com/pingxin403/cuckoo/apps/im-service/gen/impb"
 	"github.com/pingxin403/cuckoo/apps/im-service/registry"
 	"github.com/pingxin403/cuckoo/apps/im-service/sequence"
 	"google.golang.org/protobuf/types/known/timestamppb"

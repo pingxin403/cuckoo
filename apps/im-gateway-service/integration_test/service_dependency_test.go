@@ -16,9 +16,9 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/status"
 
-	authpb "github.com/pingxin403/cuckoo/apps/auth-service/gen/authpb"
-	impb "github.com/pingxin403/cuckoo/apps/im-service/gen/impb"
-	userpb "github.com/pingxin403/cuckoo/apps/user-service/gen/userpb"
+	authpb "github.com/pingxin403/cuckoo/api/gen/authpb"
+	impb "github.com/pingxin403/cuckoo/api/gen/impb"
+	userpb "github.com/pingxin403/cuckoo/api/gen/userpb"
 )
 
 var (

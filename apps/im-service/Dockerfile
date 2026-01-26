@@ -25,6 +25,10 @@ RUN apk add --no-cache curl unzip git && \
     # Verify installations
     protoc --version
 
+# Copy shared libraries and API definitions (required for go mod download with replace directives)
+COPY libs/ /libs/
+COPY api/gen /api/gen
+
 # Copy go mod files
 COPY apps/im-service/go.mod apps/im-service/go.sum ./
 RUN go mod download

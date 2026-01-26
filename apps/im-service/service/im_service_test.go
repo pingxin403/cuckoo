@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/alicebob/miniredis/v2"
+	"github.com/pingxin403/cuckoo/api/gen/impb"
 	"github.com/pingxin403/cuckoo/apps/im-service/dedup"
 	"github.com/pingxin403/cuckoo/apps/im-service/filter"
-	impb "github.com/pingxin403/cuckoo/apps/im-service/gen/impb"
 	"github.com/pingxin403/cuckoo/apps/im-service/registry"
 	"github.com/pingxin403/cuckoo/apps/im-service/sequence"
 	"github.com/redis/go-redis/v9"
