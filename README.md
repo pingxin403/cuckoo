@@ -1,10 +1,12 @@
-# Monorepo Hello/TODO Services
+# Cuckoo - 企业级微服务 Monorepo
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com)
 [![Local Setup](https://img.shields.io/badge/local%20setup-verified-brightgreen)](docs/archive/LOCAL_SETUP_VERIFICATION.md)
 [![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-A multi-language monorepo project demonstrating microservices architecture with Java/Spring Boot, Go, and React/TypeScript.
+> **一句话描述**: 生产级多语言微服务 Monorepo，包含即时通讯、URL 短链接、用户认证等完整业务系统，采用 gRPC + Protobuf 通信，支持 Docker Compose 和 Kubernetes 部署，内置统一依赖管理、代码质量检查和 CI/CD 流程。
+
+**Cuckoo** 是一个企业级微服务 Monorepo 项目，展示了现代化微服务架构的最佳实践。项目采用多语言技术栈（Go、Java、TypeScript），通过 Protobuf 定义统一 API 契约，使用 gRPC 进行高效通信，并提供完整的开发、测试、部署工具链。
 
 ## ✅ 项目状态
 
@@ -17,15 +19,113 @@ A multi-language monorepo project demonstrating microservices architecture with 
 
 ## 项目概述
 
-本项目是一个多语言 Monorepo，包含以下服务：
+### 核心特性
 
-- **Hello Service** (Java/Spring Boot) - 提供问候功能的 gRPC 服务
-- **TODO Service** (Go) - 提供任务管理功能的 gRPC 服务
-- **Shortener Service** (Go) - 高性能 URL 短链接服务，支持自定义短码和多级缓存
-- **IM Chat System** (Go) - 分布式即时通讯系统，支持私聊、群聊、离线消息
-- **Web Application** (React/TypeScript) - 前端单页应用
+🚀 **生产就绪的微服务架构**
+- 7 个微服务：认证、用户、即时通讯、网关、URL 短链接、示例服务
+- 完整的 IM 聊天系统：支持私聊、群聊、离线消息、消息去重、敏感词过滤
+- 高性能 URL 短链接服务：多级缓存、自定义短码、访问统计
 
-所有服务通过 Protobuf 定义统一的 API 契约，使用 gRPC 进行通信。
+🛠️ **统一开发工具链**
+- 一键初始化：`make init` 自动配置开发环境
+- 统一依赖管理：`make deps` 管理 Go、Java、Node.js 依赖
+- 代码质量保证：自动 lint、format、test，pre-commit hooks
+- 智能构建系统：自动检测变更，增量构建
+
+🏗️ **企业级基础设施**
+- API 网关：Higress/Envoy 统一入口，gRPC-Web 支持
+- 服务发现：etcd 集群，支持服务注册和健康检查
+- 消息队列：Kafka 集群，支持消息持久化和分布式处理
+- 数据存储：MySQL + Redis，支持主从复制和缓存
+
+📊 **完整的可观测性**
+- 监控：Prometheus + Grafana，实时指标和告警
+- 链路追踪：Jaeger，分布式调用链分析
+- 日志聚合：Loki，集中式日志查询
+- 健康检查：HTTP 健康端点，K8s 就绪探针
+
+🔒 **安全与合规**
+- JWT 认证：统一的身份认证和授权
+- 消息加密：端到端加密支持
+- 审计日志：完整的操作审计记录
+- GDPR 合规：数据导出和删除功能
+
+### 技术栈
+
+**后端服务**
+- **Go 1.21+**: 高性能服务（IM、网关、短链接、认证、用户）
+- **Java 17+**: Spring Boot 示例服务
+- **gRPC + Protobuf**: 服务间通信
+- **etcd**: 服务发现和配置中心
+- **Kafka**: 消息队列和事件流
+
+**前端应用**
+- **React 18**: 现代化 UI 框架
+- **TypeScript**: 类型安全
+- **Vite**: 快速构建工具
+- **gRPC-Web**: 浏览器 gRPC 支持
+
+**基础设施**
+- **Docker Compose**: 本地开发环境
+- **Kubernetes**: 生产部署
+- **Higress**: 云原生 API 网关
+- **Prometheus + Grafana**: 监控和可视化
+- **Jaeger**: 分布式追踪
+
+**开发工具**
+- **统一 Makefile**: 一致的命令接口
+- **自动化脚本**: 依赖管理、代码生成、质量检查
+- **Property-Based Testing**: Go 和 Java 属性测试
+- **CI/CD**: GitHub Actions 自动化流水线
+
+### 项目亮点
+
+✨ **真实的生产级代码**
+- 不是玩具项目，而是可以直接用于生产的完整系统
+- 包含完整的错误处理、日志、监控、测试
+- 78+ 单元测试，9+ 属性测试，全部通过
+
+✨ **最佳实践示范**
+- Shift-Left 质量保证：pre-commit hooks 自动检查
+- 增量构建：只构建变更的服务，节省 CI 时间
+- 代码所有权：CODEOWNERS 文件定义审批流程
+- 文档完善：每个服务都有详细的 README 和 API 文档
+
+✨ **易于扩展**
+- 服务模板：快速创建新的 Go 或 Java 服务
+- 统一接口：所有服务遵循相同的模式和规范
+- 自动集成：新服务自动加入构建、测试、部署流程
+
+✨ **开发体验优秀**
+- 一键启动：`make im-up` 启动完整的 IM 系统
+- 快速反馈：代码变更后自动重新加载
+- 清晰的错误信息：友好的错误提示和故障排查指南
+
+### 服务列表
+
+| 服务 | 语言 | 端口 | 说明 |
+|------|------|------|------|
+| **auth-service** | Go | 9095 | JWT 认证服务 |
+| **user-service** | Go | 9096 | 用户和群组管理 |
+| **im-service** | Go | 9094 | 消息路由和离线持久化 |
+| **im-gateway-service** | Go | 9093/8082 | WebSocket 网关 |
+| **shortener-service** | Go | 9092/8080 | URL 短链接服务 |
+| **hello-service** | Java | 9090 | Spring Boot 示例 |
+| **todo-service** | Go | 9091 | 任务管理示例 |
+| **web** | TypeScript | 5173 | React 前端应用 |
+
+### 基础设施组件
+
+| 组件 | 端口 | 说明 |
+|------|------|------|
+| **etcd** | 2379 | 服务发现和配置 |
+| **MySQL** | 3306 | 关系数据库 |
+| **Redis** | 6379 | 缓存和会话 |
+| **Kafka** | 9092/9093 | 消息队列 |
+| **Higress** | 8080 | API 网关 |
+| **Prometheus** | 9090 | 监控指标 |
+| **Grafana** | 3000 | 可视化面板 |
+| **Jaeger** | 16686 | 链路追踪 |
 
 ## 项目结构
 
@@ -92,6 +192,40 @@ make init
 - ✅ 生成 Protobuf 代码
 - ✅ 安装 Git hooks
 - ✅ 创建必要的目录
+
+### 📦 统一依赖管理
+
+项目提供统一的依赖管理命令，支持 Go、Java、Node.js：
+
+```bash
+# 安装所有依赖
+make deps
+
+# 更新所有依赖
+make deps-update
+
+# 验证依赖完整性
+make deps-verify
+
+# 安全审计
+make deps-audit
+
+# 查看依赖状态
+make deps-status
+
+# 特定语言
+make deps-go           # 只处理 Go 依赖
+make deps-java         # 只处理 Java 依赖
+make deps-node         # 只处理 Node.js 依赖
+```
+
+**优势**:
+- 🎯 统一接口：一套命令管理所有语言
+- 🔒 安全审计：自动检查依赖漏洞
+- ✅ 完整性验证：确保依赖一致性
+- 📊 状态查看：快速了解项目依赖
+
+详细说明请参考 [统一依赖管理文档](.kiro/specs/im-chat-system/UNIFIED_DEPS_IMPLEMENTATION.md)
 
 ### 🔧 手动设置（如果需要）
 

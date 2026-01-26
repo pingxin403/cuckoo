@@ -73,7 +73,7 @@ export function useChatClient(gatewayUrl: string, token: string) {
     const imClient = new IMClient({
       gatewayUrl,
       token,
-      debug: process.env.NODE_ENV === 'development',
+      debug: import.meta.env.DEV,
       deduplication: {
         enabled: true,
         storageType: 'indexeddb',
@@ -344,6 +344,7 @@ export class ConnectionMonitor {
     this.client = client;
     this.onStatusChange = onStatusChange;
 
+    // Use client to set up event listeners
     client.on('onStateChange', (state) => {
       this.handleStateChange(state);
     });
@@ -391,5 +392,9 @@ export class ConnectionMonitor {
 
   getReconnectAttempts(): number {
     return this.reconnectAttempts;
+  }
+
+  getClient(): IMClient {
+    return this.client;
   }
 }

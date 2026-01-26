@@ -251,9 +251,11 @@ jobs:
           go install google.golang.org/protobuf/cmd/protoc-gen-go@${{ steps.versions.outputs.PROTOC_GEN_GO_VERSION }}
           go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@${{ steps.versions.outputs.PROTOC_GEN_GO_GRPC_VERSION }}
 
-      - name: Generate proto for Go
+      - name: Generate proto for Go (including api/gen)
         if: steps.detect-type.outputs.type == 'go'
-        run: make proto-go
+        run: |
+          # Generate all proto code including api/gen which Go services depend on
+          make proto-go
 
       - name: Build Go service
         if: steps.detect-type.outputs.type == 'go'
