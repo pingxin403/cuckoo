@@ -12,9 +12,10 @@ out/
 
 # Generated code - DO NOT commit proto-generated code to git
 # Proto code is generated during build time (local dev, CI, Docker)
-# Exception: CI may temporarily generate code for Docker builds
+# Exception: api/gen is the shared proto library that all Go services depend on
 gen/
 **/gen/
+!api/gen/
 **/build/generated/
 **/src/gen/
 

@@ -256,12 +256,17 @@ jobs:
         run: |
           # Generate all proto code including api/gen which Go services depend on
           make proto-go
+          # Verify api/gen was created
+          ls -la api/gen/
+          cat api/gen/go.mod
 
       - name: Build Go service
         if: steps.detect-type.outputs.type == 'go'
         run: |
+          # Now that api/gen exists, we can download dependencies
           cd apps/${{ matrix.app }}
           go mod download
+          go mod verify
           ./scripts/test-coverage.sh
           go build -v -o bin/${{ matrix.app }} .
 
