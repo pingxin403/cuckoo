@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/pingxin403/cuckoo/apps/todo-service/gen/hellopb"
+	"github.com/pingxin403/cuckoo/api/gen/go/hellopb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )

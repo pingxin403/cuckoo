@@ -1,0 +1,280 @@
+# Application Services for Local Development
+# Usage: docker compose -f deploy/docker/docker-compose.infra.yml -f deploy/docker/docker-compose.services.yml up -d
+
+services:
+  # Hello Service (Java/Spring Boot)
+  hello-service:
+    build:
+      context: ../..
+      dockerfile: apps/hello-service/Dockerfile
+    image: hello-service:latest
+    container_name: hello-service
+    ports:
+      - "9090:9090"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - GRPC_SERVER_PORT=9090
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "java.*app.jar"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 40s
+    networks:
+      - monorepo-network
+    restart: unless-stopped
+
+  # TODO Service (Go)
+  todo-service:
+    build:
+      context: ../..
+      dockerfile: apps/todo-service/Dockerfile
+    image: todo-service:latest
+    container_name: todo-service
+    ports:
+      - "9091:9091"
+    environment:
+      - PORT=9091
+      - HELLO_SERVICE_ADDR=hello-service:9090
+    depends_on:
+      hello-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "todo-service"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+    networks:
+      - monorepo-network
+    restart: unless-stopped
+
+  # Shortener Service (Go)
+  shortener-service:
+    build:
+      context: ../..
+      dockerfile: apps/shortener-service/Dockerfile
+    image: shortener-service:latest
+    container_name: shortener-service
+    ports:
+      - "9092:9092"  # gRPC
+      - "8081:8080"  # HTTP redirect
+      - "9090:9090"  # Metrics
+    environment:
+      # MySQL Configuration
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=shortener
+      - MYSQL_USER=shortener_user
+      - MYSQL_PASSWORD=shortener_password
+      # Redis Configuration
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=
+      - REDIS_DB=0
+      # Service Configuration
+      - BASE_URL=http://localhost:8080
+      - GRPC_PORT=9092
+      - HTTP_PORT=8080
+      - METRICS_PORT=9090
+      - LOG_LEVEL=info
+      - ENVIRONMENT=development
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 20s
+    networks:
+      - monorepo-network
+    restart: unless-stopped
+
+  # Envoy Proxy (API Gateway)
+  envoy:
+    image: envoyproxy/envoy:v1.30-latest
+    container_name: envoy-gateway
+    ports:
+      - "8080:8080"  # HTTP/gRPC-Web
+      - "9901:9901"  # Admin interface
+    volumes:
+      - ./envoy-config.yaml:/etc/envoy/envoy.yaml:ro
+    command: ["-c", "/etc/envoy/envoy.yaml"]
+    depends_on:
+      - shortener-service
+    networks:
+      - monorepo-network
+    restart: unless-stopped
+
+
+  # Auth Service (Go)
+  auth-service:
+    build:
+      context: ../..
+      dockerfile: apps/auth-service/Dockerfile
+    image: auth-service:latest
+    container_name: auth-service
+    ports:
+      - "9095:9095"
+    environment:
+      - PORT=9095
+      - LOG_LEVEL=info
+      - JWT_SECRET=your-secret-key-change-in-production
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "auth-service"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+    networks:
+      - monorepo-network
+    restart: unless-stopped
+
+  # User Service (Go)
+  user-service:
+    build:
+      context: ../..
+      dockerfile: apps/user-service/Dockerfile
+    image: user-service:latest
+    container_name: user-service
+    ports:
+      - "9096:9096"
+    environment:
+      - PORT=9096
+      - MYSQL_DSN=im_service:im_service_password@tcp(mysql:3306)/im_chat?parseTime=true
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_DATABASE=im_chat
+      - MYSQL_USER=im_service
+      - MYSQL_PASSWORD=im_service_password
+      - LOG_LEVEL=info
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "user-service"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+    networks:
+      - monorepo-network
+    restart: unless-stopped
+
+  # IM Service (Go) - Message routing and offline persistence
+  im-service:
+    build:
+      context: ../..
+      dockerfile: apps/im-service/Dockerfile
+    image: im-service:latest
+    container_name: im-service
+    ports:
+      - "9094:9094"  # gRPC
+      - "8084:8080"  # HTTP (health checks and metrics)
+    environment:
+      # gRPC server
+      - GRPC_PORT=9094
+      - HTTP_PORT=8080
+      
+      # Kafka configuration
+      - KAFKA_BROKERS=kafka:9092
+      - KAFKA_CONSUMER_GROUP=im-service-offline-workers
+      - KAFKA_TOPIC=offline_msg
+      
+      # Database configuration
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=im_service
+      - DB_PASSWORD=im_service_password
+      - DB_NAME=im_chat
+      - DB_MAX_OPEN_CONNS=25
+      - DB_MAX_IDLE_CONNS=5
+      
+      # Redis configuration
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=
+      - REDIS_DB=2
+      
+      # Offline worker configuration (always enabled)
+      - OFFLINE_WORKER_ENABLED=true
+      - BATCH_SIZE=100
+      - BATCH_TIMEOUT=5s
+      - MAX_RETRIES=5
+      - RETRY_BACKOFF=1s,2s,4s,8s,16s
+      - MESSAGE_TTL=168h  # 7 days
+      
+      # Service dependencies
+      - ETCD_ENDPOINTS=etcd:2379
+      - AUTH_SERVICE_ADDR=auth-service:9095
+      - USER_SERVICE_ADDR=user-service:9096
+      - LOG_LEVEL=info
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      etcd:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      user-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+    networks:
+      - monorepo-network
+    restart: unless-stopped
+
+  # IM Gateway Service (Go)
+  im-gateway-service:
+    build:
+      context: ../..
+      dockerfile: apps/im-gateway-service/Dockerfile
+    image: im-gateway-service:latest
+    container_name: im-gateway-service
+    ports:
+      - "9097:9097"  # gRPC
+      - "8082:8080"  # WebSocket
+    environment:
+      - GRPC_PORT=9097
+      - WEBSOCKET_PORT=8080
+      - ETCD_ENDPOINTS=etcd:2379
+      - KAFKA_BROKERS=kafka:9092
+      - REDIS_ADDR=redis:6379
+      - AUTH_SERVICE_ADDR=auth-service:9095
+      - IM_SERVICE_ADDR=im-service:9094
+      - LOG_LEVEL=info
+    depends_on:
+      etcd:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      im-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "im-gateway-service"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+    networks:
+      - monorepo-network
+    restart: unless-stopped
+
+networks:
+  monorepo-network:
+    external: true
+    name: monorepo-network

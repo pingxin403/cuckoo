@@ -14,12 +14,10 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/timestamppb"
-
-	pb "github.com/pingxin403/cuckoo/apps/shortener-service/gen/shortener_servicepb"
 )
 
 var (
-	grpcClient pb.ShortenerServiceClient
+	grpcClient shortenerpb.ShortenerServiceClient
 	grpcConn   *grpc.ClientConn
 	httpClient *http.Client
 	baseURL    string
@@ -64,7 +62,7 @@ func setup() error {
 		return fmt.Errorf("failed to connect to gRPC service: %w", err)
 	}
 	grpcConn = conn
-	grpcClient = pb.NewShortenerServiceClient(conn)
+	grpcClient = shortenerpb.NewShortenerServiceClient(conn)
 
 	// Setup HTTP client
 	httpClient = &http.Client{
@@ -137,7 +135,7 @@ func TestEndToEndFlow(t *testing.T) {
 
 	// Step 1: Create a short link
 	longURL := "https://example.com/very/long/path/to/resource?query=param"
-	createReq := &pb.CreateShortLinkRequest{
+	createReq := &shortenerpb.CreateShortLinkRequest{
 		LongUrl: longURL,
 	}
 
@@ -157,7 +155,7 @@ func TestEndToEndFlow(t *testing.T) {
 	t.Logf("Created short link: %s -> %s", createResp.ShortCode, longURL)
 
 	// Step 2: Retrieve link info via gRPC
-	getReq := &pb.GetLinkInfoRequest{
+	getReq := &shortenerpb.GetLinkInfoRequest{
 		ShortCode: createResp.ShortCode,
 	}
 
@@ -204,7 +202,7 @@ func TestEndToEndFlow(t *testing.T) {
 	t.Logf("Redirect successful: %s -> %s", redirectURL, location)
 
 	// Step 4: Delete the short link
-	deleteReq := &pb.DeleteShortLinkRequest{
+	deleteReq := &shortenerpb.DeleteShortLinkRequest{
 		ShortCode: createResp.ShortCode,
 	}
 
@@ -241,7 +239,7 @@ func TestCustomShortCode(t *testing.T) {
 	customCode := fmt.Sprintf("c%d", time.Now().Unix()%1000000) // e.g., "c884821"
 	longURL := "https://example.com/custom-code-test"
 
-	createReq := &pb.CreateShortLinkRequest{
+	createReq := &shortenerpb.CreateShortLinkRequest{
 		LongUrl:    longURL,
 		CustomCode: customCode,
 	}
@@ -275,7 +273,7 @@ func TestCustomShortCode(t *testing.T) {
 	}
 
 	// Cleanup
-	deleteReq := &pb.DeleteShortLinkRequest{ShortCode: customCode}
+	deleteReq := &shortenerpb.DeleteShortLinkRequest{ShortCode: customCode}
 	grpcClient.DeleteShortLink(ctx, deleteReq)
 }
 
@@ -284,10 +282,10 @@ func TestExpiration(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a link that expires in 2 seconds
-	expiresAt := timestamppb.New(time.Now().Add(2 * time.Second))
+	expiresAt := timestampshortenerpb.New(time.Now().Add(2 * time.Second))
 	longURL := "https://example.com/expiring-link"
 
-	createReq := &pb.CreateShortLinkRequest{
+	createReq := &shortenerpb.CreateShortLinkRequest{
 		LongUrl:   longURL,
 		ExpiresAt: expiresAt,
 	}
@@ -329,7 +327,7 @@ func TestExpiration(t *testing.T) {
 	t.Log("Verified link expired (410 Gone)")
 
 	// Cleanup
-	deleteReq := &pb.DeleteShortLinkRequest{ShortCode: shortCode}
+	deleteReq := &shortenerpb.DeleteShortLinkRequest{ShortCode: shortCode}
 	grpcClient.DeleteShortLink(ctx, deleteReq)
 }
 
@@ -338,7 +336,7 @@ func TestCacheWarming(t *testing.T) {
 	ctx := context.Background()
 
 	longURL := "https://example.com/cache-warming-test"
-	createReq := &pb.CreateShortLinkRequest{
+	createReq := &shortenerpb.CreateShortLinkRequest{
 		LongUrl: longURL,
 	}
 
@@ -386,7 +384,7 @@ func TestCacheWarming(t *testing.T) {
 	}
 
 	// Cleanup
-	deleteReq := &pb.DeleteShortLinkRequest{ShortCode: shortCode}
+	deleteReq := &shortenerpb.DeleteShortLinkRequest{ShortCode: shortCode}
 	grpcClient.DeleteShortLink(ctx, deleteReq)
 }
 
@@ -428,7 +426,7 @@ func TestInvalidURLRejection(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			createReq := &pb.CreateShortLinkRequest{
+			createReq := &shortenerpb.CreateShortLinkRequest{
 				LongUrl: tc.url,
 			}
 
@@ -439,7 +437,7 @@ func TestInvalidURLRejection(t *testing.T) {
 					t.Errorf("Expected error for invalid URL %s, but got success", tc.url)
 					// Cleanup if accidentally created
 					if createResp != nil && createResp.ShortCode != "" {
-						deleteReq := &pb.DeleteShortLinkRequest{ShortCode: createResp.ShortCode}
+						deleteReq := &shortenerpb.DeleteShortLinkRequest{ShortCode: createResp.ShortCode}
 						grpcClient.DeleteShortLink(ctx, deleteReq)
 					}
 				} else {
@@ -451,7 +449,7 @@ func TestInvalidURLRejection(t *testing.T) {
 				} else {
 					t.Logf("Correctly accepted valid URL: %s", tc.url)
 					// Cleanup
-					deleteReq := &pb.DeleteShortLinkRequest{ShortCode: createResp.ShortCode}
+					deleteReq := &shortenerpb.DeleteShortLinkRequest{ShortCode: createResp.ShortCode}
 					grpcClient.DeleteShortLink(ctx, deleteReq)
 				}
 			}
@@ -471,7 +469,7 @@ func TestConcurrentCreation(t *testing.T) {
 	for i := 0; i < numLinks; i++ {
 		go func(index int) {
 			longURL := fmt.Sprintf("https://example.com/concurrent-test-%d", index)
-			createReq := &pb.CreateShortLinkRequest{
+			createReq := &shortenerpb.CreateShortLinkRequest{
 				LongUrl: longURL,
 			}
 
@@ -511,7 +509,7 @@ func TestConcurrentCreation(t *testing.T) {
 
 	// Cleanup
 	for _, code := range shortCodes {
-		deleteReq := &pb.DeleteShortLinkRequest{ShortCode: code}
+		deleteReq := &shortenerpb.DeleteShortLinkRequest{ShortCode: code}
 		grpcClient.DeleteShortLink(ctx, deleteReq)
 	}
 }

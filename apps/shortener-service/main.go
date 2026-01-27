@@ -10,29 +10,45 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/pingxin403/cuckoo/api/gen/go/shortenerpb"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/analytics"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/cache"
-	"github.com/pingxin403/cuckoo/apps/shortener-service/gen/shortener_servicepb"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/idgen"
-	"github.com/pingxin403/cuckoo/apps/shortener-service/logger"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/service"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/storage"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"go.uber.org/zap"
+	"github.com/pingxin403/cuckoo/libs/observability"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
 
 func main() {
-	// Initialize logger
-	isDev := os.Getenv("ENVIRONMENT") != "production"
-	if err := logger.InitLogger(isDev); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to initialize logger: %v\n", err)
+	// Initialize observability
+	obs, err := observability.New(observability.Config{
+		ServiceName:    getEnv("SERVICE_NAME", "shortener-service"),
+		ServiceVersion: getEnv("SERVICE_VERSION", "1.0.0"),
+		Environment:    getEnv("DEPLOYMENT_ENVIRONMENT", "development"),
+		EnableMetrics:  getEnvBool("ENABLE_METRICS", true),
+		MetricsPort:    getEnvInt("METRICS_PORT", 9090),
+		LogLevel:       getEnv("LOG_LEVEL", "info"),
+		LogFormat:      getEnv("LOG_FORMAT", "json"),
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to initialize observability: %v\n", err)
 		os.Exit(1)
 	}
-	defer logger.Sync()
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		if err := obs.Shutdown(shutdownCtx); err != nil {
+			fmt.Fprintf(os.Stderr, "Observability shutdown error: %v\n", err)
+		}
+	}()
 
-	logger.Log.Info("Starting shortener-service")
+	ctx := context.Background()
+	obs.Logger().Info(ctx, "Starting shortener-service",
+		"service", "shortener-service",
+		"version", getEnv("SERVICE_VERSION", "1.0.0"),
+	)
 
 	// Get gRPC port from environment variable or use default
 	grpcPort := os.Getenv("PORT")
@@ -49,35 +65,38 @@ func main() {
 	// Create TCP listener for gRPC
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
 	if err != nil {
-		logger.Log.Fatal("Failed to listen", zap.String("port", grpcPort), zap.Error(err))
+		obs.Logger().Error(ctx, "Failed to listen", "port", grpcPort, "error", err)
+		os.Exit(1)
 	}
 
 	// Initialize MySQL storage
 	store, err := storage.NewMySQLStore()
 	if err != nil {
-		logger.Log.Fatal("Failed to initialize MySQL store", zap.Error(err))
+		obs.Logger().Error(ctx, "Failed to initialize MySQL store", "error", err)
+		os.Exit(1)
 	}
 	defer func() {
 		if err := store.Close(); err != nil {
-			logger.Log.Error("Error closing store", zap.Error(err))
+			obs.Logger().Error(ctx, "Error closing store", "error", err)
 		}
 	}()
-	logger.Log.Info("Initialized MySQL store")
+	obs.Logger().Info(ctx, "Initialized MySQL store")
 
 	// Initialize ID generator
 	idGenerator := idgen.NewRandomIDGenerator(store)
-	logger.Log.Info("Initialized ID generator")
+	obs.Logger().Info(ctx, "Initialized ID generator")
 
 	// Initialize URL validator
 	urlValidator := service.NewURLValidator()
-	logger.Log.Info("Initialized URL validator")
+	obs.Logger().Info(ctx, "Initialized URL validator")
 
 	// Initialize L1 cache (Ristretto)
 	l1Cache, err := cache.NewL1Cache()
 	if err != nil {
-		logger.Log.Fatal("Failed to initialize L1 cache", zap.Error(err))
+		obs.Logger().Error(ctx, "Failed to initialize L1 cache", "error", err)
+		os.Exit(1)
 	}
-	logger.Log.Info("Initialized L1 cache")
+	obs.Logger().Info(ctx, "Initialized L1 cache")
 
 	// Initialize L2 cache (Redis) - optional, can be nil
 	var l2Cache *cache.L2Cache
@@ -89,18 +108,18 @@ func main() {
 		}
 		l2Cache, err = cache.NewL2Cache(config)
 		if err != nil {
-			logger.Log.Warn("Failed to initialize L2 cache (Redis), continuing without Redis", zap.Error(err))
+			obs.Logger().Warn(ctx, "Failed to initialize L2 cache (Redis), continuing without Redis", "error", err)
 			l2Cache = nil
 		} else {
-			logger.Log.Info("Initialized L2 cache (Redis)")
+			obs.Logger().Info(ctx, "Initialized L2 cache (Redis)")
 		}
 	} else {
-		logger.Log.Info("Redis not configured, running without L2 cache")
+		obs.Logger().Info(ctx, "Redis not configured, running without L2 cache")
 	}
 
 	// Initialize cache manager
-	cacheManager := cache.NewCacheManager(l1Cache, l2Cache, &cacheStorageAdapter{store: store})
-	logger.Log.Info("Initialized cache manager")
+	cacheManager := cache.NewCacheManager(l1Cache, l2Cache, &cacheStorageAdapter{store: store}, obs)
+	obs.Logger().Info(ctx, "Initialized cache manager")
 
 	// Initialize analytics writer (Kafka) - optional
 	// Requirements: 7.1, 7.2
@@ -113,19 +132,19 @@ func main() {
 			NumWorkers:   4,
 			BufferSize:   10000,
 		}
-		analyticsWriter = analytics.NewAnalyticsWriter(analyticsConfig)
-		logger.Log.Info("Initialized analytics writer", zap.String("brokers", kafkaBrokers))
+		analyticsWriter = analytics.NewAnalyticsWriter(analyticsConfig, obs)
+		obs.Logger().Info(ctx, "Initialized analytics writer", "brokers", kafkaBrokers)
 	} else {
-		logger.Log.Info("Kafka not configured, running without analytics")
+		obs.Logger().Info(ctx, "Kafka not configured, running without analytics")
 	}
 
 	// Create gRPC service
-	svc := service.NewShortenerServiceImpl(store, idGenerator, urlValidator, cacheManager)
+	svc := service.NewShortenerServiceImpl(store, idGenerator, urlValidator, cacheManager, obs)
 
 	// Initialize rate limiter (100 requests per minute per IP)
 	// Requirements: 6.1, 6.2
 	rateLimiter := service.NewRateLimiter(100)
-	logger.Log.Info("Initialized rate limiter", zap.Int("requests_per_minute", 100))
+	obs.Logger().Info(ctx, "Initialized rate limiter", "requests_per_minute", 100)
 
 	// Start rate limiter cleanup goroutine
 	ctx, cancel := context.WithCancel(context.Background())
@@ -133,7 +152,7 @@ func main() {
 	rateLimiter.StartCleanup(ctx)
 
 	// Create HTTP redirect handler
-	redirectHandler := service.NewRedirectHandler(cacheManager, store, analyticsWriter)
+	redirectHandler := service.NewRedirectHandler(cacheManager, store, analyticsWriter, obs)
 	httpRouter := redirectHandler.SetupRouter()
 
 	// Wrap HTTP router with rate limiter middleware
@@ -147,7 +166,7 @@ func main() {
 	)
 
 	// Register gRPC service
-	shortener_servicepb.RegisterShortenerServiceServer(grpcServer, svc)
+	shortenerpb.RegisterShortenerServiceServer(grpcServer, svc)
 
 	// Register reflection service for debugging (e.g., with grpcurl)
 	reflection.Register(grpcServer)
@@ -161,53 +180,32 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	// Get metrics port from environment variable or use default
-	metricsPort := os.Getenv("METRICS_PORT")
-	if metricsPort == "" {
-		metricsPort = "9090"
-	}
-
-	// Create metrics server
-	metricsServer := &http.Server{
-		Addr:         fmt.Sprintf(":%s", metricsPort),
-		Handler:      promhttp.Handler(),
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  60 * time.Second,
-	}
-
 	// Setup graceful shutdown
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
 	// Start gRPC server in a goroutine
 	go func() {
-		logger.Log.Info("gRPC server listening", zap.String("port", grpcPort))
+		obs.Logger().Info(ctx, "gRPC server listening", "port", grpcPort)
 		if err := grpcServer.Serve(lis); err != nil {
-			logger.Log.Fatal("Failed to serve gRPC", zap.Error(err))
+			obs.Logger().Error(ctx, "Failed to serve gRPC", "error", err)
+			os.Exit(1)
 		}
 	}()
 
 	// Start HTTP server in a goroutine
 	go func() {
-		logger.Log.Info("HTTP redirect server listening", zap.String("port", httpPort))
+		obs.Logger().Info(ctx, "HTTP redirect server listening", "port", httpPort)
+		obs.Logger().Info(ctx, "Service ready to accept requests")
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Log.Fatal("Failed to serve HTTP", zap.Error(err))
-		}
-	}()
-
-	// Start metrics server in a goroutine
-	go func() {
-		logger.Log.Info("Metrics server listening", zap.String("port", metricsPort))
-		logger.Log.Info("Service ready to accept requests")
-		if err := metricsServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Log.Fatal("Failed to serve metrics", zap.Error(err))
+			obs.Logger().Error(ctx, "Failed to serve HTTP", "error", err)
+			os.Exit(1)
 		}
 	}()
 
 	// Wait for shutdown signal
 	sig := <-sigChan
-	logger.Log.Info("Received shutdown signal, initiating graceful shutdown", zap.String("signal", sig.String()))
+	obs.Logger().Info(ctx, "Received shutdown signal, initiating graceful shutdown", "signal", sig.String())
 
 	// Cancel rate limiter cleanup context
 	cancel()
@@ -218,12 +216,7 @@ func main() {
 
 	// Shutdown HTTP server
 	if err := httpServer.Shutdown(shutdownCtx); err != nil {
-		logger.Log.Error("HTTP server shutdown error", zap.Error(err))
-	}
-
-	// Shutdown metrics server
-	if err := metricsServer.Shutdown(shutdownCtx); err != nil {
-		logger.Log.Error("Metrics server shutdown error", zap.Error(err))
+		obs.Logger().Error(ctx, "HTTP server shutdown error", "error", err)
 	}
 
 	// Stop gRPC server
@@ -235,20 +228,45 @@ func main() {
 
 	select {
 	case <-stopped:
-		logger.Log.Info("Server stopped gracefully")
+		obs.Logger().Info(ctx, "Server stopped gracefully")
 	case <-shutdownCtx.Done():
-		logger.Log.Warn("Shutdown timeout exceeded, forcing stop")
+		obs.Logger().Warn(ctx, "Shutdown timeout exceeded, forcing stop")
 		grpcServer.Stop()
 	}
 
 	// Close analytics writer if initialized
 	if analyticsWriter != nil {
 		if err := analyticsWriter.Close(); err != nil {
-			logger.Log.Error("Analytics writer shutdown error", zap.Error(err))
+			obs.Logger().Error(ctx, "Analytics writer shutdown error", "error", err)
 		}
 	}
 
-	logger.Log.Info("shortener-service shutdown complete")
+	obs.Logger().Info(ctx, "shortener-service shutdown complete")
+}
+
+// Helper functions for environment variables
+func getEnv(key, defaultValue string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+func getEnvInt(key string, defaultValue int) int {
+	if value := os.Getenv(key); value != "" {
+		var intValue int
+		if _, err := fmt.Sscanf(value, "%d", &intValue); err == nil {
+			return intValue
+		}
+	}
+	return defaultValue
+}
+
+func getEnvBool(key string, defaultValue bool) bool {
+	if value := os.Getenv(key); value != "" {
+		return value == "true" || value == "1" || value == "yes"
+	}
+	return defaultValue
 }
 
 // cacheStorageAdapter adapts storage.Storage to cache.Storage interface

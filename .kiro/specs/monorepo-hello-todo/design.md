@@ -692,7 +692,7 @@ export function useTodos() {
 
 ### 5. API Gateway (Higress)
 
-**Location**: `tools/higress/` 或 K8s 配置
+**Location**: `deploy/k8s/services/higress/` 或 K8s 配置
 
 **Higress Configuration**:
 
@@ -700,7 +700,7 @@ Higress 是阿里云开源的云原生 API 网关，基于 Envoy 和 Istio 构�
 
 **Ingress 配置** (K8s):
 ```yaml
-# tools/k8s/ingress.yaml
+# deploy/k8s/services/higress/higress-routes.yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -734,7 +734,7 @@ spec:
 
 **McpBridge 配置** (Higress 插件，用于 gRPC-Web):
 ```yaml
-# tools/higress/mcpbridge.yaml
+# deploy/k8s/services/higress/mcpbridge.yaml
 apiVersion: extensions.higress.io/v1alpha1
 kind: McpBridge
 metadata:
@@ -1184,7 +1184,7 @@ resources:
 - ../../apps/hello-service/k8s/configmap.yaml
 - ../../apps/todo-service/k8s/deployment.yaml
 - ../../apps/todo-service/k8s/service.yaml
-- ../../tools/k8s/ingress.yaml
+- ../../deploy/k8s/services/higress/higress-routes.yaml
 
 namespace: default
 
@@ -1561,7 +1561,7 @@ type TodoStore interface {
 /apps/web/ @frontend-team
 
 # 基础设施和工具
-/tools/ @platform-team
+/deploy/ @platform-team
 /k8s/ @platform-team
 /scripts/ @platform-team
 
@@ -1920,7 +1920,7 @@ apps/web/
 
 echo "Starting Envoy Proxy (for local gRPC-Web)..."
 docker run -d --name envoy-local --network host \
-  -v $(pwd)/tools/envoy:/config \
+  -v $(pwd)/deploy/docker:/config \
   envoyproxy/envoy:v1.30 -c /config/envoy-local.yaml
 ENVOY_CONTAINER="envoy-local"
 
@@ -1962,7 +1962,7 @@ trap cleanup EXIT
 wait
 ```
 
-**Local Envoy Configuration** (`tools/envoy/envoy-local.yaml`):
+**Local Envoy Configuration** (`deploy/docker/envoy-local-config.yaml`):
 ```yaml
 # 本地开发用的 Envoy 配置，模拟 Higress 的路由行为
 static_resources:

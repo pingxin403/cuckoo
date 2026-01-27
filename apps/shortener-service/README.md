@@ -298,6 +298,87 @@ GET /metrics
 curl http://localhost:9090/metrics
 ```
 
+## Observability
+
+The shortener-service uses the unified observability library (`libs/observability`) for structured logging, metrics, and tracing.
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SERVICE_NAME` | `shortener-service` | Service name for observability |
+| `SERVICE_VERSION` | `1.0.0` | Service version |
+| `DEPLOYMENT_ENVIRONMENT` | `development` | Deployment environment |
+| `ENABLE_METRICS` | `true` | Enable Prometheus metrics |
+| `METRICS_PORT` | `9090` | Port for metrics endpoint |
+| `LOG_LEVEL` | `info` | Log level (debug, info, warn, error) |
+| `LOG_FORMAT` | `json` | Log format (json, text) |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | - | OTLP endpoint for telemetry export |
+
+### Metrics
+
+The service exposes the following Prometheus metrics on port 9090:
+
+**Request Metrics:**
+- `shortener_requests_total{method, status}` - Total requests by method and status
+- `shortener_request_duration_seconds{method}` - Request duration histogram
+
+**URL Operation Metrics:**
+- `shortener_url_operations_total{operation, status}` - URL operations (create, resolve, delete)
+- `shortener_operation_duration_seconds{operation}` - Operation duration histogram
+- `shortener_links_created_total` - Total short links created
+- `shortener_links_deleted_total` - Total short links deleted
+- `shortener_redirects_total` - Total successful redirects
+
+**Cache Metrics:**
+- `shortener_cache_hits_total{layer}` - Cache hits by layer (L1, L2)
+- `shortener_cache_misses_total{layer}` - Cache misses by layer
+- `shortener_cache_operations_total{operation, layer}` - Cache operations (hit, miss)
+- `shortener_singleflight_waits_total` - Singleflight coalesced requests
+
+**Error Metrics:**
+- `shortener_errors_total{type}` - Errors by type
+
+**Analytics Metrics:**
+- `shortener_click_events_logged_total` - Click events logged to Kafka
+
+### Structured Logging
+
+All logs are output in structured JSON format with the following fields:
+- `timestamp` - ISO 8601 timestamp
+- `level` - Log level (info, warn, error)
+- `message` - Log message
+- `service` - Service name
+- `trace_id` - Trace ID (when tracing is enabled)
+- Additional context fields
+
+Example log output:
+```json
+{
+  "timestamp": "2025-01-25T10:30:00Z",
+  "level": "info",
+  "message": "Short link created",
+  "service": "shortener-service",
+  "short_code": "abc1234",
+  "long_url": "https://example.com/page",
+  "creator_ip": "192.168.1.1"
+}
+```
+
+### Health Checks
+
+- `GET /health` - Liveness probe (always returns 200)
+- `GET /ready` - Readiness probe (checks MySQL connectivity)
+
+### Graceful Shutdown
+
+The service implements graceful shutdown with a 5-second timeout for observability:
+1. Receives SIGTERM/SIGINT signal
+2. Stops accepting new requests
+3. Completes in-flight requests
+4. Flushes metrics and logs
+5. Shuts down observability components
+
 ## Error Codes
 
 The service uses standard gRPC status codes:

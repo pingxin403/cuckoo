@@ -1,0 +1,83 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: im-gateway-service
+  description: IM Gateway Service - WebSocket gateway for real-time messaging
+  annotations:
+    github.com/project-slug: myorg/myrepo
+    backstage.io/techdocs-ref: dir:.
+  tags:
+    - go
+    - grpc
+    - websocket
+    - gateway
+    - backend
+  links:
+    - url: https://api.example.com/ws
+      title: WebSocket Endpoint
+      icon: web
+    - url: https://github.com/myorg/myrepo/tree/main/apps/im-gateway-service
+      title: Source Code
+      icon: github
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: im-chat-system
+  providesApis:
+    - im-gateway-service-api
+  consumesApis:
+    - auth-service-api
+    - im-service-api
+    - user-service-api
+  dependsOn:
+    - resource:etcd
+    - resource:redis
+    - resource:kafka
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: im-gateway-service-api
+  description: IM Gateway Service gRPC and WebSocket API
+  tags:
+    - grpc
+    - websocket
+    - protobuf
+spec:
+  type: grpc
+  lifecycle: production
+  owner: platform-team
+  system: im-chat-system
+  definition: |
+    # IM Gateway Service API
+    
+    This service provides WebSocket gateway for real-time messaging.
+    
+    **Location**: `api/v1/im_gateway_service.proto`
+    
+    ## Endpoints
+    
+    - **WebSocket**: `ws://gateway:8080/ws?token=<jwt_token>`
+    - **gRPC**: `gateway:9093`
+    
+    ## Features
+    
+    - WebSocket connection management (C100K+ connections)
+    - JWT authentication
+    - Heartbeat mechanism (30s interval, 90s timeout)
+    - Message push to clients
+    - Rate limiting (100 msg/s per user)
+    - Local caching (user-to-gateway, group membership)
+    - Kafka consumer for group messages
+    - Graceful shutdown
+    
+    ## Dependencies
+    
+    - Auth Service (JWT validation)
+    - IM Service (message routing)
+    - User Service (group membership)
+    - etcd (user registry)
+    - Redis (caching, deduplication)
+    - Kafka (group message broadcast)
+

@@ -1,3 +1,6 @@
+//go:build property
+// +build property
+
 package analytics
 
 import (
@@ -5,7 +8,19 @@ import (
 	"time"
 
 	"pgregory.net/rapid"
+
+	"github.com/pingxin403/cuckoo/libs/observability"
 )
+
+// createTestObservability creates a test observability instance
+func createTestObservability() observability.Observability {
+	obs, _ := observability.New(observability.Config{
+		ServiceName:   "shortener-service-test",
+		EnableMetrics: false,
+		LogLevel:      "error",
+	})
+	return obs
+}
 
 // Property 12: Analytics Non-Blocking
 // Validates: Requirements 7.1, 7.2, 7.5
@@ -23,7 +38,7 @@ func TestProperty_AnalyticsNonBlocking(t *testing.T) {
 			NumWorkers:   2,
 			BufferSize:   50,
 		}
-		aw := NewAnalyticsWriter(config)
+		aw := NewAnalyticsWriter(config, createTestObservability())
 		defer aw.Close()
 
 		// Generate random events
@@ -124,7 +139,7 @@ func TestProperty_BufferOverflowHandling(t *testing.T) {
 			NumWorkers:   1,
 			BufferSize:   bufferSize,
 		}
-		aw := NewAnalyticsWriter(config)
+		aw := NewAnalyticsWriter(config, createTestObservability())
 		defer aw.Close()
 
 		// Try to log more events than buffer can hold
@@ -166,7 +181,7 @@ func TestProperty_ConcurrentWorkerProcessing(t *testing.T) {
 			NumWorkers:   numWorkers,
 			BufferSize:   bufferSize,
 		}
-		aw := NewAnalyticsWriter(config)
+		aw := NewAnalyticsWriter(config, createTestObservability())
 		defer aw.Close()
 
 		// Property: Stats should reflect correct configuration
@@ -191,7 +206,7 @@ func TestProperty_SafeClose(t *testing.T) {
 			NumWorkers:   2,
 			BufferSize:   100,
 		}
-		aw := NewAnalyticsWriter(config)
+		aw := NewAnalyticsWriter(config, createTestObservability())
 
 		// Log some events
 		numEvents := rapid.IntRange(5, 20).Draw(t, "numEvents")

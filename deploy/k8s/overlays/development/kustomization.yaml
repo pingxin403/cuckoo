@@ -1,0 +1,47 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: development
+
+resources:
+  - ../../services/hello-service
+  - ../../services/todo-service
+  - ../../services/shortener-service
+  - ../../services/web
+  - ../../services/higress
+  - ../../services/auth-service
+  - ../../services/user-service
+  - ../../services/im-service
+
+  - ../../services/im-gateway-service
+commonLabels:
+  environment: development
+
+replicas:
+  - name: hello-service
+    count: 1
+  - name: todo-service
+    count: 1
+  - name: shortener-service
+    count: 1
+  - name: web
+    count: 1
+  - name: auth-service
+    count: 1
+  - name: user-service
+    count: 1
+  - name: im-service
+    count: 1
+
+  - name: im-gateway-service
+    count: 1
+patches:
+  - patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: 100m
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: 128Mi
+    target:
+      kind: Deployment

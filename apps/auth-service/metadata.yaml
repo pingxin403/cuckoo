@@ -1,0 +1,11 @@
+spec:
+  name: auth-service
+  short_name: auth  # Short name for CLI convenience (e.g., 'myapp' for 'myapp-service')
+  description: JWT authentication and token management service
+  type: go
+  port: 9095
+  cd: true
+  codeowners:
+    - "@platform-team"
+test:
+  coverage: 80

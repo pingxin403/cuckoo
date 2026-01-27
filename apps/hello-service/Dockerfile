@@ -7,8 +7,8 @@ FROM gradle:8.14.3-jdk17 AS build
 
 WORKDIR /workspace
 
-# Copy proto files (Single Source of Truth)
-COPY api/v1 ./api/v1
+# Copy centralized proto generated code
+COPY api/gen/java ./api/gen/java
 
 # Copy hello-service
 COPY apps/hello-service ./apps/hello-service
@@ -19,7 +19,7 @@ WORKDIR /workspace/apps/hello-service
 # Download dependencies (cached layer)
 RUN ./gradlew dependencies --no-daemon || true
 
-# Build application (proto generation happens automatically)
+# Build application (uses pre-generated proto code from api/gen/java)
 RUN ./gradlew build -x test --no-daemon --no-configuration-cache
 
 # Stage 2: Runtime stage

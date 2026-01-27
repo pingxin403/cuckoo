@@ -1,0 +1,130 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: im-service
+  namespace: default
+  labels:
+    app: im-service
+    version: v1
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: im-service
+  template:
+    metadata:
+      labels:
+        app: im-service
+        version: v1
+    spec:
+      containers:
+      - name: im-service
+        image: im-service:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: grpc
+          containerPort: 9094
+          protocol: TCP
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        env:
+        # gRPC Server
+        - name: GRPC_PORT
+          value: "9094"
+        
+        # HTTP Server (health checks and metrics)
+        - name: HTTP_PORT
+          value: "8080"
+        
+        # Service Dependencies
+        - name: AUTH_SERVICE_ADDR
+          value: "auth-service:9095"
+        - name: USER_SERVICE_ADDR
+          value: "user-service:9096"
+        
+        # Kafka Configuration
+        - name: KAFKA_BROKERS
+          value: "kafka-0.kafka-headless:9092,kafka-1.kafka-headless:9092,kafka-2.kafka-headless:9092"
+        - name: KAFKA_CONSUMER_GROUP
+          value: "im-service-offline-workers"
+        - name: KAFKA_TOPIC
+          value: "offline_msg"
+        
+        # Database Configuration
+        - name: DB_HOST
+          value: "mysql"
+        - name: DB_PORT
+          value: "3306"
+        - name: DB_NAME
+          value: "im_chat"
+        - name: DB_USER
+          value: "im_service"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-credentials
+              key: password
+              optional: true
+        - name: DB_MAX_OPEN_CONNS
+          value: "25"
+        - name: DB_MAX_IDLE_CONNS
+          value: "5"
+        - name: DB_CONN_MAX_LIFETIME
+          value: "5m"
+        
+        # Redis Configuration
+        - name: REDIS_ADDR
+          value: "redis-master:6379"
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: redis-credentials
+              key: password
+              optional: true
+        - name: REDIS_DB
+          value: "2"
+        
+        # etcd Configuration
+        - name: ETCD_ENDPOINTS
+          value: "etcd-0.etcd-headless:2379,etcd-1.etcd-headless:2379,etcd-2.etcd-headless:2379"
+        
+        # Offline Worker Configuration
+        - name: OFFLINE_WORKER_ENABLED
+          value: "true"
+        - name: BATCH_SIZE
+          value: "100"
+        - name: BATCH_TIMEOUT
+          value: "5s"
+        - name: MAX_RETRIES
+          value: "5"
+        - name: RETRY_BACKOFF
+          value: "1s,2s,4s,8s,16s"
+        - name: MESSAGE_TTL
+          value: "168h"
+        
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3

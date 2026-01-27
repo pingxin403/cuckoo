@@ -268,10 +268,86 @@ Cannot remap path '/opt'
 └── 006 架构可扩展性
     └── 无限扩展能力
 
+2026-01-25
+└── 007 可观测性集成
+    └── 统一监控和追踪
+
 2026-01-21
 └── OpenSpec 规范同步
     └── 统一规范管理
 ```
+
+---
+
+## 007 - 可观测性集成 (2026-01-25)
+
+**类型**: Feature  
+**负责人**: Platform Team  
+**状态**: ✅ 已完成（核心功能）
+
+### 概述
+将统一可观测性库 (`libs/observability`) 集成到所有 Go 服务中，提供 OpenTelemetry 标准的指标、日志和追踪能力，以及 Prometheus 指标导出和 pprof 性能分析端点。
+
+### 集成的服务
+- ✅ auth-service - 认证服务
+- ✅ user-service - 用户服务
+- ✅ todo-service - 待办事项服务
+- ✅ im-service - 即时通讯服务
+- ✅ shortener-service - 短链服务
+
+### 关键特性
+
+1. **统一指标收集**
+   - Prometheus 格式导出（拉取模式）
+   - OTLP 导出（推送模式）
+   - 标准化指标命名
+   - 服务级别标签
+
+2. **结构化日志**
+   - JSON/Text 格式支持
+   - 追踪 ID 关联
+   - 日志级别过滤
+   - 上下文传递
+
+3. **分布式追踪**
+   - OpenTelemetry 标准
+   - 跨服务追踪传播
+   - Span 属性记录
+   - 错误追踪
+
+4. **性能分析**
+   - pprof 端点（可选启用）
+   - CPU/内存/goroutine 分析
+   - 阻塞和互斥锁分析
+
+### 环境变量配置
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `SERVICE_NAME` | 服务名称 | 服务特定 |
+| `SERVICE_VERSION` | 服务版本 | 1.0.0 |
+| `DEPLOYMENT_ENVIRONMENT` | 部署环境 | development |
+| `LOG_LEVEL` | 日志级别 | info |
+| `METRICS_PORT` | 指标端口 | 9090 |
+| `ENABLE_OTEL_METRICS` | 启用 OTel 指标 | false |
+| `ENABLE_OTEL_LOGS` | 启用 OTel 日志 | false |
+| `ENABLE_OTEL_TRACING` | 启用追踪 | false |
+| `ENABLE_PROMETHEUS` | 启用 Prometheus | true |
+| `ENABLE_PPROF` | 启用 pprof | false |
+| `OTLP_ENDPOINT` | OTLP 端点 | - |
+
+### 关键成果
+- ✅ 5 个 Go 服务完成集成
+- ✅ 统一的可观测性接口
+- ✅ 向后兼容（无 OTLP 也能运行）
+- ✅ 优雅关闭支持
+- ✅ 服务模板已更新
+
+### 相关文档
+- 实现规范: `.kiro/specs/observability-integration/`
+- OpenSpec 规范: `openspec/specs/observability-integration/spec.md`
+- 库文档: `libs/observability/README.md`
+- 迁移指南: `libs/observability/MIGRATION_GUIDE.md`
 
 ---
 
@@ -308,10 +384,12 @@ Cannot remap path '/opt'
 ### 实现规范
 - `.kiro/specs/monorepo-hello-todo/` - Hello/TODO 服务规范
 - `.kiro/specs/url-shortener-service/` - URL 短链服务规范
+- `.kiro/specs/observability-integration/` - 可观测性集成规范
 
 ### OpenSpec 规范
 - `openspec/specs/hello-todo-services/spec.md` - Hello/TODO 服务规范
 - `openspec/specs/url-shortener-service/spec.md` - URL 短链服务规范
+- `openspec/specs/observability-integration/spec.md` - 可观测性集成规范
 
 ### 架构文档
 - `docs/openspec-monorepo-architecture.md` - Monorepo 架构
@@ -324,6 +402,8 @@ Cannot remap path '/opt'
 - `docs/DYNAMIC_CI_STRATEGY.md` - 动态 CI/CD 策略
 - `docs/PROTO_HYBRID_STRATEGY.md` - Protobuf 混合策略
 - `docs/SHIFT_LEFT.md` - Shift-Left 实践
+- `libs/observability/README.md` - 可观测性库文档
+- `libs/observability/MIGRATION_GUIDE.md` - 可观测性迁移指南
 
 ### OpenSpec 管理
 - `openspec/AGENTS.md` - OpenSpec 使用指南

@@ -1,0 +1,48 @@
+# Bitnami Redis Helm Chart Values
+# Reference: https://github.com/bitnami/charts/tree/main/bitnami/redis
+
+# Architecture: standalone or replication
+architecture: standalone
+
+auth:
+  enabled: false  # Enable in production with password
+
+master:
+  persistence:
+    enabled: true
+    size: 10Gi
+    # storageClass: ""
+  
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+    limits:
+      memory: 2Gi
+      cpu: 500m
+  
+  configuration: |
+    maxmemory 2gb
+    maxmemory-policy allkeys-lru
+    appendonly yes
+    save 900 1
+    save 300 10
+    save 60 10000
+  
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 20
+    periodSeconds: 5
+    timeoutSeconds: 5
+  
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 5
+    timeoutSeconds: 3
+
+# Enable metrics for Prometheus
+metrics:
+  enabled: false  # Set to true if using Prometheus
+  serviceMonitor:
+    enabled: false

@@ -103,6 +103,59 @@ The production build will be output to the `dist/` directory.
 - Real-time updates using React Query
 - Loading states and error handling
 
+### IM Chat Integration (Phase 7)
+
+The web frontend now includes a complete IM (Instant Messaging) chat system integration:
+
+#### Features
+- **Real-time messaging** via WebSocket connection
+- **Private chat** (user-to-user) and **group chat** support
+- **Message status tracking**: pending → sent → delivered → read
+- **Automatic reconnection** with exponential backoff
+- **Message deduplication** using IndexedDB (production) or Memory (development)
+- **Read receipts** with automatic sending
+- **Connection monitoring** with visual status indicators
+- **Optimistic updates** for better UX
+
+#### Components
+- **ChatDemo**: Demo component showcasing the IM Client SDK
+- **useChat Hook**: React hook for managing chat state and operations
+- **chatService**: Singleton service wrapping the IM Client SDK
+
+#### SDK Features
+- Full TypeScript support with type definitions
+- Multiple storage backends (Memory, LocalStorage, IndexedDB)
+- Event-driven architecture (8 event types)
+- Automatic heartbeat mechanism (30s interval)
+- JWT authentication
+- 7-day message deduplication TTL
+
+#### Configuration
+The IM Gateway WebSocket URL is configured via environment variables:
+- Development: `VITE_IM_GATEWAY_WS_URL=ws://localhost:8080/ws`
+- Production: Update `.env.production` with your production gateway URL
+
+#### Usage
+1. Click the "IM 聊天" tab in the application
+2. The chat will automatically connect to the IM Gateway
+3. Enter a recipient ID (user or group)
+4. Type your message and click "发送" to send
+5. Messages will appear in real-time with status indicators
+
+#### Documentation
+For detailed SDK documentation, see:
+- `src/sdk/im-client/README.md` - Complete SDK documentation
+- `src/sdk/im-client/example.ts` - Usage examples and patterns
+
+#### Testing
+To test the chat functionality:
+1. Ensure IM Gateway service is running on `ws://localhost:8080/ws`
+2. Open multiple browser tabs/windows
+3. Use different user IDs in each tab
+4. Send messages between tabs to see real-time delivery
+
+**Note**: The current implementation uses a mock JWT token for demonstration. In production, integrate with your authentication system to obtain real tokens.
+
 ## Architecture
 
 ### Communication Flow

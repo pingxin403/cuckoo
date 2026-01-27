@@ -1,0 +1,23 @@
+# 2026/01/24 20:15:35.188506 [TestProperty5_LargeGroupBroadcast] [rapid] draw groupSize: 1019
+# 2026/01/24 20:15:35.188527 [TestProperty5_LargeGroupBroadcast] [rapid] draw groupID: 1000
+# 2026/01/24 20:15:35.188769 [TestProperty5_LargeGroupBroadcast] [rapid] draw localPercentage: 1
+# 2026/01/24 20:15:35.188830 [TestProperty5_LargeGroupBroadcast] [rapid] draw msgID: 100002
+# 2026/01/24 20:15:35.188834 [TestProperty5_LargeGroupBroadcast] [rapid] draw seqNum: 96505
+# 2026/01/24 20:15:35.289401 [TestProperty5_LargeGroupBroadcast] Local member user_7 did not receive message
+# 
+v0.4.8#13253876340281206760
+0x19cb1d4518da44
+0xc708950789821
+0x12
+0x160835a15f216f
+0x6c117b1d5e311
+0x0
+0x1e3b6530880868
+0x10f46c84215839
+0x0
+0xc389e188c06d7
+0x71427d3182412
+0x2
+0x8b7c9f4276fe3
+0x1ce3ca69ee56f2
+0x178f8

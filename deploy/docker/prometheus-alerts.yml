@@ -1,0 +1,350 @@
+# Prometheus Alerting Rules for IM Gateway Service
+# These rules define alerts for critical system conditions
+
+groups:
+  - name: im_gateway_alerts
+    interval: 30s
+    rules:
+      # P1 Alert: High P99 Latency
+      - alert: HighMessageDeliveryLatency
+        expr: histogram_quantile(0.99, rate(im_gateway_message_delivery_latency_seconds_bucket[5m])) > 0.5
+        for: 5m
+        labels:
+          severity: P1
+          service: im-gateway-service
+          component: message-delivery
+        annotations:
+          summary: "High P99 message delivery latency detected"
+          description: "P99 message delivery latency is {{ $value | humanizeDuration }} (threshold: 500ms) for service {{ $labels.instance }}"
+          runbook_url: "https://wiki.example.com/runbooks/im-gateway/high-latency"
+          dashboard_url: "http://grafana:3000/d/im-gateway-messages"
+
+      # Circuit Breaker: High Message Loss Rate
+      - alert: HighMessageLossRate
+        expr: |
+          (
+            rate(im_gateway_messages_failed_total[5m]) 
+            / 
+            (rate(im_gateway_messages_delivered_total[5m]) + rate(im_gateway_messages_failed_total[5m]))
+          ) > 0.0001
+        for: 2m
+        labels:
+          severity: critical
+          service: im-gateway-service
+          component: message-delivery
+          circuit_breaker: "true"
+        annotations:
+          summary: "High message loss rate detected - Circuit breaker triggered"
+          description: "Message loss rate is {{ $value | humanizePercentage }} (threshold: 0.01%) for service {{ $labels.instance }}"
+          runbook_url: "https://wiki.example.com/runbooks/im-gateway/message-loss"
+          dashboard_url: "http://grafana:3000/d/im-gateway-health"
+          action: "Circuit breaker should be triggered to prevent further message loss"
+
+      # P2 Alert: High ACK Timeout Rate
+      - alert: HighAckTimeoutRate
+        expr: |
+          (
+            rate(im_gateway_ack_timeouts_total[5m]) 
+            / 
+            rate(im_gateway_messages_delivered_total[5m])
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: P2
+          service: im-gateway-service
+          component: message-delivery
+        annotations:
+          summary: "High ACK timeout rate detected"
+          description: "ACK timeout rate is {{ $value | humanizePercentage }} (threshold: 5%) for service {{ $labels.instance }}"
+          runbook_url: "https://wiki.example.com/runbooks/im-gateway/ack-timeout"
+          dashboard_url: "http://grafana:3000/d/im-gateway-messages"
+
+      # Connection Health Alerts
+      - alert: HighConnectionErrorRate
+        expr: |
+          (
+            rate(im_gateway_connection_errors_total[5m]) 
+            / 
+            rate(im_gateway_total_connections_total[5m])
+          ) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: im-gateway-service
+          component: connections
+        annotations:
+          summary: "High connection error rate detected"
+          description: "Connection error rate is {{ $value | humanizePercentage }} (threshold: 10%) for service {{ $labels.instance }}"
+          runbook_url: "https://wiki.example.com/runbooks/im-gateway/connection-errors"
+          dashboard_url: "http://grafana:3000/d/im-gateway-connections"
+
+      - alert: TooManyActiveConnections
+        expr: im_gateway_active_connections > 100000
+        for: 5m
+        labels:
+          severity: warning
+          service: im-gateway-service
+          component: connections
+        annotations:
+          summary: "Gateway node approaching connection limit"
+          description: "Active connections ({{ $value }}) approaching limit (100K) for service {{ $labels.instance }}"
+          runbook_url: "https://wiki.example.com/runbooks/im-gateway/scale-out"
+          dashboard_url: "http://grafana:3000/d/im-gateway-connections"
+          action: "Consider scaling out gateway nodes"
+
+      # Offline Queue Alerts
+      - alert: HighOfflineQueueBacklog
+        expr: im_gateway_offline_queue_size > 10000
+        for: 10m
+        labels:
+          severity: warning
+          service: im-gateway-service
+          component: offline-queue
+        annotations:
+          summary: "High offline message queue backlog"
+          description: "Offline queue size is {{ $value }} messages (threshold: 10K) for service {{ $labels.instance }}"
+          runbook_url: "https://wiki.example.com/runbooks/im-gateway/offline-backlog"
+          dashboard_url: "http://grafana:3000/d/im-gateway-messages"
+          action: "Check offline worker processing rate"
+
+      # Cache Performance Alerts
+      - alert: LowCacheHitRate
+        expr: |
+          (
+            rate(im_gateway_cache_hits_total[5m]) 
+            / 
+            (rate(im_gateway_cache_hits_total[5m]) + rate(im_gateway_cache_misses_total[5m]))
+          ) < 0.7
+        for: 10m
+        labels:
+          severity: warning
+          service: im-gateway-service
+          component: cache
+        annotations:
+          summary: "Low cache hit rate detected"
+          description: "Cache hit rate is {{ $value | humanizePercentage }} (threshold: 70%) for service {{ $labels.instance }}"
+          runbook_url: "https://wiki.example.com/runbooks/im-gateway/cache-performance"
+          dashboard_url: "http://grafana:3000/d/im-gateway-health"
+          action: "Review cache configuration and TTL settings"
+
+      # Duplication Rate Alert
+      - alert: HighMessageDuplicationRate
+        expr: |
+          (
+            rate(im_gateway_duplicate_messages_total[5m]) 
+            / 
+            rate(im_gateway_messages_delivered_total[5m])
+          ) > 0.01
+        for: 10m
+        labels:
+          severity: warning
+          service: im-gateway-service
+          component: deduplication
+        annotations:
+          summary: "High message duplication rate detected"
+          description: "Message duplication rate is {{ $value | humanizePercentage }} (threshold: 1%) for service {{ $labels.instance }}"
+          runbook_url: "https://wiki.example.com/runbooks/im-gateway/duplication"
+          dashboard_url: "http://grafana:3000/d/im-gateway-health"
+          action: "Check Redis deduplication service health"
+
+      # Service Availability Alert
+      - alert: IMGatewayServiceDown
+        expr: up{job="im-gateway-service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: im-gateway-service
+          component: availability
+        annotations:
+          summary: "IM Gateway Service is down"
+          description: "IM Gateway Service {{ $labels.instance }} is not responding to health checks"
+          runbook_url: "https://wiki.example.com/runbooks/im-gateway/service-down"
+          dashboard_url: "http://grafana:3000/d/im-gateway-health"
+          action: "Immediate investigation required"
+
+      # Group Message Performance
+      - alert: HighGroupMessageFanoutLatency
+        expr: |
+          rate(im_gateway_group_members_fanout_total[5m]) 
+          / 
+          rate(im_gateway_group_messages_delivered_total[5m]) > 1000
+        for: 10m
+        labels:
+          severity: warning
+          service: im-gateway-service
+          component: group-messages
+        annotations:
+          summary: "High average group size detected"
+          description: "Average group fanout is {{ $value }} members (threshold: 1000) for service {{ $labels.instance }}"
+          runbook_url: "https://wiki.example.com/runbooks/im-gateway/large-groups"
+          dashboard_url: "http://grafana:3000/d/im-gateway-messages"
+          action: "Review large group optimization settings"
+
+  # OpenTelemetry Instrumentation Health
+  - name: otel_instrumentation_alerts
+    interval: 30s
+    rules:
+      - alert: HighOTelMetricsExportFailures
+        expr: rate(otelcol_exporter_send_failed_metric_points[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: otel-collector
+          component: metrics-export
+        annotations:
+          summary: "High OpenTelemetry metrics export failure rate"
+          description: "OTel Collector is failing to export metrics at {{ $value }} failures/sec"
+          runbook_url: "https://wiki.example.com/runbooks/otel/export-failures"
+          action: "Check OTel Collector logs and backend connectivity"
+
+      - alert: OTelCollectorDown
+        expr: up{job="otel-collector"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: otel-collector
+          component: availability
+        annotations:
+          summary: "OpenTelemetry Collector is down"
+          description: "OTel Collector is not responding to health checks"
+          runbook_url: "https://wiki.example.com/runbooks/otel/collector-down"
+          action: "Restart OTel Collector immediately"
+
+
+  # SLO and Error Budget Alerts
+  - name: slo_alerts
+    interval: 30s
+    rules:
+      # Error Budget 50% Consumed
+      - alert: ErrorBudget50PercentConsumed
+        expr: |
+          (1 - avg_over_time(up{job="im-gateway-service"}[30d])) / 0.0005 > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          service: im-gateway-service
+          component: slo
+        annotations:
+          summary: "50% of monthly error budget consumed"
+          description: "Error budget consumption: {{ $value | humanizePercentage }} (threshold: 50%)"
+          runbook_url: "https://wiki.example.com/runbooks/im-gateway/error-budget"
+          dashboard_url: "http://grafana:3000/d/im-gateway-slo"
+          action: "Review recent incidents and plan improvements"
+
+      # Error Budget 80% Consumed (Critical)
+      - alert: ErrorBudget80PercentConsumed
+        expr: |
+          (1 - avg_over_time(up{job="im-gateway-service"}[30d])) / 0.0005 > 0.8
+        for: 5m
+        labels:
+          severity: critical
+          service: im-gateway-service
+          component: slo
+        annotations:
+          summary: "80% of monthly error budget consumed - Circuit breaker recommended"
+          description: "Error budget consumption: {{ $value | humanizePercentage }} (threshold: 80%)"
+          runbook_url: "https://wiki.example.com/runbooks/im-gateway/error-budget"
+          dashboard_url: "http://grafana:3000/d/im-gateway-slo"
+          action: "Consider enabling circuit breaker to preserve remaining budget"
+
+      # Fast SLO Burn (1 hour window)
+      - alert: SLOFastBurn
+        expr: |
+          (
+            1 - (
+              sum(rate(im_gateway_messages_delivered_total[1h]))
+              /
+              (sum(rate(im_gateway_messages_delivered_total[1h])) + 
+               sum(rate(im_gateway_messages_failed_total[1h])))
+            )
+          ) > (0.0001 * 14.4)
+        for: 2m
+        labels:
+          severity: critical
+          service: im-gateway-service
+          component: slo
+          burn_rate: fast
+        annotations:
+          summary: "Fast SLO burn detected - 5% of monthly budget in 1 hour"
+          description: "Current error rate: {{ $value | humanizePercentage }} (threshold: 0.144%)"
+          runbook_url: "https://wiki.example.com/runbooks/im-gateway/slo-burn"
+          dashboard_url: "http://grafana:3000/d/im-gateway-slo"
+          action: "Immediate investigation required - burning budget 14.4x faster than allowed"
+
+      # Slow SLO Burn (6 hour window)
+      - alert: SLOSlowBurn
+        expr: |
+          (
+            1 - (
+              sum(rate(im_gateway_messages_delivered_total[6h]))
+              /
+              (sum(rate(im_gateway_messages_delivered_total[6h])) + 
+               sum(rate(im_gateway_messages_failed_total[6h])))
+            )
+          ) > (0.0001 * 6)
+        for: 15m
+        labels:
+          severity: warning
+          service: im-gateway-service
+          component: slo
+          burn_rate: slow
+        annotations:
+          summary: "Slow SLO burn detected - 2.5% of monthly budget in 6 hours"
+          description: "Current error rate: {{ $value | humanizePercentage }} (threshold: 0.06%)"
+          runbook_url: "https://wiki.example.com/runbooks/im-gateway/slo-burn"
+          dashboard_url: "http://grafana:3000/d/im-gateway-slo"
+          action: "Investigation required within 1 hour - burning budget 6x faster than allowed"
+
+      # Availability SLO Violation
+      - alert: AvailabilitySLOViolation
+        expr: avg_over_time(up{job="im-gateway-service"}[30d]) < 0.9995
+        for: 5m
+        labels:
+          severity: critical
+          service: im-gateway-service
+          component: slo
+        annotations:
+          summary: "Availability SLO violated"
+          description: "30-day availability: {{ $value | humanizePercentage }} (target: 99.95%)"
+          runbook_url: "https://wiki.example.com/runbooks/im-gateway/slo-violation"
+          dashboard_url: "http://grafana:3000/d/im-gateway-slo"
+          action: "Review incidents and implement improvements to restore SLO compliance"
+
+      # Latency SLO Violation
+      - alert: LatencySLOViolation
+        expr: |
+          histogram_quantile(0.99, 
+            rate(im_gateway_message_delivery_latency_seconds_bucket[30d])
+          ) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+          service: im-gateway-service
+          component: slo
+        annotations:
+          summary: "Latency SLO violated"
+          description: "30-day P99 latency: {{ $value | humanizeDuration }} (target: < 200ms)"
+          runbook_url: "https://wiki.example.com/runbooks/im-gateway/slo-violation"
+          dashboard_url: "http://grafana:3000/d/im-gateway-slo"
+          action: "Investigate latency issues and optimize performance"
+
+      # Success Rate SLO Violation
+      - alert: SuccessRateSLOViolation
+        expr: |
+          (
+            sum(rate(im_gateway_messages_delivered_total[30d]))
+            /
+            (sum(rate(im_gateway_messages_delivered_total[30d])) + 
+             sum(rate(im_gateway_messages_failed_total[30d])))
+          ) < 0.9999
+        for: 5m
+        labels:
+          severity: critical
+          service: im-gateway-service
+          component: slo
+        annotations:
+          summary: "Success rate SLO violated"
+          description: "30-day success rate: {{ $value | humanizePercentage }} (target: 99.99%)"
+          runbook_url: "https://wiki.example.com/runbooks/im-gateway/slo-violation"
+          dashboard_url: "http://grafana:3000/d/im-gateway-slo"
+          action: "Investigate message delivery failures and implement fixes"

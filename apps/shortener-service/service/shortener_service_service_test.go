@@ -9,19 +9,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/pingxin403/cuckoo/api/gen/go/shortenerpb"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/cache"
-	pb "github.com/pingxin403/cuckoo/apps/shortener-service/gen/shortener_servicepb"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/idgen"
-	"github.com/pingxin403/cuckoo/apps/shortener-service/logger"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/storage"
 )
-
-// TestMain initializes the logger for all tests
-func TestMain(m *testing.M) {
-	// Initialize logger for tests
-	_ = logger.InitLogger(true) // development mode
-	m.Run()
-}
 
 // MockStorage implements storage.Storage for testing
 type MockStorage struct {
@@ -74,9 +66,9 @@ func TestNewShortenerServiceImpl(t *testing.T) {
 	validator := NewURLValidator()
 	l1, err := cache.NewL1Cache()
 	require.NoError(t, err)
-	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store})
+	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store}, createTestObservability())
 
-	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager)
+	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager, createTestObservability())
 
 	assert.NotNil(t, service)
 	assert.NotNil(t, service.storage)
@@ -92,11 +84,11 @@ func TestCreateShortLink_Success(t *testing.T) {
 	validator := NewURLValidator()
 	l1, err := cache.NewL1Cache()
 	require.NoError(t, err)
-	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store})
+	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store}, createTestObservability())
 
-	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager)
+	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager, createTestObservability())
 
-	req := &pb.CreateShortLinkRequest{
+	req := &shortenerpb.CreateShortLinkRequest{
 		LongUrl: "https://example.com/very/long/path",
 	}
 
@@ -117,9 +109,9 @@ func TestCreateShortLink_InvalidURL(t *testing.T) {
 	validator := NewURLValidator()
 	l1, err := cache.NewL1Cache()
 	require.NoError(t, err)
-	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store})
+	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store}, createTestObservability())
 
-	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager)
+	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager, createTestObservability())
 
 	tests := []struct {
 		name    string
@@ -132,7 +124,7 @@ func TestCreateShortLink_InvalidURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := &pb.CreateShortLinkRequest{
+			req := &shortenerpb.CreateShortLinkRequest{
 				LongUrl: tt.longURL,
 			}
 
@@ -151,11 +143,11 @@ func TestCreateShortLink_CustomCode(t *testing.T) {
 	validator := NewURLValidator()
 	l1, err := cache.NewL1Cache()
 	require.NoError(t, err)
-	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store})
+	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store}, createTestObservability())
 
-	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager)
+	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager, createTestObservability())
 
-	req := &pb.CreateShortLinkRequest{
+	req := &shortenerpb.CreateShortLinkRequest{
 		LongUrl:    "https://example.com",
 		CustomCode: "promo2024",
 	}
@@ -175,19 +167,19 @@ func TestGetLinkInfo_Success(t *testing.T) {
 	validator := NewURLValidator()
 	l1, err := cache.NewL1Cache()
 	require.NoError(t, err)
-	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store})
+	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store}, createTestObservability())
 
-	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager)
+	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager, createTestObservability())
 
 	// Create a link first
-	createReq := &pb.CreateShortLinkRequest{
+	createReq := &shortenerpb.CreateShortLinkRequest{
 		LongUrl: "https://example.com",
 	}
 	createResp, err := service.CreateShortLink(context.Background(), createReq)
 	require.NoError(t, err)
 
 	// Get link info
-	getReq := &pb.GetLinkInfoRequest{
+	getReq := &shortenerpb.GetLinkInfoRequest{
 		ShortCode: createResp.ShortCode,
 	}
 
@@ -207,11 +199,11 @@ func TestGetLinkInfo_NotFound(t *testing.T) {
 	validator := NewURLValidator()
 	l1, err := cache.NewL1Cache()
 	require.NoError(t, err)
-	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store})
+	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store}, createTestObservability())
 
-	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager)
+	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager, createTestObservability())
 
-	req := &pb.GetLinkInfoRequest{
+	req := &shortenerpb.GetLinkInfoRequest{
 		ShortCode: "notfound",
 	}
 
@@ -228,9 +220,9 @@ func TestGetLinkInfo_ExpiredLink(t *testing.T) {
 	validator := NewURLValidator()
 	l1, err := cache.NewL1Cache()
 	require.NoError(t, err)
-	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store})
+	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store}, createTestObservability())
 
-	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager)
+	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager, createTestObservability())
 
 	// Create a link with expiration in the past
 	expiredTime := time.Now().Add(-1 * time.Hour)
@@ -245,7 +237,7 @@ func TestGetLinkInfo_ExpiredLink(t *testing.T) {
 	require.NoError(t, err)
 
 	// Get link info
-	req := &pb.GetLinkInfoRequest{
+	req := &shortenerpb.GetLinkInfoRequest{
 		ShortCode: "expired",
 	}
 
@@ -266,9 +258,9 @@ func TestGetLinkInfo_NotExpiredLink(t *testing.T) {
 	validator := NewURLValidator()
 	l1, err := cache.NewL1Cache()
 	require.NoError(t, err)
-	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store})
+	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store}, createTestObservability())
 
-	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager)
+	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager, createTestObservability())
 
 	// Create a link with expiration in the future
 	futureTime := time.Now().Add(24 * time.Hour)
@@ -283,7 +275,7 @@ func TestGetLinkInfo_NotExpiredLink(t *testing.T) {
 	require.NoError(t, err)
 
 	// Get link info
-	req := &pb.GetLinkInfoRequest{
+	req := &shortenerpb.GetLinkInfoRequest{
 		ShortCode: "active",
 	}
 
@@ -304,11 +296,11 @@ func TestGetLinkInfo_EmptyShortCode(t *testing.T) {
 	validator := NewURLValidator()
 	l1, err := cache.NewL1Cache()
 	require.NoError(t, err)
-	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store})
+	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store}, createTestObservability())
 
-	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager)
+	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager, createTestObservability())
 
-	req := &pb.GetLinkInfoRequest{
+	req := &shortenerpb.GetLinkInfoRequest{
 		ShortCode: "",
 	}
 
@@ -326,9 +318,9 @@ func TestGetLinkInfo_WithClickCount(t *testing.T) {
 	validator := NewURLValidator()
 	l1, err := cache.NewL1Cache()
 	require.NoError(t, err)
-	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store})
+	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store}, createTestObservability())
 
-	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager)
+	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager, createTestObservability())
 
 	// Create a link with click count
 	mapping := &storage.URLMapping{
@@ -342,7 +334,7 @@ func TestGetLinkInfo_WithClickCount(t *testing.T) {
 	require.NoError(t, err)
 
 	// Get link info
-	req := &pb.GetLinkInfoRequest{
+	req := &shortenerpb.GetLinkInfoRequest{
 		ShortCode: "popular",
 	}
 
@@ -361,19 +353,19 @@ func TestDeleteShortLink_Success(t *testing.T) {
 	validator := NewURLValidator()
 	l1, err := cache.NewL1Cache()
 	require.NoError(t, err)
-	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store})
+	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store}, createTestObservability())
 
-	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager)
+	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager, createTestObservability())
 
 	// Create a link first
-	createReq := &pb.CreateShortLinkRequest{
+	createReq := &shortenerpb.CreateShortLinkRequest{
 		LongUrl: "https://example.com",
 	}
 	createResp, err := service.CreateShortLink(context.Background(), createReq)
 	require.NoError(t, err)
 
 	// Delete the link
-	deleteReq := &pb.DeleteShortLinkRequest{
+	deleteReq := &shortenerpb.DeleteShortLinkRequest{
 		ShortCode: createResp.ShortCode,
 	}
 
@@ -384,7 +376,7 @@ func TestDeleteShortLink_Success(t *testing.T) {
 	assert.True(t, resp.Success)
 
 	// Verify it's deleted
-	getReq := &pb.GetLinkInfoRequest{
+	getReq := &shortenerpb.GetLinkInfoRequest{
 		ShortCode: createResp.ShortCode,
 	}
 	_, err = service.GetLinkInfo(context.Background(), getReq)
@@ -398,12 +390,12 @@ func TestDeleteShortLink_NotFound(t *testing.T) {
 	validator := NewURLValidator()
 	l1, err := cache.NewL1Cache()
 	require.NoError(t, err)
-	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store})
+	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store}, createTestObservability())
 
-	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager)
+	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager, createTestObservability())
 
 	// Try to delete non-existent link
-	deleteReq := &pb.DeleteShortLinkRequest{
+	deleteReq := &shortenerpb.DeleteShortLinkRequest{
 		ShortCode: "notfound",
 	}
 
@@ -421,12 +413,12 @@ func TestDeleteShortLink_EmptyShortCode(t *testing.T) {
 	validator := NewURLValidator()
 	l1, err := cache.NewL1Cache()
 	require.NoError(t, err)
-	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store})
+	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store}, createTestObservability())
 
-	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager)
+	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager, createTestObservability())
 
 	// Try to delete with empty short code
-	deleteReq := &pb.DeleteShortLinkRequest{
+	deleteReq := &shortenerpb.DeleteShortLinkRequest{
 		ShortCode: "",
 	}
 
@@ -444,26 +436,26 @@ func TestDeleteShortLink_CacheInvalidation(t *testing.T) {
 	validator := NewURLValidator()
 	l1, err := cache.NewL1Cache()
 	require.NoError(t, err)
-	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store})
+	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store}, createTestObservability())
 
-	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager)
+	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager, createTestObservability())
 
 	// Create a link
-	createReq := &pb.CreateShortLinkRequest{
+	createReq := &shortenerpb.CreateShortLinkRequest{
 		LongUrl: "https://example.com/cached",
 	}
 	createResp, err := service.CreateShortLink(context.Background(), createReq)
 	require.NoError(t, err)
 
 	// Verify it's in cache by getting it (this will populate cache)
-	getReq := &pb.GetLinkInfoRequest{
+	getReq := &shortenerpb.GetLinkInfoRequest{
 		ShortCode: createResp.ShortCode,
 	}
 	_, err = service.GetLinkInfo(context.Background(), getReq)
 	require.NoError(t, err)
 
 	// Delete the link
-	deleteReq := &pb.DeleteShortLinkRequest{
+	deleteReq := &shortenerpb.DeleteShortLinkRequest{
 		ShortCode: createResp.ShortCode,
 	}
 	resp, err := service.DeleteShortLink(context.Background(), deleteReq)
@@ -506,9 +498,9 @@ func TestCreateShortLink_ValidationErrors(t *testing.T) {
 	validator := NewURLValidator()
 	l1, err := cache.NewL1Cache()
 	require.NoError(t, err)
-	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store})
+	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store}, createTestObservability())
 
-	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager)
+	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager, createTestObservability())
 
 	tests := []struct {
 		name        string
@@ -554,7 +546,7 @@ func TestCreateShortLink_ValidationErrors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := &pb.CreateShortLinkRequest{
+			req := &shortenerpb.CreateShortLinkRequest{
 				LongUrl: tt.longURL,
 			}
 
@@ -580,11 +572,11 @@ func TestCreateShortLink_StorageErrors(t *testing.T) {
 		validator := NewURLValidator()
 		l1, err := cache.NewL1Cache()
 		require.NoError(t, err)
-		cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: errorStore.MockStorage})
+		cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: errorStore.MockStorage}, createTestObservability())
 
-		service := NewShortenerServiceImpl(errorStore, idGen, validator, cacheManager)
+		service := NewShortenerServiceImpl(errorStore, idGen, validator, cacheManager, createTestObservability())
 
-		req := &pb.CreateShortLinkRequest{
+		req := &shortenerpb.CreateShortLinkRequest{
 			LongUrl: "https://example.com",
 		}
 
@@ -626,12 +618,12 @@ func TestCreateShortLink_CustomCodeConflict(t *testing.T) {
 	validator := NewURLValidator()
 	l1, err := cache.NewL1Cache()
 	require.NoError(t, err)
-	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store})
+	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store}, createTestObservability())
 
-	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager)
+	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager, createTestObservability())
 
 	// Try to create with the same custom code
-	req := &pb.CreateShortLinkRequest{
+	req := &shortenerpb.CreateShortLinkRequest{
 		LongUrl:    "https://newurl.com",
 		CustomCode: existingCode,
 	}
@@ -650,9 +642,9 @@ func TestCreateShortLink_InvalidCustomCode(t *testing.T) {
 	validator := NewURLValidator()
 	l1, err := cache.NewL1Cache()
 	require.NoError(t, err)
-	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store})
+	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store}, createTestObservability())
 
-	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager)
+	service := NewShortenerServiceImpl(store, idGen, validator, cacheManager, createTestObservability())
 
 	tests := []struct {
 		name       string
@@ -666,7 +658,7 @@ func TestCreateShortLink_InvalidCustomCode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := &pb.CreateShortLinkRequest{
+			req := &shortenerpb.CreateShortLinkRequest{
 				LongUrl:    "https://example.com",
 				CustomCode: tt.customCode,
 			}

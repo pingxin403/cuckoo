@@ -4,17 +4,29 @@ import (
 	"context"
 	"testing"
 
-	"github.com/pingxin403/cuckoo/apps/todo-service/gen/todopb"
+	"github.com/pingxin403/cuckoo/api/gen/go/todopb"
 	"github.com/pingxin403/cuckoo/apps/todo-service/storage"
+	"github.com/pingxin403/cuckoo/libs/observability"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
+// createTestObservability creates an observability instance for testing
+func createTestObservability() observability.Observability {
+	obs, _ := observability.New(observability.Config{
+		ServiceName:   "todo-service-test",
+		EnableMetrics: false,
+		LogLevel:      "error",
+	})
+	return obs
+}
+
 func TestTodoServiceServer_CreateTodo(t *testing.T) {
 	store := storage.NewMemoryStore()
-	service := NewTodoServiceServer(store)
+	obs := createTestObservability()
+	service := NewTodoServiceServer(store, obs)
 	ctx := context.Background()
 
 	t.Run("should create TODO with valid input", func(t *testing.T) {
@@ -102,7 +114,8 @@ func TestTodoServiceServer_CreateTodo(t *testing.T) {
 
 func TestTodoServiceServer_ListTodos(t *testing.T) {
 	store := storage.NewMemoryStore()
-	service := NewTodoServiceServer(store)
+	obs := createTestObservability()
+	service := NewTodoServiceServer(store, obs)
 	ctx := context.Background()
 
 	t.Run("should return empty list for new store", func(t *testing.T) {
@@ -135,7 +148,8 @@ func TestTodoServiceServer_ListTodos(t *testing.T) {
 
 func TestTodoServiceServer_UpdateTodo(t *testing.T) {
 	store := storage.NewMemoryStore()
-	service := NewTodoServiceServer(store)
+	obs := createTestObservability()
+	service := NewTodoServiceServer(store, obs)
 	ctx := context.Background()
 
 	t.Run("should update existing TODO", func(t *testing.T) {
@@ -238,7 +252,8 @@ func TestTodoServiceServer_UpdateTodo(t *testing.T) {
 
 func TestTodoServiceServer_DeleteTodo(t *testing.T) {
 	store := storage.NewMemoryStore()
-	service := NewTodoServiceServer(store)
+	obs := createTestObservability()
+	service := NewTodoServiceServer(store, obs)
 	ctx := context.Background()
 
 	t.Run("should delete existing TODO", func(t *testing.T) {
@@ -299,7 +314,8 @@ func TestTodoServiceServer_DeleteTodo(t *testing.T) {
 
 func TestTodoServiceServer_CRUDRoundTrip(t *testing.T) {
 	store := storage.NewMemoryStore()
-	service := NewTodoServiceServer(store)
+	obs := createTestObservability()
+	service := NewTodoServiceServer(store, obs)
 	ctx := context.Background()
 
 	t.Run("should complete full CRUD cycle", func(t *testing.T) {

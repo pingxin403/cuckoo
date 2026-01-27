@@ -10,7 +10,11 @@
 
 ```bash
 # From repository root
-docker compose up -d mysql redis shortener-service
+docker compose -f deploy/docker/docker-compose.infra.yml \
+               -f deploy/docker/docker-compose.services.yml up -d
+
+# Or use Makefile
+make dev-up
 
 # Check service status
 docker compose ps

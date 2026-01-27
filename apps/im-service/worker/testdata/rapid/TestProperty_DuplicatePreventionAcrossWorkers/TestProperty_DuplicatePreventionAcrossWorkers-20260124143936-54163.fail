@@ -1,0 +1,49 @@
+# 2026/01/24 14:39:36.529651 [TestProperty_DuplicatePreventionAcrossWorkers] [rapid] draw msgID: "msg-544b9ff0"
+# 2026/01/24 14:39:36.529656 [TestProperty_DuplicatePreventionAcrossWorkers] [rapid] draw userID: "user-6"
+# 2026/01/24 14:39:36.529658 [TestProperty_DuplicatePreventionAcrossWorkers] [rapid] draw numWorkers: 5
+# 2026/01/24 14:39:36.529771 [TestProperty_DuplicatePreventionAcrossWorkers] Expected at most 1 successful write, got 5
+# 
+v0.4.8#15240948078978612765
+0x0
+0x3b4bbfeef16fa
+0x0
+0x1822be2784fc98
+0x5
+0x12d6b15149cb64
+0x0
+0x18df018de17327
+0x4
+0x8d5ecf53b3c6f
+0x0
+0x12612e650bdba8
+0x4
+0x1561211dcb4140
+0x0
+0x13135c08bd8092
+0xb
+0x2eb36c4bb6fd9
+0x0
+0xac913213e099c
+0x9
+0xf6c384c5463b8
+0x0
+0x1f6cb5745e6884
+0xffffffffffffffff
+0x18a6189f9a6b9f
+0x0
+0xc329db3728d64
+0xf
+0xa391e37740a59
+0x0
+0x5c8815c2ca6ad
+0x0
+0x18befd9a337252
+0x0
+0x1034d12d4011bd
+0x0
+0x187feb2c1a7915
+0x6
+0xb35ae03b26ad
+0x13e057bce7b873
+0x8080eccfce9f5
+0x3

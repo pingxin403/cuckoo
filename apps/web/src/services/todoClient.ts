@@ -7,7 +7,7 @@ import {
   UpdateTodoResponse,
   DeleteTodoRequest,
   DeleteTodoResponse,
-} from '../gen/todo';
+} from '@cuckoo/api-gen/todopb/todo';
 
 // Simple wrapper for TODO Service using fetch
 export class TodoServiceClient {

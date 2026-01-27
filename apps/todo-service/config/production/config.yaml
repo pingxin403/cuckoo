@@ -1,0 +1,21 @@
+# Todo Service - Production Environment
+
+server:
+  port: 9091
+  host: "0.0.0.0"
+
+observability:
+  service_name: "todo-service"
+  environment: "production"
+  log_level: "info"
+  log_format: "json"
+  enable_metrics: true
+  metrics_port: 9090
+
+storage:
+  type: "memory"  # memory or database
+  # 如果使用 database 类型，需要通过环境变量设置:
+  # DATABASE_HOST, DATABASE_PORT, DATABASE_USER, DATABASE_PASSWORD, DATABASE_DATABASE
+  # database:
+  #   max_open_conns: 25
+  #   max_idle_conns: 10

@@ -1,0 +1,124 @@
+syntax = "proto3";
+
+package auth.v1;
+
+option go_package = "github.com/pingxin403/cuckoo/api/gen/go/authpb";
+option java_package = "com.pingxin403.cuckoo.auth.v1";
+option java_multiple_files = true;
+
+import "google/protobuf/timestamp.proto";
+
+// AuthService provides authentication and token management for the IM system.
+// It validates JWT tokens and handles token refresh operations.
+service AuthService {
+  // ValidateToken validates a JWT authentication token and extracts user claims.
+  // Returns user_id and device_id if token is valid.
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+
+  // RefreshToken generates a new access token using a valid refresh token.
+  // Returns a new token pair with updated expiration times.
+  rpc RefreshToken(RefreshTokenRequest) returns (RefreshTokenResponse);
+}
+
+// ValidateTokenRequest contains the JWT token to be validated.
+message ValidateTokenRequest {
+  // JWT access token to validate
+  string access_token = 1;
+}
+
+// ValidateTokenResponse contains the validation result and extracted claims.
+message ValidateTokenResponse {
+  // Whether the token is valid
+  bool valid = 1;
+
+  // User ID extracted from token claims (empty if invalid)
+  string user_id = 2;
+
+  // Device ID extracted from token claims (empty if invalid)
+  // Device ID is a UUID v4 format identifier for the user's device
+  string device_id = 3;
+
+  // Token expiration time
+  google.protobuf.Timestamp expires_at = 4;
+
+  // Error code if validation failed
+  AuthErrorCode error_code = 5;
+
+  // Human-readable error message
+  string error_message = 6;
+}
+
+// RefreshTokenRequest contains the refresh token to generate new access token.
+message RefreshTokenRequest {
+  // Refresh token
+  string refresh_token = 1;
+}
+
+// RefreshTokenResponse contains the new token pair.
+message RefreshTokenResponse {
+  // New access token
+  string access_token = 1;
+
+  // New refresh token
+  string refresh_token = 2;
+
+  // Access token expiration time
+  google.protobuf.Timestamp access_token_expires_at = 3;
+
+  // Refresh token expiration time
+  google.protobuf.Timestamp refresh_token_expires_at = 4;
+
+  // Error code if refresh failed
+  AuthErrorCode error_code = 5;
+
+  // Human-readable error message
+  string error_message = 6;
+}
+
+// JWT claims structure containing user and device information.
+message JWTClaims {
+  // User ID
+  string user_id = 1;
+
+  // Device ID (UUID v4 format)
+  string device_id = 2;
+
+  // Token issued at timestamp
+  google.protobuf.Timestamp issued_at = 3;
+
+  // Token expiration timestamp
+  google.protobuf.Timestamp expires_at = 4;
+
+  // Token issuer
+  string issuer = 5;
+
+  // Token subject (typically user_id)
+  string subject = 6;
+}
+
+// AuthErrorCode defines error codes for authentication failures.
+enum AuthErrorCode {
+  // No error
+  AUTH_ERROR_CODE_UNSPECIFIED = 0;
+
+  // Token is expired
+  AUTH_ERROR_CODE_TOKEN_EXPIRED = 1;
+
+  // Token signature is invalid
+  AUTH_ERROR_CODE_INVALID_SIGNATURE = 2;
+
+  // Token format is malformed
+  AUTH_ERROR_CODE_MALFORMED_TOKEN = 3;
+
+  // Token claims are missing required fields
+  AUTH_ERROR_CODE_MISSING_CLAIMS = 4;
+
+  // Refresh token is invalid or expired
+  AUTH_ERROR_CODE_INVALID_REFRESH_TOKEN = 5;
+
+  // Internal server error
+  AUTH_ERROR_CODE_INTERNAL_ERROR = 6;
+
+  // Generic invalid token error
+  AUTH_ERROR_CODE_INVALID_TOKEN = 7;
+}
