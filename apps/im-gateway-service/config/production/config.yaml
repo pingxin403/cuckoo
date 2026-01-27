@@ -1,0 +1,40 @@
+# IM Gateway Service - Production Environment
+
+server:
+  http_port: 8080
+  grpc_port: 9097
+  host: "0.0.0.0"
+
+redis:
+  # 通过环境变量设置: REDIS_ADDR
+  db: 0
+  pool_size: 20
+  min_idle_conns: 10
+
+kafka:
+  # 通过环境变量设置: KAFKA_BROKERS
+  consumer_group: "im-gateway-prod"
+
+etcd:
+  # 通过环境变量设置: ETCD_ENDPOINTS
+  dial_timeout: 5s
+
+observability:
+  service_name: "im-gateway-service"
+  environment: "production"
+  log_level: "info"
+  log_format: "json"
+
+service_discovery:
+  # 通过环境变量设置服务地址
+  # SERVICE_DISCOVERY_AUTH_SERVICE_ADDR
+  # SERVICE_DISCOVERY_IM_SERVICE_ADDR
+  # SERVICE_DISCOVERY_USER_SERVICE_ADDR
+
+connection:
+  max_connections: 100000
+  heartbeat_interval: 30s
+  heartbeat_timeout: 90s
+
+cache:
+  large_group_threshold: 1000

@@ -1,0 +1,11 @@
+spec:
+  name: im-gateway-service
+  short_name: im-gateway  # Short name for CLI convenience (e.g., 'myapp' for 'myapp-service')
+  description: im-gateway-service service
+  type: go
+  port: 9093
+  cd: true
+  codeowners:
+    - "@platform-team"
+test:
+  coverage: 80

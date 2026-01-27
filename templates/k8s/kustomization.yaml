@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - {{SERVICE_NAME}}-deployment.yaml
+  - {{SERVICE_NAME}}-service.yaml
+
+commonLabels:
+  app.kubernetes.io/part-of: monorepo-services
+  app.kubernetes.io/name: {{SERVICE_NAME}}

@@ -1,0 +1,65 @@
+# User Service Configuration Example
+# Copy this file to config.yaml and adjust values as needed
+
+# Server configuration
+server:
+  port: 9096
+  host: "0.0.0.0"
+  read_timeout: 15s
+  write_timeout: 15s
+  idle_timeout: 60s
+
+# Database configuration
+database:
+  host: "localhost"
+  port: 3306
+  user: "im_service"
+  password: "im_password"
+  database: "im_chat"
+  max_open_conns: 25
+  max_idle_conns: 5
+  conn_max_lifetime: 5m
+
+# Observability configuration
+observability:
+  service_name: "user-service"
+  service_version: "1.0.0"
+  environment: "development"  # development, staging, production
+  enable_metrics: true
+  metrics_port: 9090
+  log_level: "info"  # debug, info, warn, error
+  log_format: "json"  # json, text
+
+# Environment Variable Mapping:
+# ==============================
+# SERVER_PORT              -> server.port
+# SERVER_HOST              -> server.host
+#
+# DATABASE_HOST            -> database.host
+# DATABASE_PORT            -> database.port
+# DATABASE_USER            -> database.user
+# DATABASE_PASSWORD        -> database.password
+# DATABASE_DATABASE        -> database.database
+# DATABASE_MAX_OPEN_CONNS  -> database.max_open_conns
+# DATABASE_MAX_IDLE_CONNS  -> database.max_idle_conns
+# DATABASE_CONN_MAX_LIFETIME -> database.conn_max_lifetime
+#
+# OBSERVABILITY_SERVICE_NAME    -> observability.service_name
+# OBSERVABILITY_SERVICE_VERSION -> observability.service_version
+# OBSERVABILITY_ENVIRONMENT     -> observability.environment
+# OBSERVABILITY_ENABLE_METRICS  -> observability.enable_metrics
+# OBSERVABILITY_METRICS_PORT    -> observability.metrics_port
+# OBSERVABILITY_LOG_LEVEL       -> observability.log_level
+# OBSERVABILITY_LOG_FORMAT      -> observability.log_format
+#
+# Legacy environment variables (still supported for backward compatibility):
+# PORT                     -> server.port
+# MYSQL_DSN                -> Full DSN string (overrides individual database settings)
+# DB_HOST                  -> database.host
+# DB_PORT                  -> database.port
+# DB_USER                  -> database.user
+# DB_PASSWORD              -> database.password
+# DB_NAME                  -> database.database
+# SERVICE_NAME             -> observability.service_name
+# SERVICE_VERSION          -> observability.service_version
+# DEPLOYMENT_ENVIRONMENT   -> observability.environment

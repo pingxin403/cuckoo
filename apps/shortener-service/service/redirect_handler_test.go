@@ -12,16 +12,27 @@ import (
 
 	"github.com/pingxin403/cuckoo/apps/shortener-service/cache"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/storage"
+	"github.com/pingxin403/cuckoo/libs/observability"
 )
+
+// createTestObservability creates a test observability instance
+func createTestObservability() observability.Observability {
+	obs, _ := observability.New(observability.Config{
+		ServiceName:   "shortener-service-test",
+		EnableMetrics: false,
+		LogLevel:      "error",
+	})
+	return obs
+}
 
 // TestHandleRedirect_Success tests successful redirect
 func TestHandleRedirect_Success(t *testing.T) {
 	store := NewMockStorage()
 	l1, err := cache.NewL1Cache()
 	require.NoError(t, err)
-	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store})
+	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store}, createTestObservability())
 
-	handler := NewRedirectHandler(cacheManager, store, nil)
+	handler := NewRedirectHandler(cacheManager, store, nil, createTestObservability())
 
 	// Create a mapping
 	mapping := &storage.URLMapping{
@@ -57,9 +68,9 @@ func TestHandleRedirect_NotFound(t *testing.T) {
 	store := NewMockStorage()
 	l1, err := cache.NewL1Cache()
 	require.NoError(t, err)
-	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store})
+	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store}, createTestObservability())
 
-	handler := NewRedirectHandler(cacheManager, store, nil)
+	handler := NewRedirectHandler(cacheManager, store, nil, createTestObservability())
 
 	// Create request for non-existent code
 	req := httptest.NewRequest(http.MethodGet, "/notfound", nil)
@@ -79,9 +90,9 @@ func TestHandleRedirect_Expired(t *testing.T) {
 	store := NewMockStorage()
 	l1, err := cache.NewL1Cache()
 	require.NoError(t, err)
-	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store})
+	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store}, createTestObservability())
 
-	handler := NewRedirectHandler(cacheManager, store, nil)
+	handler := NewRedirectHandler(cacheManager, store, nil, createTestObservability())
 
 	// Create an expired mapping
 	expiredTime := time.Now().Add(-1 * time.Hour)
@@ -113,9 +124,9 @@ func TestHandleRedirect_EmptyCode(t *testing.T) {
 	store := NewMockStorage()
 	l1, err := cache.NewL1Cache()
 	require.NoError(t, err)
-	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store})
+	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store}, createTestObservability())
 
-	handler := NewRedirectHandler(cacheManager, store, nil)
+	handler := NewRedirectHandler(cacheManager, store, nil, createTestObservability())
 
 	// Create request with empty code
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
@@ -134,9 +145,9 @@ func TestHandleRedirect_SecurityHeaders(t *testing.T) {
 	store := NewMockStorage()
 	l1, err := cache.NewL1Cache()
 	require.NoError(t, err)
-	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store})
+	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store}, createTestObservability())
 
-	handler := NewRedirectHandler(cacheManager, store, nil)
+	handler := NewRedirectHandler(cacheManager, store, nil, createTestObservability())
 
 	// Create a mapping
 	mapping := &storage.URLMapping{
@@ -168,9 +179,9 @@ func TestHealthCheck(t *testing.T) {
 	store := NewMockStorage()
 	l1, err := cache.NewL1Cache()
 	require.NoError(t, err)
-	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store})
+	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store}, createTestObservability())
 
-	handler := NewRedirectHandler(cacheManager, store, nil)
+	handler := NewRedirectHandler(cacheManager, store, nil, createTestObservability())
 
 	// Create request
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
@@ -190,9 +201,9 @@ func TestReadinessCheck(t *testing.T) {
 	store := NewMockStorage()
 	l1, err := cache.NewL1Cache()
 	require.NoError(t, err)
-	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store})
+	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store}, createTestObservability())
 
-	handler := NewRedirectHandler(cacheManager, store, nil)
+	handler := NewRedirectHandler(cacheManager, store, nil, createTestObservability())
 
 	// Create request
 	req := httptest.NewRequest(http.MethodGet, "/ready", nil)
@@ -212,9 +223,9 @@ func TestHandleRedirect_NotExpired(t *testing.T) {
 	store := NewMockStorage()
 	l1, err := cache.NewL1Cache()
 	require.NoError(t, err)
-	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store})
+	cacheManager := cache.NewCacheManager(l1, nil, &mockCacheStorage{store: store}, createTestObservability())
 
-	handler := NewRedirectHandler(cacheManager, store, nil)
+	handler := NewRedirectHandler(cacheManager, store, nil, createTestObservability())
 
 	// Create a mapping with future expiration
 	futureTime := time.Now().Add(24 * time.Hour)

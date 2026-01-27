@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  labels:
+    app: web
+    component: frontend
+    system: monorepo
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+        component: frontend
+        system: monorepo
+    spec:
+      containers:
+      - name: web
+        image: web:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: http
+          containerPort: 80
+          protocol: TCP
+        env:
+        - name: NODE_ENV
+          value: "production"
+        # API endpoints (configured via Higress routing)
+        - name: VITE_API_BASE_URL
+          value: "http://api-gateway"
+        - name: VITE_HELLO_SERVICE_URL
+          value: "http://api-gateway/api/hello"
+        - name: VITE_TODO_SERVICE_URL
+          value: "http://api-gateway/api/todo"
+        - name: VITE_SHORTENER_SERVICE_URL
+          value: "http://api-gateway/api/shortener"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      restartPolicy: Always

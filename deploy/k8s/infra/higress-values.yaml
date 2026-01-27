@@ -1,0 +1,215 @@
+# Higress Helm Chart Values
+# Cloud-Native API Gateway for Kubernetes
+# Provides gRPC-Web to gRPC translation and routing
+
+# Global settings
+global:
+  # Higress console (optional)
+  console:
+    enabled: false  # Set to true if you want the Higress console UI
+
+# Higress controller configuration
+controller:
+  # Number of controller replicas
+  replicaCount: 2
+
+  # Image configuration
+  image:
+    repository: higress-registry.cn-hangzhou.cr.aliyuncs.com/higress/higress
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  # Resource limits
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # Service configuration
+  service:
+    type: LoadBalancer  # Use LoadBalancer for cloud providers, NodePort for local
+    # type: NodePort  # Uncomment for local development
+    ports:
+      http: 80
+      https: 443
+
+  # Autoscaling
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+  # Pod disruption budget
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
+  # Affinity rules
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app: higress-controller
+            topologyKey: kubernetes.io/hostname
+
+# Higress gateway configuration
+gateway:
+  # Number of gateway replicas
+  replicaCount: 2
+
+  # Image configuration
+  image:
+    repository: higress-registry.cn-hangzhou.cr.aliyuncs.com/higress/gateway
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  # Resource limits
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+
+  # Service configuration
+  service:
+    type: LoadBalancer  # Use LoadBalancer for cloud providers
+    # type: NodePort  # Uncomment for local development
+    ports:
+      http: 80
+      https: 443
+      metrics: 15020
+
+  # Autoscaling
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+
+  # Pod disruption budget
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+
+  # Affinity rules
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app: higress-gateway
+            topologyKey: kubernetes.io/hostname
+
+  # Enable access logs
+  accessLog:
+    enabled: true
+    format: |
+      [%START_TIME%] "%REQ(:METHOD)% %REQ(X-ENVOY-ORIGINAL-PATH?:PATH)% %PROTOCOL%"
+      %RESPONSE_CODE% %RESPONSE_FLAGS% %BYTES_RECEIVED% %BYTES_SENT% %DURATION%
+      %RESP(X-ENVOY-UPSTREAM-SERVICE-TIME)% "%REQ(X-FORWARDED-FOR)%"
+      "%REQ(USER-AGENT)%" "%REQ(X-REQUEST-ID)%" "%REQ(:AUTHORITY)%"
+      "%UPSTREAM_HOST%"
+
+  # Envoy configuration
+  envoy:
+    # Connection timeout
+    connectTimeout: 10s
+    # Request timeout
+    requestTimeout: 30s
+    # Idle timeout
+    idleTimeout: 3600s
+
+# Pilot configuration (for service discovery)
+pilot:
+  enabled: true
+  
+  # Resource limits
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+# Ingress class configuration
+ingressClass:
+  enabled: true
+  name: higress
+  isDefaultClass: true  # Set as default ingress class
+
+# TLS configuration
+tls:
+  enabled: false  # Enable for HTTPS
+  # secretName: higress-tls-secret  # Uncomment and set your TLS secret
+
+# Observability
+observability:
+  # Prometheus metrics
+  metrics:
+    enabled: true
+    port: 15020
+
+  # Tracing
+  tracing:
+    enabled: false  # Enable if using Jaeger/Zipkin
+    # provider: jaeger
+    # jaeger:
+    #   address: jaeger-collector.observability.svc.cluster.local:9411
+
+  # Logging
+  logging:
+    level: info  # Options: debug, info, warn, error
+
+# Security
+security:
+  # Pod security context
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1337
+    fsGroup: 1337
+
+  # Container security context
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+      add:
+        - NET_BIND_SERVICE
+
+# Network policies
+networkPolicy:
+  enabled: false  # Enable for network isolation
+
+# Service mesh integration
+serviceMesh:
+  enabled: false  # Enable if using Istio
+
+# Labels
+commonLabels:
+  component: api-gateway
+  system: monorepo
+
+# Annotations
+commonAnnotations: {}
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+

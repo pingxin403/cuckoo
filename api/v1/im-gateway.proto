@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package im_gateway_servicepb;
+
+option go_package = "github.com/pingxin403/cuckoo/api/gen/go/im-gatewaypb";
+option java_package = "com.pingxin403.cuckoo.im.gateway.v1";
+option java_multiple_files = true;
+option java_outer_classname = "ImGatewayServiceProto";
+
+// im-gateway-service service
+service UimUgatewayUserviceService {
+  // Add your RPC methods here
+  rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message HealthCheckRequest {}
+
+message HealthCheckResponse {
+  string status = 1;
+}

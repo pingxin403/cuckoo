@@ -1,0 +1,138 @@
+databaseChangeLog:
+  - changeSet:
+      id: 002-insert-sample-users
+      author: im-team
+      comment: Insert sample users for testing
+      context: test
+      changes:
+        - insert:
+            tableName: users
+            columns:
+              - column:
+                  name: user_id
+                  value: user_001
+              - column:
+                  name: username
+                  value: alice
+              - column:
+                  name: email
+                  value: alice@example.com
+              - column:
+                  name: display_name
+                  value: Alice Smith
+              - column:
+                  name: status
+                  value: active
+        - insert:
+            tableName: users
+            columns:
+              - column:
+                  name: user_id
+                  value: user_002
+              - column:
+                  name: username
+                  value: bob
+              - column:
+                  name: email
+                  value: bob@example.com
+              - column:
+                  name: display_name
+                  value: Bob Johnson
+              - column:
+                  name: status
+                  value: active
+        - insert:
+            tableName: users
+            columns:
+              - column:
+                  name: user_id
+                  value: user_003
+              - column:
+                  name: username
+                  value: charlie
+              - column:
+                  name: email
+                  value: charlie@example.com
+              - column:
+                  name: display_name
+                  value: Charlie Brown
+              - column:
+                  name: status
+                  value: active
+      rollback:
+        - delete:
+            tableName: users
+            where: user_id IN ('user_001', 'user_002', 'user_003')
+
+  - changeSet:
+      id: 002-insert-sample-group
+      author: im-team
+      comment: Insert sample group for testing
+      context: test
+      changes:
+        - insert:
+            tableName: groups
+            columns:
+              - column:
+                  name: group_id
+                  value: group_001
+              - column:
+                  name: name
+                  value: Test Group
+              - column:
+                  name: creator_id
+                  value: user_001
+              - column:
+                  name: member_count
+                  valueNumeric: 3
+      rollback:
+        - delete:
+            tableName: groups
+            where: group_id = 'group_001'
+
+  - changeSet:
+      id: 002-insert-sample-group-members
+      author: im-team
+      comment: Insert sample group members for testing
+      context: test
+      changes:
+        - insert:
+            tableName: group_members
+            columns:
+              - column:
+                  name: group_id
+                  value: group_001
+              - column:
+                  name: user_id
+                  value: user_001
+              - column:
+                  name: role
+                  value: owner
+        - insert:
+            tableName: group_members
+            columns:
+              - column:
+                  name: group_id
+                  value: group_001
+              - column:
+                  name: user_id
+                  value: user_002
+              - column:
+                  name: role
+                  value: member
+        - insert:
+            tableName: group_members
+            columns:
+              - column:
+                  name: group_id
+                  value: group_001
+              - column:
+                  name: user_id
+                  value: user_003
+              - column:
+                  name: role
+                  value: member
+      rollback:
+        - delete:
+            tableName: group_members
+            where: group_id = 'group_001'

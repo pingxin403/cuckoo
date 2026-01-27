@@ -10,8 +10,8 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/analytics"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/cache"
-	"github.com/pingxin403/cuckoo/apps/shortener-service/metrics"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/storage"
+	"github.com/pingxin403/cuckoo/libs/observability"
 )
 
 // RedirectHandler handles HTTP redirect requests
@@ -20,14 +20,16 @@ type RedirectHandler struct {
 	cacheManager    *cache.CacheManager
 	storage         storage.Storage
 	analyticsWriter *analytics.AnalyticsWriter
+	obs             observability.Observability
 }
 
 // NewRedirectHandler creates a new RedirectHandler
-func NewRedirectHandler(cacheManager *cache.CacheManager, storage storage.Storage, analyticsWriter *analytics.AnalyticsWriter) *RedirectHandler {
+func NewRedirectHandler(cacheManager *cache.CacheManager, storage storage.Storage, analyticsWriter *analytics.AnalyticsWriter, obs observability.Observability) *RedirectHandler {
 	return &RedirectHandler{
 		cacheManager:    cacheManager,
 		storage:         storage,
 		analyticsWriter: analyticsWriter,
+		obs:             obs,
 	}
 }
 
@@ -68,12 +70,12 @@ func (h *RedirectHandler) HandleRedirect(w http.ResponseWriter, r *http.Request)
 	if err != nil {
 		if err == storage.ErrNotFound {
 			// Requirements: 3.5 - Return 404 for non-existent codes
-			metrics.ErrorsTotal.WithLabelValues("redirect_not_found").Inc()
+			h.obs.Metrics().IncrementCounter("shortener_errors_total", map[string]string{"type": "redirect_not_found"})
 			http.Error(w, "Short code not found", http.StatusNotFound)
 			return
 		}
 		// Internal error
-		metrics.ErrorsTotal.WithLabelValues("redirect_error").Inc()
+		h.obs.Metrics().IncrementCounter("shortener_errors_total", map[string]string{"type": "redirect_error"})
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -82,7 +84,7 @@ func (h *RedirectHandler) HandleRedirect(w http.ResponseWriter, r *http.Request)
 	// Requirements: 5.2 - Return 410 for expired codes
 	isExpired := mapping.ExpiresAt != nil && time.Now().After(*mapping.ExpiresAt)
 	if isExpired {
-		metrics.ErrorsTotal.WithLabelValues("redirect_expired").Inc()
+		h.obs.Metrics().IncrementCounter("shortener_errors_total", map[string]string{"type": "redirect_expired"})
 		http.Error(w, "Short link has expired", http.StatusGone)
 		return
 	}
@@ -111,7 +113,7 @@ func (h *RedirectHandler) HandleRedirect(w http.ResponseWriter, r *http.Request)
 
 	// Perform redirect
 	// Requirements: 3.1 - Return HTTP 302 redirect
-	metrics.RedirectsTotal.Inc()
+	h.obs.Metrics().IncrementCounter("shortener_redirects_total", nil)
 	http.Redirect(w, r, mapping.LongURL, http.StatusFound)
 }
 

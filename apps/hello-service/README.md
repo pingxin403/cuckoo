@@ -1,16 +1,26 @@
 # Hello Service
 
-Hello Service 是一个基于 Java/Spring Boot 和 gRPC 的问候服务，提供个性化的问候消息功能。
+A greeting service based on Java/Spring Boot and gRPC, providing personalized greeting message functionality.
 
-## 技术栈
+## Overview
+
+This service is part of the monorepo and provides greeting capabilities via gRPC.
+
+- **Port**: 9090
+- **Protocol**: gRPC
+- **Language**: Java 17
+- **Framework**: Spring Boot 3.5.0
+- **Team**: backend-java-team
+
+## Technology Stack
 
 - **Java**: 17
 - **Spring Boot**: 3.5.0
 - **gRPC**: 1.60.0
 - **Protobuf**: 3.25.1
-- **构建工具**: Gradle 8.14.3
+- **Build Tool**: Gradle 8.14.3
 
-## 项目结构
+## Project Structure
 
 ```
 hello-service/
@@ -18,24 +28,24 @@ hello-service/
 │   ├── main/
 │   │   ├── java/
 │   │   │   └── com/pingxin403/cuckoo/hello/
-│   │   │       ├── HelloServiceApplication.java    # 主应用类
+│   │   │       ├── HelloServiceApplication.java    # Main application class
 │   │   │       └── service/
-│   │   │           └── HelloServiceImpl.java       # gRPC 服务实现
+│   │   │           └── HelloServiceImpl.java       # gRPC service implementation
 │   │   └── resources/
-│   │       └── application.yml                     # 应用配置
+│   │       └── application.yml                     # Application configuration
 │   └── test/
-├── k8s/                                            # Kubernetes 资源
+├── k8s/                                            # Kubernetes resources
 │   ├── deployment.yaml
 │   ├── service.yaml
 │   └── configmap.yaml
-├── build.gradle                                    # Gradle 构建配置
-├── Dockerfile                                      # Docker 镜像构建
-└── catalog-info.yaml                               # Backstage 服务目录
+├── build.gradle                                    # Gradle build configuration
+├── Dockerfile                                      # Docker image build
+└── catalog-info.yaml                               # Backstage service catalog
 ```
 
-## API 定义
+## API Definition
 
-服务基于 Protobuf 定义，位于 `../../api/v1/hello.proto`：
+The service is based on Protobuf definition located at `../../api/v1/hello.proto`:
 
 ```protobuf
 service HelloService {
@@ -43,122 +53,122 @@ service HelloService {
 }
 ```
 
-### 功能说明
+### Functionality
 
-- **输入**: 用户姓名（可选）
-- **输出**: 个性化问候消息
-- **规则**:
-  - 如果提供姓名：返回 "Hello, {name}!"
-  - 如果未提供姓名或为空：返回 "Hello, World!"
+- **Input**: User name (optional)
+- **Output**: Personalized greeting message
+- **Rules**:
+  - If name is provided: Returns "Hello, {name}!"
+  - If name is not provided or empty: Returns "Hello, World!"
 
-## 本地开发
+## Quick Start
 
-### 前置条件
+### Prerequisites
 
 - Java 17+
-- Gradle（使用 gradlew 包装器）
+- Gradle (using gradlew wrapper)
 
-### 生成 Protobuf 代码
+### Generate Protobuf Code
 
 ```bash
 ./gradlew generateProto
 ```
 
-### 构建项目
+### Build Project
 
 ```bash
-# 构建（跳过测试）
+# Build (skip tests)
 ./gradlew build -x test
 
-# 构建（包含测试）
+# Build (with tests)
 ./gradlew build
 ```
 
-### 运行服务
+### Run Service
 
 ```bash
 ./gradlew bootRun
 ```
 
-服务将在端口 **9090** 上启动 gRPC 服务器。
+The service will start the gRPC server on port **9090**.
 
-### 测试服务
+### Test Service
 
-使用 grpcurl 测试服务：
+Test the service using grpcurl:
 
 ```bash
-# 安装 grpcurl
+# Install grpcurl
 brew install grpcurl
 
-# 调用 SayHello 方法
+# Call SayHello method
 grpcurl -plaintext -d '{"name": "Alice"}' localhost:9090 api.v1.HelloService/SayHello
 
-# 预期输出
+# Expected output
 {
   "message": "Hello, Alice!"
 }
 
-# 测试空名字
+# Test with empty name
 grpcurl -plaintext -d '{"name": ""}' localhost:9090 api.v1.HelloService/SayHello
 
-# 预期输出
+# Expected output
 {
   "message": "Hello, World!"
 }
 ```
 
-## Docker 部署
+## Docker Deployment
 
-### 构建 Docker 镜像
+### Build Docker Image
 
 ```bash
 docker build -t hello-service:latest .
 ```
 
-### 运行 Docker 容器
+### Run Docker Container
 
 ```bash
 docker run -p 9090:9090 hello-service:latest
 ```
 
-## Kubernetes 部署
+## Kubernetes Deployment
 
-### 部署到 K8s 集群
+### Deploy to K8s Cluster
 
 ```bash
-# 应用所有 K8s 资源
-kubectl apply -f k8s/
+# Apply all K8s resources
+kubectl apply -k deploy/k8s/overlays/development
 
-# 查看部署状态
+# Check deployment status
 kubectl get pods -l app=hello-service
 kubectl get svc hello-service
 
-# 查看日志
+# View logs
 kubectl logs -l app=hello-service -f
 ```
 
-### 访问服务
+### Access Service
 
-在 K8s 集群内，服务可通过以下地址访问：
+Within the K8s cluster, the service can be accessed at:
 
 ```
 hello-service:9090
 ```
 
-## 配置
+## Configuration
 
 ### application.yml
 
-主要配置项：
+Main configuration items:
 
 ```yaml
 grpc:
   server:
-    port: 9090              # gRPC 服务器端口
+    port: 9090              # gRPC server port
 
 spring:
   application:
-    name: hello-service     # 应用名称
+    name: hello-service     # Application name
 
 logging:
   level:
@@ -166,71 +176,121 @@ logging:
     com.pingxin403.cuckoo: DEBUG
 ```
 
-### 环境变量
+### Environment Variables
 
-- `SPRING_PROFILES_ACTIVE`: Spring 配置文件（如 `production`）
-- `GRPC_SERVER_PORT`: gRPC 服务器端口（默认 9090）
-- `JAVA_OPTS`: JVM 参数
+- `SPRING_PROFILES_ACTIVE`: Spring profile (e.g., `production`)
+- `GRPC_SERVER_PORT`: gRPC server port (default 9090)
+- `JAVA_OPTS`: JVM parameters
 
-## 监控和健康检查
+## Testing
 
-### 健康检查
+### Run Tests
 
-K8s 配置了以下探针：
+```bash
+# Run all tests
+./gradlew test
 
-- **Liveness Probe**: gRPC 健康检查，端口 9090
-- **Readiness Probe**: gRPC 就绪检查，端口 9090
-- **Startup Probe**: gRPC 启动检查，端口 9090
+# Run tests with coverage report
+./gradlew test jacocoTestReport
 
-## 开发指南
+# Verify coverage thresholds (30% overall)
+./gradlew test jacocoTestCoverageVerification
+```
 
-### 添加新的 RPC 方法
+Coverage reports are generated at:
+- HTML: `build/reports/jacoco/test/html/index.html`
+- XML: `build/reports/jacoco/test/jacocoTestReport.xml`
 
-1. 更新 `api/v1/hello.proto` 文件
-2. 运行 `./gradlew generateProto` 重新生成代码
-3. 在 `HelloServiceImpl` 中实现新方法
-4. 添加相应的单元测试
+### Coverage Requirements
 
-### 代码规范
+- **Overall coverage**: 30% minimum
+- **Service classes**: 50% minimum
 
-- 遵循 Java 代码规范
-- 使用有意义的变量和方法名
-- 添加适当的注释和文档
-- 编写单元测试覆盖核心逻辑
+### Property-Based Tests
 
-## 故障排查
+The service includes jqwik for property-based testing:
 
-### 常见问题
+```java
+import net.jqwik.api.*;
 
-1. **端口已被占用**
+class HelloServicePropertyTest {
+    
+    @Property
+    void sayHelloNeverReturnsNull(@ForAll String name) {
+        HelloServiceImpl service = new HelloServiceImpl();
+        HelloRequest request = HelloRequest.newBuilder()
+            .setName(name)
+            .build();
+        
+        HelloResponse response = service.sayHello(request);
+        assertThat(response.getMessage()).isNotNull();
+    }
+}
+```
+
+## Monitoring and Health Checks
+
+### Health Checks
+
+K8s configuration includes the following probes:
+
+- **Liveness Probe**: gRPC health check on port 9090
+- **Readiness Probe**: gRPC readiness check on port 9090
+- **Startup Probe**: gRPC startup check on port 9090
+
+## Development Guide
+
+### Adding New RPC Methods
+
+1. Update `api/v1/hello.proto` file
+2. Run `./gradlew generateProto` to regenerate code
+3. Implement new method in `HelloServiceImpl`
+4. Add corresponding unit tests
+
+### Code Standards
+
+- Follow Java code conventions
+- Use meaningful variable and method names
+- Add appropriate comments and documentation
+- Write unit tests to cover core logic
+
+## Troubleshooting
+
+### Common Issues
+
+1. **Port Already in Use**
    ```bash
-   # 查找占用端口的进程
+   # Find process using the port
    lsof -i :9090
    
-   # 终止进程
+   # Terminate process
    kill -9 <PID>
    ```
 
-2. **Protobuf 生成失败**
+2. **Protobuf Generation Fails**
    ```bash
-   # 清理并重新生成
+   # Clean and regenerate
    ./gradlew clean generateProto
    ```
 
-3. **构建失败**
+3. **Build Fails**
    ```bash
-   # 查看详细错误信息
+   # View detailed error information
    ./gradlew build --stacktrace
    ```
 
-## 相关链接
+## Resources
 
-- [API 定义](../../api/v1/hello.proto)
-- [设计文档](../../.kiro/specs/monorepo-hello-todo/design.md)
-- [需求文档](../../.kiro/specs/monorepo-hello-todo/requirements.md)
-- [gRPC 文档](https://grpc.io/docs/)
+- [API Definition](../../api/v1/hello.proto)
+- [Design Document](../../.kiro/specs/monorepo-hello-todo/design.md)
+- [Requirements Document](../../.kiro/specs/monorepo-hello-todo/requirements.md)
+- [Monorepo Documentation](../../docs/README.md)
+- [gRPC Documentation](https://grpc.io/docs/)
 - [Spring Boot gRPC Starter](https://github.com/grpc-ecosystem/grpc-spring)
 
-## 许可证
+## Support
 
-[添加许可证信息]
+For questions or issues:
+- Check the monorepo documentation
+- Contact backend-java-team
+- Review existing services for examples

@@ -5,7 +5,7 @@ import {
   CreateTodoRequest,
   UpdateTodoRequest,
   DeleteTodoRequest,
-} from '../gen/todo';
+} from '@cuckoo/api-gen/todopb/todo';
 
 export function useTodos() {
   const queryClient = useQueryClient();

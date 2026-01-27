@@ -1,0 +1,25 @@
+# 2026/01/24 20:08:57.995902 [TestProperty5_GroupMessageBroadcastCompleteness] [rapid] draw groupSize: 13
+# 2026/01/24 20:08:57.995917 [TestProperty5_GroupMessageBroadcastCompleteness] [rapid] draw groupID: 1001
+# 2026/01/24 20:08:57.995922 [TestProperty5_GroupMessageBroadcastCompleteness] [rapid] draw onlinePercentage: 50
+# 2026/01/24 20:08:57.995980 [TestProperty5_GroupMessageBroadcastCompleteness] [rapid] draw msgID: 100001
+# 2026/01/24 20:08:57.995987 [TestProperty5_GroupMessageBroadcastCompleteness] [rapid] draw content: ""
+# 2026/01/24 20:08:57.995995 [TestProperty5_GroupMessageBroadcastCompleteness] [rapid] draw seqNum: 2
+# 2026/01/24 20:08:58.096368 [TestProperty5_GroupMessageBroadcastCompleteness] Online member user_1 did not receive message
+# 
+v0.4.8#17845393362311791221
+0x0
+0x937ec6490cdf8
+0x3
+0xa0e4cb1d6ec4a
+0x14df72dff8737
+0x1
+0x16d09d0125ab7
+0x2c134be619762
+0x0
+0x11b45306930bcd
+0xd
+0x1
+0x0
+0x1f0466720c72db
+0x3
+0x1

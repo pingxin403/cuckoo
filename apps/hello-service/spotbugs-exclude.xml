@@ -7,6 +7,12 @@
     <Match>
         <Class name="~com\.pingxin403\.api\.v1\..*"/>
     </Match>
+    <Match>
+        <Class name="~com\.pingxin403\.cuckoo\..*\.v1\..*"/>
+    </Match>
+    <Match>
+        <Class name="~com\.pingxin403\.cuckoo\.im\.gateway\..*"/>
+    </Match>
     
     <!-- Exclude generated code -->
     <Match>
@@ -34,5 +40,19 @@
     <!-- Allow serialization without serialVersionUID in DTOs -->
     <Match>
         <Bug pattern="SE_NO_SERIALVERSIONID"/>
+    </Match>
+    
+    <!-- Exclude protobuf generated code issues -->
+    <Match>
+        <Bug pattern="SE_BAD_FIELD"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+    </Match>
+    <Match>
+        <Bug pattern="MS_EXPOSE_REP"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
     </Match>
 </FindBugsFilter>

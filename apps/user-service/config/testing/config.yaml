@@ -1,0 +1,20 @@
+# User Service - Testing Environment
+
+server:
+  port: 9096
+  host: "0.0.0.0"
+
+database:
+  host: "mysql-test"
+  port: 3306
+  user: "user_service"
+  password: "test_password"
+  database: "user_db_test"
+  max_open_conns: 15
+  max_idle_conns: 5
+
+observability:
+  service_name: "user-service"
+  environment: "testing"
+  log_level: "info"
+  log_format: "json"

@@ -1,0 +1,56 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: user-service
+  description: User profile and group membership management service
+  annotations:
+    github.com/project-slug: myorg/myrepo
+    backstage.io/techdocs-ref: dir:.
+  tags:
+    - go
+    - grpc
+    - backend
+  links:
+    - url: https://api.example.com/api/user-service
+      title: API Endpoint
+      icon: web
+    - url: https://github.com/myorg/myrepo/tree/main/apps/user-service
+      title: Source Code
+      icon: github
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: monorepo-platform
+  providesApis:
+    - user-service-api
+  consumesApis: []
+  dependsOn: []
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: user-service-api
+  description: user-service gRPC API
+  tags:
+    - grpc
+    - protobuf
+spec:
+  type: grpc
+  lifecycle: production
+  owner: platform-team
+  system: monorepo-platform
+  definition: |
+    # user-service API
+    
+    This API is defined in Protobuf format.
+    
+    **Location**: `api/v1/user_service`
+    
+    ## Service Definition
+    
+    See the Protobuf file for complete API definition.
+    
+    ## Usage
+    
+    [Add usage instructions here]

@@ -1,0 +1,17 @@
+# User Service - Production Environment
+
+server:
+  port: 9096
+  host: "0.0.0.0"
+
+database:
+  # 通过环境变量设置数据库连接
+  # DATABASE_HOST, DATABASE_PORT, DATABASE_USER, DATABASE_PASSWORD, DATABASE_DATABASE
+  max_open_conns: 25
+  max_idle_conns: 5
+
+observability:
+  service_name: "user-service"
+  environment: "production"
+  log_level: "info"
+  log_format: "json"

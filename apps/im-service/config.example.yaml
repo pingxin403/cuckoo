@@ -1,0 +1,123 @@
+# IM Service Configuration Example
+# Copy this file to config.yaml and adjust values as needed
+
+# Server configuration
+server:
+  grpc_port: 9094
+  http_port: 8080
+
+# Database configuration
+database:
+  host: "localhost"
+  port: 3306
+  user: "im_service"
+  password: "im_password"
+  database: "im_chat"
+  max_open_conns: 25
+  max_idle_conns: 5
+  conn_max_lifetime: 5m
+
+# Redis configuration
+redis:
+  addr: "localhost:6379"
+  password: ""
+  db: 2
+  pool_size: 10
+  min_idle_conns: 5
+
+# Kafka configuration
+kafka:
+  brokers:
+    - "localhost:9092"
+  consumer_group: "im-service-offline-workers"
+  topic: "offline_msg"
+
+# Offline Worker configuration
+offline_worker:
+  enabled: true
+  batch_size: 100
+  batch_timeout: 5s
+  max_retries: 5
+  retry_backoff:
+    - 1s
+    - 2s
+    - 4s
+    - 8s
+    - 16s
+  message_ttl: 168h  # 7 days
+
+# Read Receipt configuration
+read_receipt:
+  kafka_enabled: true
+  topic: "read_receipt_events"
+
+# Observability configuration
+observability:
+  service_name: "im-service"
+  service_version: "1.0.0"
+  environment: "development"  # development, staging, production
+  enable_metrics: true
+  metrics_port: 9090
+  log_level: "info"  # debug, info, warn, error
+  log_format: "json"  # json, text
+
+# Environment Variable Mapping:
+# ==============================
+# SERVER_GRPC_PORT         -> server.grpc_port
+# SERVER_HTTP_PORT         -> server.http_port
+#
+# DATABASE_HOST            -> database.host
+# DATABASE_PORT            -> database.port
+# DATABASE_USER            -> database.user
+# DATABASE_PASSWORD        -> database.password
+# DATABASE_DATABASE        -> database.database
+# DATABASE_MAX_OPEN_CONNS  -> database.max_open_conns
+# DATABASE_MAX_IDLE_CONNS  -> database.max_idle_conns
+# DATABASE_CONN_MAX_LIFETIME -> database.conn_max_lifetime
+#
+# REDIS_ADDR               -> redis.addr
+# REDIS_PASSWORD           -> redis.password
+# REDIS_DB                 -> redis.db
+# REDIS_POOL_SIZE          -> redis.pool_size
+# REDIS_MIN_IDLE_CONNS     -> redis.min_idle_conns
+#
+# KAFKA_BROKERS            -> kafka.brokers (comma-separated)
+# KAFKA_CONSUMER_GROUP     -> kafka.consumer_group
+# KAFKA_TOPIC              -> kafka.topic
+#
+# OFFLINE_WORKER_ENABLED   -> offline_worker.enabled
+# OFFLINE_WORKER_BATCH_SIZE -> offline_worker.batch_size
+# OFFLINE_WORKER_BATCH_TIMEOUT -> offline_worker.batch_timeout
+# OFFLINE_WORKER_MAX_RETRIES -> offline_worker.max_retries
+# OFFLINE_WORKER_MESSAGE_TTL -> offline_worker.message_ttl
+#
+# READ_RECEIPT_KAFKA_ENABLED -> read_receipt.kafka_enabled
+# READ_RECEIPT_TOPIC       -> read_receipt.topic
+#
+# OBSERVABILITY_SERVICE_NAME    -> observability.service_name
+# OBSERVABILITY_SERVICE_VERSION -> observability.service_version
+# OBSERVABILITY_ENVIRONMENT     -> observability.environment
+# OBSERVABILITY_ENABLE_METRICS  -> observability.enable_metrics
+# OBSERVABILITY_METRICS_PORT    -> observability.metrics_port
+# OBSERVABILITY_LOG_LEVEL       -> observability.log_level
+# OBSERVABILITY_LOG_FORMAT      -> observability.log_format
+#
+# Legacy environment variables (still supported for backward compatibility):
+# GRPC_PORT                -> server.grpc_port
+# HTTP_PORT                -> server.http_port
+# DB_HOST                  -> database.host
+# DB_PORT                  -> database.port
+# DB_USER                  -> database.user
+# DB_PASSWORD              -> database.password
+# DB_NAME                  -> database.database
+# DB_MAX_OPEN_CONNS        -> database.max_open_conns
+# DB_MAX_IDLE_CONNS        -> database.max_idle_conns
+# DB_CONN_MAX_LIFETIME     -> database.conn_max_lifetime
+# BATCH_SIZE               -> offline_worker.batch_size
+# BATCH_TIMEOUT            -> offline_worker.batch_timeout
+# MAX_RETRIES              -> offline_worker.max_retries
+# RETRY_BACKOFF            -> offline_worker.retry_backoff (comma-separated)
+# MESSAGE_TTL              -> offline_worker.message_ttl
+# SERVICE_NAME             -> observability.service_name
+# SERVICE_VERSION          -> observability.service_version
+# DEPLOYMENT_ENVIRONMENT   -> observability.environment

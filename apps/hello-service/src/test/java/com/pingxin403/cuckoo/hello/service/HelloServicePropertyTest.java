@@ -5,8 +5,8 @@ import static org.mockito.Mockito.*;
 
 import org.mockito.ArgumentCaptor;
 
-import com.myorg.api.v1.HelloRequest;
-import com.myorg.api.v1.HelloResponse;
+import com.pingxin403.cuckoo.hello.v1.HelloRequest;
+import com.pingxin403.cuckoo.hello.v1.HelloResponse;
 
 import io.grpc.stub.StreamObserver;
 import net.jqwik.api.*;

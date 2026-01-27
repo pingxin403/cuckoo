@@ -1,0 +1,340 @@
+databaseChangeLog:
+  - changeSet:
+      id: 001-create-offline-messages-table
+      author: im-team
+      comment: Create offline_messages table for storing messages when users are offline
+      changes:
+        - createTable:
+            tableName: offline_messages
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: msg_id
+                  type: VARCHAR(36)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: user_id
+                  type: VARCHAR(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: sender_id
+                  type: VARCHAR(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: conversation_id
+                  type: VARCHAR(128)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: conversation_type
+                  type: VARCHAR(10)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: content
+                  type: TEXT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: sequence_number
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: timestamp
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: expires_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: metadata
+                  type: JSON
+        - sql:
+            sql: "ALTER TABLE offline_messages ADD CONSTRAINT chk_conversation_type CHECK (conversation_type IN ('private', 'group'))"
+      rollback:
+        - dropTable:
+            tableName: offline_messages
+
+  - changeSet:
+      id: 001-create-offline-messages-indexes
+      author: im-team
+      comment: Create indexes for offline_messages table
+      changes:
+        - createIndex:
+            indexName: idx_user_timestamp
+            tableName: offline_messages
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: timestamp
+        - createIndex:
+            indexName: idx_conversation_seq
+            tableName: offline_messages
+            columns:
+              - column:
+                  name: conversation_id
+              - column:
+                  name: sequence_number
+        - createIndex:
+            indexName: idx_expires_at
+            tableName: offline_messages
+            columns:
+              - column:
+                  name: expires_at
+        - createIndex:
+            indexName: idx_user_conversation
+            tableName: offline_messages
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: conversation_id
+              - column:
+                  name: sequence_number
+      rollback:
+        - dropIndex:
+            indexName: idx_user_timestamp
+            tableName: offline_messages
+        - dropIndex:
+            indexName: idx_conversation_seq
+            tableName: offline_messages
+        - dropIndex:
+            indexName: idx_expires_at
+            tableName: offline_messages
+        - dropIndex:
+            indexName: idx_user_conversation
+            tableName: offline_messages
+
+  - changeSet:
+      id: 002-create-groups-table
+      author: im-team
+      comment: Create groups table for group chat metadata
+      changes:
+        - createTable:
+            tableName: groups
+            columns:
+              - column:
+                  name: group_id
+                  type: VARCHAR(64)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(256)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: creator_id
+                  type: VARCHAR(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: member_count
+                  type: INT
+                  defaultValue: "0"
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+        - createIndex:
+            indexName: idx_creator
+            tableName: groups
+            columns:
+              - column:
+                  name: creator_id
+        - createIndex:
+            indexName: idx_created_at
+            tableName: groups
+            columns:
+              - column:
+                  name: created_at
+      rollback:
+        - dropTable:
+            tableName: groups
+
+  - changeSet:
+      id: 003-create-group-members-table
+      author: im-team
+      comment: Create group_members table for group membership
+      changes:
+        - createTable:
+            tableName: group_members
+            columns:
+              - column:
+                  name: group_id
+                  type: VARCHAR(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: VARCHAR(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: role
+                  type: VARCHAR(10)
+                  defaultValue: member
+                  constraints:
+                    nullable: false
+              - column:
+                  name: joined_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+        - addPrimaryKey:
+            tableName: group_members
+            columnNames: group_id, user_id
+            constraintName: pk_group_members
+        - sql:
+            sql: "ALTER TABLE group_members ADD CONSTRAINT chk_role CHECK (role IN ('owner', 'admin', 'member'))"
+        - createIndex:
+            indexName: idx_user_groups
+            tableName: group_members
+            columns:
+              - column:
+                  name: user_id
+        - addForeignKeyConstraint:
+            baseTableName: group_members
+            baseColumnNames: group_id
+            constraintName: fk_group_members_group
+            referencedTableName: groups
+            referencedColumnNames: group_id
+            onDelete: CASCADE
+      rollback:
+        - dropTable:
+            tableName: group_members
+
+  - changeSet:
+      id: 004-create-sequence-snapshots-table
+      author: im-team
+      comment: Create sequence_snapshots table for Redis failure recovery
+      changes:
+        - createTable:
+            tableName: sequence_snapshots
+            columns:
+              - column:
+                  name: conversation_id
+                  type: VARCHAR(128)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: conversation_type
+                  type: VARCHAR(10)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: sequence_number
+                  type: BIGINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: snapshot_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+        - sql:
+            sql: "ALTER TABLE sequence_snapshots ADD CONSTRAINT chk_seq_conversation_type CHECK (conversation_type IN ('private', 'group'))"
+        - createIndex:
+            indexName: idx_snapshot_at
+            tableName: sequence_snapshots
+            columns:
+              - column:
+                  name: snapshot_at
+      rollback:
+        - dropTable:
+            tableName: sequence_snapshots
+
+  - changeSet:
+      id: 005-create-users-table
+      author: im-team
+      comment: Create users table for user profiles
+      changes:
+        - createTable:
+            tableName: users
+            columns:
+              - column:
+                  name: user_id
+                  type: VARCHAR(64)
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: username
+                  type: VARCHAR(128)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: email
+                  type: VARCHAR(256)
+                  constraints:
+                    nullable: false
+                    unique: true
+              - column:
+                  name: display_name
+                  type: VARCHAR(256)
+              - column:
+                  name: avatar_url
+                  type: VARCHAR(512)
+              - column:
+                  name: status
+                  type: VARCHAR(10)
+                  defaultValue: active
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+                  defaultValueComputed: CURRENT_TIMESTAMP
+        - sql:
+            sql: "ALTER TABLE users ADD CONSTRAINT chk_status CHECK (status IN ('active', 'inactive', 'banned'))"
+        - createIndex:
+            indexName: idx_username
+            tableName: users
+            columns:
+              - column:
+                  name: username
+        - createIndex:
+            indexName: idx_email
+            tableName: users
+            columns:
+              - column:
+                  name: email
+        - createIndex:
+            indexName: idx_status
+            tableName: users
+            columns:
+              - column:
+                  name: status
+      rollback:
+        - dropTable:
+            tableName: users

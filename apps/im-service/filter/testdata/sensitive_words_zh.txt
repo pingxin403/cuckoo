@@ -1,0 +1,3 @@
+# Chinese sensitive words for testing
+敏感词
+违禁词

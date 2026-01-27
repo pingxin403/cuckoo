@@ -1,0 +1,11 @@
+spec:
+  name: im-service
+  short_name: im  # Short name for CLI convenience (e.g., 'myapp' for 'myapp-service')
+  description: IM message routing and delivery service
+  type: go
+  port: 9094
+  cd: true
+  codeowners:
+    - "@platform-team"
+test:
+  coverage: 80

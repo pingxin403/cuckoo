@@ -8,13 +8,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pingxin403/cuckoo/api/gen/go/shortenerpb"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/cache"
-	"github.com/pingxin403/cuckoo/apps/shortener-service/gen/shortener_servicepb"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/idgen"
-	"github.com/pingxin403/cuckoo/apps/shortener-service/logger"
-	"github.com/pingxin403/cuckoo/apps/shortener-service/metrics"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/storage"
-	"go.uber.org/zap"
+	"github.com/pingxin403/cuckoo/libs/observability"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/peer"
@@ -25,12 +23,13 @@ import (
 // ShortenerServiceImpl implements the ShortenerService gRPC service
 // Requirements: 1.4, 1.5, 2.1, 4.3, 9.3
 type ShortenerServiceImpl struct {
-	shortener_servicepb.UnimplementedShortenerServiceServer
+	shortenerpb.UnimplementedShortenerServiceServer
 	storage      storage.Storage
 	idGen        idgen.IDGenerator
 	validator    *URLValidator
 	cacheManager *cache.CacheManager
 	baseURL      string
+	obs          observability.Observability
 }
 
 // NewShortenerServiceImpl creates a new ShortenerServiceImpl
@@ -39,6 +38,7 @@ func NewShortenerServiceImpl(
 	idGen idgen.IDGenerator,
 	validator *URLValidator,
 	cacheManager *cache.CacheManager,
+	obs observability.Observability,
 ) *ShortenerServiceImpl {
 	baseURL := os.Getenv("BASE_URL")
 	if baseURL == "" {
@@ -51,6 +51,7 @@ func NewShortenerServiceImpl(
 		validator:    validator,
 		cacheManager: cacheManager,
 		baseURL:      baseURL,
+		obs:          obs,
 	}
 }
 
@@ -58,8 +59,13 @@ func NewShortenerServiceImpl(
 // Requirements: 1.4, 1.5, 2.1, 4.3, 9.3
 func (s *ShortenerServiceImpl) CreateShortLink(
 	ctx context.Context,
-	req *shortener_servicepb.CreateShortLinkRequest,
-) (*shortener_servicepb.CreateShortLinkResponse, error) {
+	req *shortenerpb.CreateShortLinkRequest,
+) (*shortenerpb.CreateShortLinkResponse, error) {
+	startTime := time.Now()
+	defer func() {
+		s.obs.Metrics().RecordHistogram("shortener_operation_duration_seconds", time.Since(startTime).Seconds(), map[string]string{"operation": "create"})
+	}()
+
 	// Validate input URL
 	sanitizedURL, err := s.validator.ValidateAndSanitize(req.LongUrl)
 	if err != nil {
@@ -118,7 +124,7 @@ func (s *ShortenerServiceImpl) CreateShortLink(
 	// Write to MySQL (synchronous - wait for confirmation)
 	// Requirements: 2.1, 13.2
 	if err := s.storage.Create(ctx, mapping); err != nil {
-		metrics.ErrorsTotal.WithLabelValues("storage_create").Inc()
+		s.obs.Metrics().IncrementCounter("shortener_errors_total", map[string]string{"type": "storage_create"})
 		if strings.Contains(err.Error(), "Duplicate entry") {
 			return nil, status.Errorf(codes.AlreadyExists, "Short code already exists: %s", shortCode)
 		}
@@ -127,11 +133,11 @@ func (s *ShortenerServiceImpl) CreateShortLink(
 
 	// Audit log: Log creation request with source IP
 	// Requirements: 14.5
-	logger.Log.Info("Short link created",
-		zap.String("short_code", shortCode),
-		zap.String("long_url", sanitizedURL),
-		zap.String("creator_ip", creatorIP),
-		zap.Time("created_at", now),
+	s.obs.Logger().Info(ctx, "Short link created",
+		"short_code", shortCode,
+		"long_url", sanitizedURL,
+		"creator_ip", creatorIP,
+		"created_at", now,
 	)
 
 	// Preheat cache (Redis) - best effort, don't fail if cache write fails
@@ -141,11 +147,12 @@ func (s *ShortenerServiceImpl) CreateShortLink(
 	}
 
 	// Record metrics
-	metrics.LinksCreated.Inc()
-	metrics.RequestsTotal.WithLabelValues("CreateShortLink", "success").Inc()
+	s.obs.Metrics().IncrementCounter("shortener_links_created_total", nil)
+	s.obs.Metrics().IncrementCounter("shortener_requests_total", map[string]string{"method": "CreateShortLink", "status": "success"})
+	s.obs.Metrics().IncrementCounter("shortener_url_operations_total", map[string]string{"operation": "create", "status": "success"})
 
 	// Build response
-	response := &shortener_servicepb.CreateShortLinkResponse{
+	response := &shortenerpb.CreateShortLinkResponse{
 		ShortUrl:  fmt.Sprintf("%s/%s", s.baseURL, shortCode),
 		ShortCode: shortCode,
 		CreatedAt: timestamppb.New(now),
@@ -162,8 +169,13 @@ func (s *ShortenerServiceImpl) CreateShortLink(
 // Requirements: 9.4
 func (s *ShortenerServiceImpl) GetLinkInfo(
 	ctx context.Context,
-	req *shortener_servicepb.GetLinkInfoRequest,
-) (*shortener_servicepb.GetLinkInfoResponse, error) {
+	req *shortenerpb.GetLinkInfoRequest,
+) (*shortenerpb.GetLinkInfoResponse, error) {
+	startTime := time.Now()
+	defer func() {
+		s.obs.Metrics().RecordHistogram("shortener_operation_duration_seconds", time.Since(startTime).Seconds(), map[string]string{"operation": "resolve"})
+	}()
+
 	// Validate input
 	if req.ShortCode == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "Short code cannot be empty")
@@ -179,7 +191,7 @@ func (s *ShortenerServiceImpl) GetLinkInfo(
 	}
 
 	// Build response
-	response := &shortener_servicepb.GetLinkInfoResponse{
+	response := &shortenerpb.GetLinkInfoResponse{
 		ShortCode:  mapping.ShortCode,
 		LongUrl:    mapping.LongURL,
 		CreatedAt:  timestamppb.New(mapping.CreatedAt),
@@ -191,6 +203,9 @@ func (s *ShortenerServiceImpl) GetLinkInfo(
 		response.ExpiresAt = timestamppb.New(*mapping.ExpiresAt)
 	}
 
+	// Record metrics
+	s.obs.Metrics().IncrementCounter("shortener_url_operations_total", map[string]string{"operation": "resolve", "status": "success"})
+
 	return response, nil
 }
 
@@ -198,8 +213,13 @@ func (s *ShortenerServiceImpl) GetLinkInfo(
 // Requirements: 4.6
 func (s *ShortenerServiceImpl) DeleteShortLink(
 	ctx context.Context,
-	req *shortener_servicepb.DeleteShortLinkRequest,
-) (*shortener_servicepb.DeleteShortLinkResponse, error) {
+	req *shortenerpb.DeleteShortLinkRequest,
+) (*shortenerpb.DeleteShortLinkResponse, error) {
+	startTime := time.Now()
+	defer func() {
+		s.obs.Metrics().RecordHistogram("shortener_operation_duration_seconds", time.Since(startTime).Seconds(), map[string]string{"operation": "delete"})
+	}()
+
 	// Validate input
 	if req.ShortCode == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "Short code cannot be empty")
@@ -207,7 +227,7 @@ func (s *ShortenerServiceImpl) DeleteShortLink(
 
 	// Soft delete in MySQL
 	if err := s.storage.Delete(ctx, req.ShortCode); err != nil {
-		metrics.ErrorsTotal.WithLabelValues("storage_delete").Inc()
+		s.obs.Metrics().IncrementCounter("shortener_errors_total", map[string]string{"type": "storage_delete"})
 		if strings.Contains(err.Error(), "not found") {
 			return nil, status.Errorf(codes.NotFound, "Short code not found: %s", req.ShortCode)
 		}
@@ -221,10 +241,11 @@ func (s *ShortenerServiceImpl) DeleteShortLink(
 	}
 
 	// Record metrics
-	metrics.LinksDeleted.Inc()
-	metrics.RequestsTotal.WithLabelValues("DeleteShortLink", "success").Inc()
+	s.obs.Metrics().IncrementCounter("shortener_links_deleted_total", nil)
+	s.obs.Metrics().IncrementCounter("shortener_requests_total", map[string]string{"method": "DeleteShortLink", "status": "success"})
+	s.obs.Metrics().IncrementCounter("shortener_url_operations_total", map[string]string{"operation": "delete", "status": "success"})
 
-	return &shortener_servicepb.DeleteShortLinkResponse{
+	return &shortenerpb.DeleteShortLinkResponse{
 		Success: true,
 	}, nil
 }

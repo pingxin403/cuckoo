@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { helloClient } from '../services/helloClient';
-import { HelloRequest } from '../gen/hello';
+import { HelloRequest } from '@cuckoo/api-gen/hellopb/hello';
 
 export function HelloForm() {
   const [name, setName] = useState('');

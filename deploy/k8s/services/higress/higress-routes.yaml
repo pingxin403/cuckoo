@@ -1,0 +1,387 @@
+# Higress Ingress Configuration for Monorepo Services
+# Uses Higress CRD for advanced routing, gRPC-Web support, and traffic management
+
+---
+# Main API Gateway Ingress
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api-gateway
+  namespace: default
+  labels:
+    app: monorepo-platform
+    component: api-gateway
+  annotations:
+    # Higress backend protocol
+    higress.io/backend-protocol: "GRPC"
+    
+    # CORS configuration for gRPC-Web
+    higress.io/cors-allow-origin: "*"
+    higress.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
+    higress.io/cors-allow-headers: "content-type,x-grpc-web,x-user-agent,grpc-timeout,authorization"
+    higress.io/cors-expose-headers: "grpc-status,grpc-message,grpc-status-details-bin"
+    higress.io/cors-max-age: "86400"
+    higress.io/cors-allow-credentials: "true"
+    
+    # Enable gRPC-Web translation
+    higress.io/enable-grpc-web: "true"
+    
+    # Timeout configuration
+    higress.io/upstream-timeout: "30s"
+    higress.io/upstream-idle-timeout: "300s"
+    
+    # Connection pool
+    higress.io/upstream-connection-pool-size: "100"
+spec:
+  ingressClassName: higress
+  rules:
+  # API services routing
+  - host: api.example.com  # Replace with your domain
+    http:
+      paths:
+      # Hello Service - gRPC API
+      - path: /api.v1.HelloService
+        pathType: Prefix
+        backend:
+          service:
+            name: hello-service
+            port:
+              number: 9090
+      
+      # Hello Service - REST-style path
+      - path: /api/hello
+        pathType: Prefix
+        backend:
+          service:
+            name: hello-service
+            port:
+              number: 9090
+      
+      # TODO Service - gRPC API
+      - path: /api.v1.TodoService
+        pathType: Prefix
+        backend:
+          service:
+            name: todo-service
+            port:
+              number: 9091
+      
+      # TODO Service - REST-style path
+      - path: /api/todo
+        pathType: Prefix
+        backend:
+          service:
+            name: todo-service
+            port:
+              number: 9091
+      
+      # Shortener Service - gRPC API
+      - path: /api.v1.ShortenerService
+        pathType: Prefix
+        backend:
+          service:
+            name: shortener-service
+            port:
+              number: 9092
+      
+      # Shortener Service - REST-style path
+      - path: /api/shortener
+        pathType: Prefix
+        backend:
+          service:
+            name: shortener-service
+            port:
+              number: 9092
+  
+  # Localhost/IP access (for development)
+  - http:
+      paths:
+      - path: /api.v1.HelloService
+        pathType: Prefix
+        backend:
+          service:
+            name: hello-service
+            port:
+              number: 9090
+      - path: /api/hello
+        pathType: Prefix
+        backend:
+          service:
+            name: hello-service
+            port:
+              number: 9090
+      - path: /api.v1.TodoService
+        pathType: Prefix
+        backend:
+          service:
+            name: todo-service
+            port:
+              number: 9091
+      - path: /api/todo
+        pathType: Prefix
+        backend:
+          service:
+            name: todo-service
+            port:
+              number: 9091
+      - path: /api.v1.ShortenerService
+        pathType: Prefix
+        backend:
+          service:
+            name: shortener-service
+            port:
+              number: 9092
+      - path: /api/shortener
+        pathType: Prefix
+        backend:
+          service:
+            name: shortener-service
+            port:
+              number: 9092
+
+---
+# Shortener Service - HTTP Redirect Ingress
+# Handles short URL redirects (e.g., short.example.com/abc123)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: shortener-redirect
+  namespace: default
+  labels:
+    app: shortener-service
+    component: redirect
+  annotations:
+    # HTTP backend (not gRPC)
+    higress.io/backend-protocol: "HTTP"
+    
+    # No CORS needed for redirects
+    higress.io/upstream-timeout: "10s"
+    
+    # Cache configuration for redirects
+    higress.io/response-header-add: "Cache-Control: public, max-age=300"
+spec:
+  ingressClassName: higress
+  rules:
+  # Short URL domain
+  - host: short.example.com  # Replace with your short domain
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: shortener-service
+            port:
+              number: 8080  # HTTP redirect port
+  
+  # Localhost/IP access (for development)
+  - http:
+      paths:
+      - path: /s/
+        pathType: Prefix
+        backend:
+          service:
+            name: shortener-service
+            port:
+              number: 8080
+
+---
+# Web Frontend Ingress
+# Serves the React application
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web-frontend
+  namespace: default
+  labels:
+    app: web
+    component: frontend
+  annotations:
+    # HTTP backend
+    higress.io/backend-protocol: "HTTP"
+    
+    # SPA routing - rewrite all paths to index.html
+    higress.io/rewrite-target: /
+    
+    # Cache static assets
+    higress.io/response-header-add: "Cache-Control: public, max-age=31536000"
+    
+    # Security headers
+    higress.io/response-header-add: "X-Content-Type-Options: nosniff"
+    higress.io/response-header-add: "X-Frame-Options: DENY"
+    higress.io/response-header-add: "X-XSS-Protection: 1; mode=block"
+spec:
+  ingressClassName: higress
+  rules:
+  # Main web domain
+  - host: app.example.com  # Replace with your domain
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: web
+            port:
+              number: 80
+  
+  # Localhost/IP access (for development)
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: web
+            port:
+              number: 80
+
+---
+# Higress HTTP Route for advanced routing (optional)
+# Provides more fine-grained control over routing
+apiVersion: networking.higress.io/v1
+kind: HttpRoute
+metadata:
+  name: api-routes
+  namespace: default
+spec:
+  hostnames:
+  - "api.example.com"
+  - "*.api.example.com"
+  rules:
+  # Hello Service routing
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /api/hello
+    - path:
+        type: PathPrefix
+        value: /api.v1.HelloService
+    backendRefs:
+    - name: hello-service
+      port: 9090
+    filters:
+    - type: RequestHeaderModifier
+      requestHeaderModifier:
+        add:
+        - name: X-Service
+          value: hello-service
+  
+  # TODO Service routing
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /api/todo
+    - path:
+        type: PathPrefix
+        value: /api.v1.TodoService
+    backendRefs:
+    - name: todo-service
+      port: 9091
+    filters:
+    - type: RequestHeaderModifier
+      requestHeaderModifier:
+        add:
+        - name: X-Service
+          value: todo-service
+  
+  # Shortener Service routing
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /api/shortener
+    - path:
+        type: PathPrefix
+        value: /api.v1.ShortenerService
+    backendRefs:
+    - name: shortener-service
+      port: 9092
+    filters:
+    - type: RequestHeaderModifier
+      requestHeaderModifier:
+        add:
+        - name: X-Service
+          value: shortener-service
+
+---
+# Rate Limiting using Higress WasmPlugin
+apiVersion: extensions.higress.io/v1alpha1
+kind: WasmPlugin
+metadata:
+  name: api-rate-limit
+  namespace: default
+spec:
+  defaultConfig:
+    rules:
+    # API endpoints - 100 requests per minute per IP
+    - match:
+        path:
+          prefix: /api/
+      limit:
+        requests_per_unit: 100
+        unit: minute
+        key: remote_addr
+    
+    # Shortener creation - stricter limit
+    - match:
+        path:
+          prefix: /api/shortener
+        method: POST
+      limit:
+        requests_per_unit: 10
+        unit: minute
+        key: remote_addr
+    
+    # Redirect endpoints - higher limit
+    - match:
+        path:
+          prefix: /s/
+      limit:
+        requests_per_unit: 1000
+        unit: minute
+        key: remote_addr
+  
+  matchRules:
+  - ingress:
+    - api-gateway
+    - shortener-redirect
+  
+  url: oci://higress-registry.cn-hangzhou.cr.aliyuncs.com/plugins/rate-limit:1.0.0
+
+---
+# Circuit Breaker using DestinationRule
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: api-services-circuit-breaker
+  namespace: default
+spec:
+  host: "*.default.svc.cluster.local"
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 100
+      http:
+        http1MaxPendingRequests: 50
+        http2MaxRequests: 100
+        maxRequestsPerConnection: 2
+    outlierDetection:
+      consecutiveErrors: 5
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+      minHealthPercent: 40
+  
+  subsets:
+  - name: hello-service
+    labels:
+      app: hello-service
+  - name: todo-service
+    labels:
+      app: todo-service
+  - name: shortener-service
+    labels:
+      app: shortener-service
+  - name: web
+    labels:
+      app: web

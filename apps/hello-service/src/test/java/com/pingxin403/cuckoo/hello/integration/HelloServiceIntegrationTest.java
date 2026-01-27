@@ -6,9 +6,9 @@ import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.*;
 
-import com.myorg.api.v1.HelloRequest;
-import com.myorg.api.v1.HelloResponse;
-import com.myorg.api.v1.HelloServiceGrpc;
+import com.pingxin403.cuckoo.hello.v1.HelloRequest;
+import com.pingxin403.cuckoo.hello.v1.HelloResponse;
+import com.pingxin403.cuckoo.hello.v1.HelloServiceGrpc;
 
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;

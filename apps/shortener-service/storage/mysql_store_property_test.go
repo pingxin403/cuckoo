@@ -1,3 +1,6 @@
+//go:build property
+// +build property
+
 package storage
 
 import (

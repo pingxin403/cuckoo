@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - hello-service-configmap.yaml
+  - hello-service-deployment.yaml
+  - hello-service-service.yaml
+
+commonLabels:
+  app.kubernetes.io/part-of: monorepo-services
+  app.kubernetes.io/name: hello-service

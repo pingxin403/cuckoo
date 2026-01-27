@@ -1,4 +1,4 @@
-import { HelloRequest, HelloResponse } from '../gen/hello';
+import { HelloRequest, HelloResponse } from '@cuckoo/api-gen/hellopb/hello';
 
 // Simple wrapper for Hello Service using fetch
 export class HelloServiceClient {

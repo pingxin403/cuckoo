@@ -1,0 +1,39 @@
+# IM Gateway Service - Local Development Environment
+
+server:
+  http_port: 8080
+  grpc_port: 9097
+  host: "0.0.0.0"
+
+redis:
+  addr: "localhost:6379"
+  db: 0
+  pool_size: 10
+
+kafka:
+  brokers:
+    - "localhost:9092"
+  consumer_group: "im-gateway-local"
+
+etcd:
+  endpoints:
+    - "localhost:2379"
+
+observability:
+  service_name: "im-gateway-service"
+  environment: "local"
+  log_level: "debug"
+  log_format: "text"
+
+service_discovery:
+  auth_service_addr: "localhost:9095"
+  im_service_addr: "localhost:9094"
+  user_service_addr: "localhost:9096"
+
+connection:
+  max_connections: 1000
+  heartbeat_interval: 30s
+  heartbeat_timeout: 90s
+
+cache:
+  large_group_threshold: 1000

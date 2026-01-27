@@ -1,0 +1,25 @@
+# Todo Service - Local Development Environment
+
+server:
+  port: 9091
+  host: "0.0.0.0"
+
+observability:
+  service_name: "todo-service"
+  environment: "local"
+  log_level: "debug"
+  log_format: "text"
+  enable_metrics: true
+  metrics_port: 9090
+
+storage:
+  type: "memory"  # memory or database
+  # 如果使用 database 类型，需要配置以下字段
+  # database:
+  #   host: "localhost"
+  #   port: 3306
+  #   user: "todo_service"
+  #   password: "todo_password"
+  #   database: "todo_db"
+  #   max_open_conns: 10
+  #   max_idle_conns: 5

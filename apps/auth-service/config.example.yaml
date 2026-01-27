@@ -1,0 +1,52 @@
+# Auth Service Configuration Example
+# Copy this file to config.yaml and adjust values as needed
+
+# Server configuration
+server:
+  port: 9095
+  host: "0.0.0.0"
+  read_timeout: 15s
+  write_timeout: 15s
+  idle_timeout: 60s
+
+# Observability configuration
+observability:
+  service_name: "auth-service"
+  service_version: "1.0.0"
+  environment: "development"  # development, staging, production
+  enable_metrics: true
+  metrics_port: 9090
+  log_level: "info"  # debug, info, warn, error
+  log_format: "json"  # json, text
+
+# JWT configuration
+jwt:
+  secret: "your-secret-key-here"  # REQUIRED: Set via JWT_SECRET environment variable
+
+# Environment Variable Mapping:
+# ==============================
+# SERVER_PORT              -> server.port
+# SERVER_HOST              -> server.host
+# SERVER_READ_TIMEOUT      -> server.read_timeout
+# SERVER_WRITE_TIMEOUT     -> server.write_timeout
+# SERVER_IDLE_TIMEOUT      -> server.idle_timeout
+#
+# OBSERVABILITY_SERVICE_NAME    -> observability.service_name
+# OBSERVABILITY_SERVICE_VERSION -> observability.service_version
+# OBSERVABILITY_ENVIRONMENT     -> observability.environment
+# OBSERVABILITY_ENABLE_METRICS  -> observability.enable_metrics
+# OBSERVABILITY_METRICS_PORT    -> observability.metrics_port
+# OBSERVABILITY_LOG_LEVEL       -> observability.log_level
+# OBSERVABILITY_LOG_FORMAT      -> observability.log_format
+#
+# JWT_SECRET               -> jwt.secret (REQUIRED)
+#
+# Legacy environment variables (still supported for backward compatibility):
+# PORT                     -> server.port
+# SERVICE_NAME             -> observability.service_name
+# SERVICE_VERSION          -> observability.service_version
+# DEPLOYMENT_ENVIRONMENT   -> observability.environment
+# ENABLE_METRICS           -> observability.enable_metrics
+# METRICS_PORT             -> observability.metrics_port
+# LOG_LEVEL                -> observability.log_level
+# LOG_FORMAT               -> observability.log_format

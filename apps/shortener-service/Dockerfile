@@ -2,42 +2,20 @@
 # NOTE: This Dockerfile should be built from the repository root directory
 # Example: docker build -f apps/shortener-service/Dockerfile -t shortener-service:latest .
 
-# Stage 1: Proto generation and build
+# Stage 1: Build
 FROM golang:1.25-alpine AS build
 
 WORKDIR /app
 
-# Install protoc and required tools
-ARG PROTOC_VERSION=28.3
-ARG PROTOC_GEN_GO_VERSION=v1.36.6
-ARG PROTOC_GEN_GO_GRPC_VERSION=v1.5.1
+# Install git for go mod download
+RUN apk add --no-cache git
 
-RUN apk add --no-cache curl unzip git && \
-    # Install protoc
-    PROTOC_ZIP=protoc-${PROTOC_VERSION}-linux-x86_64.zip && \
-    curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/${PROTOC_ZIP} && \
-    unzip -o ${PROTOC_ZIP} -d /usr/local bin/protoc && \
-    unzip -o ${PROTOC_ZIP} -d /usr/local 'include/*' && \
-    rm -f ${PROTOC_ZIP} && \
-    # Install Go protoc plugins
-    go install google.golang.org/protobuf/cmd/protoc-gen-go@${PROTOC_GEN_GO_VERSION} && \
-    go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@${PROTOC_GEN_GO_GRPC_VERSION} && \
-    # Verify installations
-    protoc --version
+# Copy centralized proto generated code
+COPY api/gen/go /app/api/gen/go
 
 # Copy go mod files
 COPY apps/shortener-service/go.mod apps/shortener-service/go.sum ./
 RUN go mod download
-
-# Copy proto files (Single Source of Truth)
-COPY api/v1 /api/v1
-
-# Generate proto code for shortener service
-RUN mkdir -p gen/shortener_servicepb && \
-    protoc --proto_path=/api/v1 \
-           --go_out=./gen/shortener_servicepb --go_opt=paths=source_relative \
-           --go-grpc_out=./gen/shortener_servicepb --go-grpc_opt=paths=source_relative \
-           /api/v1/shortener_service.proto
 
 # Copy source code
 COPY apps/shortener-service/ ./

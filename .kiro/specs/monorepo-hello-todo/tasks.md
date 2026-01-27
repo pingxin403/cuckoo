@@ -274,7 +274,7 @@
   - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5, 11.1, 11.2, 11.5, 11.6, 11.7_
 
 - [x] 6.1 配置本地 Envoy 代理
-  - 创建 `tools/envoy/envoy-local.yaml`
+  - 创建 `deploy/docker/envoy-local-config.yaml`
   - 配置路由规则（`/api/hello` → `localhost:9090`, `/api/todo` → `localhost:9091`）
   - 配置 gRPC-Web 过滤器和 CORS
   - _Requirements: 10.2, 10.3, 10.4, 10.5_
@@ -286,7 +286,7 @@
   - _Requirements: 11.5_
 
 - [x] 6.3 配置 Higress Ingress
-  - 创建 `tools/k8s/ingress.yaml`
+  - 创建 `deploy/k8s/services/higress/higress-routes.yaml`
   - 配置路由规则和 gRPC 后端协议
   - 配置 CORS 注解
   - _Requirements: 10.1, 10.2, 10.3, 10.4, 10.5_

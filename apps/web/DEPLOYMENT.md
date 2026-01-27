@@ -81,7 +81,7 @@ export default defineConfig({
 3. Envoy 接收 gRPC-Web 请求，转换为 gRPC
 4. Envoy 路由到对应的后端服务
 
-#### Envoy 本地配置 (tools/envoy/envoy-local.yaml)
+#### Envoy 本地配置 (deploy/docker/envoy-local-config.yaml)
 
 ```yaml
 static_resources:
@@ -158,7 +158,7 @@ static_resources:
 ```bash
 # 终端 1: 启动 Envoy 代理
 docker run -d --name envoy-local --network host \
-  -v $(pwd)/tools/envoy:/config \
+  -v $(pwd)/deploy/docker:/config \
   envoyproxy/envoy:v1.30 -c /config/envoy-local.yaml
 
 # 终端 2: 启动 Hello Service

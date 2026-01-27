@@ -1,0 +1,158 @@
+syntax = "proto3";
+
+package api.v1;
+
+import "google/protobuf/timestamp.proto";
+
+// Go package path for generated code
+option go_package = "github.com/pingxin403/cuckoo/api/gen/go/shortenerpb";
+
+// Java package configuration
+option java_package = "com.pingxin403.cuckoo.shortener.v1";
+option java_multiple_files = true;
+option java_outer_classname = "ShortenerServiceProto";
+
+// ShortenerService provides URL shortening functionality
+//
+// This service transforms long URLs into short, memorable links and provides
+// fast redirection. It supports custom short codes, expiration times, and
+// basic analytics.
+service ShortenerService {
+  // CreateShortLink creates a new short link from a long URL
+  //
+  // Generates a unique 7-character short code (or uses a custom code if provided)
+  // and stores the mapping. The service validates the URL format and checks for
+  // malicious patterns before creating the link.
+  //
+  // Example:
+  //   Request: { long_url: "https://example.com/very/long/path" }
+  //   Response: { short_url: "https://ex.co/abc123x", short_code: "abc123x", ... }
+  //
+  //   Request: { long_url: "https://example.com", custom_code: "promo2024" }
+  //   Response: { short_url: "https://ex.co/promo2024", short_code: "promo2024", ... }
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT: Invalid URL format, URL too long (>2048 chars), or malicious pattern detected
+  //   - ALREADY_EXISTS: Custom code already in use (HTTP 409)
+  //   - RESOURCE_EXHAUSTED: Rate limit exceeded (HTTP 429)
+  //   - INTERNAL: Failed to generate unique code after retries
+  rpc CreateShortLink(CreateShortLinkRequest) returns (CreateShortLinkResponse);
+  
+  // GetLinkInfo retrieves metadata for a short link
+  //
+  // Returns information about a short link including the original URL,
+  // creation time, expiration time (if set), and click statistics.
+  //
+  // Example:
+  //   Request: { short_code: "abc123x" }
+  //   Response: { short_code: "abc123x", long_url: "https://example.com", click_count: 42, ... }
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT: Empty or invalid short code
+  //   - NOT_FOUND: Short code does not exist
+  rpc GetLinkInfo(GetLinkInfoRequest) returns (GetLinkInfoResponse);
+  
+  // DeleteShortLink removes a short link
+  //
+  // Performs a soft delete of the short link, making it inaccessible for future
+  // redirects. The operation is idempotent - deleting an already deleted link
+  // returns success.
+  //
+  // Example:
+  //   Request: { short_code: "abc123x" }
+  //   Response: { success: true }
+  //
+  // Errors:
+  //   - INVALID_ARGUMENT: Empty or invalid short code
+  //   - NOT_FOUND: Short code does not exist
+  rpc DeleteShortLink(DeleteShortLinkRequest) returns (DeleteShortLinkResponse);
+}
+
+// CreateShortLinkRequest contains parameters for creating a short link
+message CreateShortLinkRequest {
+  // long_url is the original URL to be shortened (required)
+  //
+  // Must use HTTP or HTTPS protocol and be no longer than 2048 characters.
+  // The service validates the URL format and checks for malicious patterns.
+  string long_url = 1;
+  
+  // expires_at is the optional expiration time for the short link
+  //
+  // If set, the short link will return HTTP 410 Gone after this time.
+  // If not set, the link is permanent. Supported range: 1 hour to 10 years.
+  google.protobuf.Timestamp expires_at = 2;
+  
+  // custom_code is an optional custom short code (4-20 characters)
+  //
+  // If provided, the service will use this code instead of generating one.
+  // Must be alphanumeric with optional hyphens, and cannot be a reserved keyword.
+  // Returns ALREADY_EXISTS error if the code is already in use.
+  string custom_code = 3;
+}
+
+// CreateShortLinkResponse contains the created short link information
+message CreateShortLinkResponse {
+  // short_url is the complete short URL (e.g., "https://ex.co/abc123x")
+  string short_url = 1;
+  
+  // short_code is the unique identifier (e.g., "abc123x")
+  //
+  // This is the 7-character code (or custom code) that maps to the long URL.
+  string short_code = 2;
+  
+  // created_at is the timestamp when the link was created
+  google.protobuf.Timestamp created_at = 3;
+  
+  // expires_at is the expiration time if set
+  //
+  // Only present if an expiration time was specified in the request.
+  google.protobuf.Timestamp expires_at = 4;
+}
+
+// GetLinkInfoRequest contains parameters for retrieving link information
+message GetLinkInfoRequest {
+  // short_code is the unique identifier of the short link (required)
+  string short_code = 1;
+}
+
+// GetLinkInfoResponse contains metadata about a short link
+message GetLinkInfoResponse {
+  // short_code is the unique identifier
+  string short_code = 1;
+  
+  // long_url is the original URL
+  string long_url = 2;
+  
+  // created_at is when the link was created
+  google.protobuf.Timestamp created_at = 3;
+  
+  // expires_at is the expiration time if set
+  //
+  // Only present if the link has an expiration time.
+  google.protobuf.Timestamp expires_at = 4;
+  
+  // click_count is the approximate number of times the link was accessed
+  //
+  // This is an eventually consistent count with typical delay of 1-5 seconds.
+  // For real-time approximate counts, this value is updated from Redis counters.
+  int64 click_count = 5;
+  
+  // is_expired indicates whether the link has expired
+  //
+  // True if expires_at is set and the current time is past the expiration.
+  bool is_expired = 6;
+}
+
+// DeleteShortLinkRequest contains parameters for deleting a short link
+message DeleteShortLinkRequest {
+  // short_code is the unique identifier of the short link to delete (required)
+  string short_code = 1;
+}
+
+// DeleteShortLinkResponse contains the result of the delete operation
+message DeleteShortLinkResponse {
+  // success indicates whether the deletion was successful
+  //
+  // Always true for successful operations. Errors are returned via gRPC status codes.
+  bool success = 1;
+}

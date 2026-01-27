@@ -1,0 +1,119 @@
+version: '3.8'
+
+services:
+  # MySQL for offline messages
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: im_chat
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ppassword"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    volumes:
+      - ../migrations/001_init_schema.sql:/docker-entrypoint-initdb.d/001_init_schema.sql
+      - ../migrations/002_user_service_schema.sql:/docker-entrypoint-initdb.d/002_user_service_schema.sql
+      - ../migrations/003_sequence_snapshots.sql:/docker-entrypoint-initdb.d/003_sequence_snapshots.sql
+      - ../migrations/004_offline_messages_partitioning.sql:/docker-entrypoint-initdb.d/004_offline_messages_partitioning.sql
+      - ../migrations/005_read_receipts.sql:/docker-entrypoint-initdb.d/005_read_receipts.sql
+      - ../migrations/006_audit_logs.sql:/docker-entrypoint-initdb.d/006_audit_logs.sql
+
+  # Redis for deduplication and caching
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # etcd for Registry
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.9
+    environment:
+      ETCD_NAME: etcd0
+      ETCD_ADVERTISE_CLIENT_URLS: http://etcd:2379
+      ETCD_LISTEN_CLIENT_URLS: http://0.0.0.0:2379
+      ETCD_INITIAL_ADVERTISE_PEER_URLS: http://etcd:2380
+      ETCD_LISTEN_PEER_URLS: http://0.0.0.0:2380
+      ETCD_INITIAL_CLUSTER: etcd0=http://etcd:2380
+      ETCD_INITIAL_CLUSTER_STATE: new
+      ETCD_INITIAL_CLUSTER_TOKEN: etcd-cluster
+    ports:
+      - "2379:2379"
+      - "2380:2380"
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Kafka for message bus
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # IM Service
+  im-service:
+    build:
+      context: ../..
+      dockerfile: apps/im-service/Dockerfile
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      etcd:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    ports:
+      - "9094:9094"
+    environment:
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: root
+      MYSQL_PASSWORD: password
+      MYSQL_DATABASE: im_chat
+      REDIS_ADDR: redis:6379
+      ETCD_ENDPOINTS: etcd:2379
+      KAFKA_BROKERS: kafka:9092
+      GRPC_PORT: 9094
+    healthcheck:
+      test: ["CMD", "grpc_health_probe", "-addr=:9094"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+networks:
+  default:
+    name: im-integration-test
+

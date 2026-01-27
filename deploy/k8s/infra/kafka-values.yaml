@@ -1,0 +1,66 @@
+# Bitnami Kafka Helm Chart Values (KRaft mode - no Zookeeper)
+# Reference: https://github.com/bitnami/charts/tree/main/bitnami/kafka
+
+# Enable KRaft mode (no Zookeeper)
+kraft:
+  enabled: true
+
+# Controller configuration (acts as both broker and controller in KRaft mode)
+controller:
+  replicaCount: 3
+  
+  persistence:
+    enabled: true
+    size: 20Gi
+    # storageClass: ""
+  
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 250m
+    limits:
+      memory: 2Gi
+      cpu: 1000m
+  
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 10
+  
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 20
+    periodSeconds: 10
+    timeoutSeconds: 10
+
+# Listener configuration
+listeners:
+  client:
+    protocol: PLAINTEXT
+  controller:
+    protocol: PLAINTEXT
+  interbroker:
+    protocol: PLAINTEXT
+
+# Kafka configuration
+config:
+  offsetsTopicReplicationFactor: 3
+  transactionStateLogReplicationFactor: 3
+  transactionStateLogMinIsr: 2
+  defaultReplicationFactor: 3
+  minInsyncReplicas: 2
+  numPartitions: 32
+
+# Service configuration
+service:
+  type: ClusterIP
+  ports:
+    client: 9092
+
+# Enable metrics for Prometheus
+metrics:
+  kafka:
+    enabled: false  # Set to true if using Prometheus
+  jmx:
+    enabled: false

@@ -1,0 +1,36 @@
+# IM Service - Production Environment
+
+server:
+  grpc_port: 9094
+  http_port: 8080
+  host: "0.0.0.0"
+
+database:
+  # 通过环境变量设置
+  max_open_conns: 25
+  max_idle_conns: 5
+
+redis:
+  # 通过环境变量设置: REDIS_ADDR
+  db: 0
+  pool_size: 20
+  min_idle_conns: 10
+
+kafka:
+  # 通过环境变量设置: KAFKA_BROKERS
+  consumer_group: "im-service-prod"
+
+observability:
+  service_name: "im-service"
+  environment: "production"
+  log_level: "info"
+  log_format: "json"
+
+offline_worker:
+  enabled: true
+  batch_size: 100
+  batch_timeout: 5s
+
+read_receipt:
+  enabled: true
+  batch_size: 100

@@ -27,6 +27,8 @@
 openspec/specs/
 ├── hello-todo-services/
 │   └── spec.md          ✓ 10 requirements
+├── observability-integration/
+│   └── spec.md          ✓ 12 requirements
 └── url-shortener-service/
     └── spec.md          ✓ 16 requirements
 ```
@@ -35,8 +37,9 @@ openspec/specs/
 ```bash
 $ openspec validate --specs
 ✓ spec/hello-todo-services
+✓ spec/observability-integration
 ✓ spec/url-shortener-service
-Totals: 2 passed, 0 failed (2 items)
+Totals: 3 passed, 0 failed (3 items)
 ```
 
 ### 架构文档（docs/）
@@ -133,9 +136,8 @@ The system SHALL provide...
 ## 相关文档
 
 - `openspec/AGENTS.md` - OpenSpec 完整使用指南
-- `openspec/SYNC_SUMMARY.md` - 规范同步总结
-- `openspec/STRUCTURE_EXPLANATION.md` - 目录结构说明
-- `openspec/CHANGE_HISTORY.md` - 项目变更历史（已合并归档）
+- `openspec/CHANGE_HISTORY.md` - 项目变更历史
+- `openspec/project.md` - 项目约定和上下文
 - `.kiro/specs/` - 实现级规范（原始来源）
 
 ## 下一步

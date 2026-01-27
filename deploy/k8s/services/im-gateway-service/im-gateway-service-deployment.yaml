@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: im-gateway-service
+  namespace: default
+  labels:
+    app: im-gateway-service
+    version: v1
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: im-gateway-service
+  template:
+    metadata:
+      labels:
+        app: im-gateway-service
+        version: v1
+    spec:
+      containers:
+      - name: im-gateway-service
+        image: im-gateway-service:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - name: grpc
+          containerPort: 9093
+          protocol: TCP
+        - name: websocket
+          containerPort: 8080
+          protocol: TCP
+        env:
+        # Service ports
+        - name: GRPC_PORT
+          value: "9093"
+        - name: WEBSOCKET_PORT
+          value: "8080"
+        # etcd configuration
+        - name: ETCD_ENDPOINTS
+          value: "etcd-0.etcd-headless.default.svc.cluster.local:2379,etcd-1.etcd-headless.default.svc.cluster.local:2379,etcd-2.etcd-headless.default.svc.cluster.local:2379"
+        # Redis configuration
+        - name: REDIS_ADDR
+          value: "redis-master.default.svc.cluster.local:6379"
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: redis
+              key: redis-password
+              optional: true
+        # Kafka configuration
+        - name: KAFKA_BROKERS
+          value: "kafka-0.kafka-headless.default.svc.cluster.local:9092,kafka-1.kafka-headless.default.svc.cluster.local:9092,kafka-2.kafka-headless.default.svc.cluster.local:9092"
+        - name: KAFKA_GROUP_ID
+          value: "im-gateway-service"
+        - name: KAFKA_TOPIC
+          value: "group_msg"
+        # Auth Service configuration
+        - name: AUTH_SERVICE_ADDR
+          value: "auth-service.default.svc.cluster.local:9090"
+        # IM Service configuration
+        - name: IM_SERVICE_ADDR
+          value: "im-service.default.svc.cluster.local:9092"
+        # User Service configuration
+        - name: USER_SERVICE_ADDR
+          value: "user-service.default.svc.cluster.local:9091"
+        # Gateway configuration
+        - name: HEARTBEAT_INTERVAL
+          value: "30s"
+        - name: HEARTBEAT_TIMEOUT
+          value: "90s"
+        - name: MAX_MESSAGES_PER_SECOND
+          value: "100"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+

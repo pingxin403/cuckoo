@@ -3,9 +3,9 @@ package com.pingxin403.cuckoo.hello.service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.myorg.api.v1.HelloRequest;
-import com.myorg.api.v1.HelloResponse;
-import com.myorg.api.v1.HelloServiceGrpc;
+import com.pingxin403.cuckoo.hello.v1.HelloRequest;
+import com.pingxin403.cuckoo.hello.v1.HelloResponse;
+import com.pingxin403.cuckoo.hello.v1.HelloServiceGrpc;
 
 import io.grpc.stub.StreamObserver;
 import net.devh.boot.grpc.server.service.GrpcService;

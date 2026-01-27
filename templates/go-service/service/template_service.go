@@ -2,7 +2,9 @@ package service
 
 import (
 	"context"
+	"time"
 
+	"github.com/pingxin403/cuckoo/libs/observability"
 	"{{MODULE_PATH}}/gen/{{PROTO_PACKAGE}}"
 	"{{MODULE_PATH}}/storage"
 	"google.golang.org/grpc/codes"
@@ -13,13 +15,30 @@ import (
 type {{ServiceName}}ServiceServer struct {
 	{{PROTO_PACKAGE}}.Unimplemented{{ServiceName}}ServiceServer
 	store storage.YourStore
+	obs   observability.Observability
 }
 
 // New{{ServiceName}}ServiceServer creates a new {{ServiceName}}ServiceServer
-func New{{ServiceName}}ServiceServer(store storage.YourStore) *{{ServiceName}}ServiceServer {
+func New{{ServiceName}}ServiceServer(store storage.YourStore, obs observability.Observability) *{{ServiceName}}ServiceServer {
 	return &{{ServiceName}}ServiceServer{
 		store: store,
+		obs:   obs,
 	}
+}
+
+// recordMetrics records gRPC request metrics
+func (s *{{ServiceName}}ServiceServer) recordMetrics(method string, statusCode string, duration time.Duration) {
+	if s.obs == nil {
+		return
+	}
+	labels := map[string]string{
+		"method": method,
+		"status": statusCode,
+	}
+	s.obs.Metrics().IncrementCounter("{{SERVICE_NAME_SNAKE}}_grpc_requests_total", labels)
+	s.obs.Metrics().RecordDuration("{{SERVICE_NAME_SNAKE}}_grpc_request_duration_seconds", duration, map[string]string{
+		"method": method,
+	})
 }
 
 // TODO: Implement your RPC methods here

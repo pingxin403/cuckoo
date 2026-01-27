@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# End-to-End Testing Script for Monorepo Hello/TODO Services
+# End-to-End Testing Script for Monorepo Services
 # This script tests all services and their interactions
+# Supports: Hello/TODO services, Shortener service, IM Chat System
 
 set -e
 
@@ -16,6 +17,12 @@ NC='\033[0m' # No Color
 TESTS_PASSED=0
 TESTS_FAILED=0
 TESTS_TOTAL=0
+
+# Parse command line arguments
+TEST_SUITE="all"
+if [ $# -gt 0 ]; then
+    TEST_SUITE=$1
+fi
 
 # Function to print test result
 print_result() {
@@ -88,8 +95,219 @@ test_http_endpoint() {
 
 echo -e "${GREEN}=== End-to-End Testing ===${NC}\n"
 
-# Check if services are running
-echo -e "${BLUE}1. Checking if services are running...${NC}"
+# Show usage if help requested
+if [ "$TEST_SUITE" = "help" ] || [ "$TEST_SUITE" = "--help" ] || [ "$TEST_SUITE" = "-h" ]; then
+    echo "Usage: $0 [test-suite]"
+    echo ""
+    echo "Available test suites:"
+    echo "  all        - Run all tests (default)"
+    echo "  hello-todo - Test Hello and TODO services"
+    echo "  shortener  - Test URL Shortener service"
+    echo "  im         - Test IM Chat System"
+    echo "  infra      - Test infrastructure only"
+    echo ""
+    echo "Examples:"
+    echo "  $0              # Run all tests"
+    echo "  $0 im           # Test IM Chat System only"
+    echo "  $0 infra        # Test infrastructure only"
+    exit 0
+fi
+
+echo -e "${BLUE}Test Suite: ${TEST_SUITE}${NC}\n"
+
+# Test infrastructure (common for all services)
+if [ "$TEST_SUITE" = "all" ] || [ "$TEST_SUITE" = "infra" ] || [ "$TEST_SUITE" = "im" ]; then
+    echo -e "${BLUE}=== Infrastructure Tests ===${NC}"
+    
+    # Test MySQL
+    echo -n "Testing MySQL... "
+    if docker exec shared-mysql mysqladmin ping -h localhost -u root -proot_password > /dev/null 2>&1; then
+        print_result "MySQL is running" "PASS"
+    else
+        print_result "MySQL is running" "FAIL"
+    fi
+    
+    # Test Redis
+    echo -n "Testing Redis... "
+    if docker exec shared-redis redis-cli PING | grep -q "PONG"; then
+        print_result "Redis is running" "PASS"
+    else
+        print_result "Redis is running" "FAIL"
+    fi
+    
+    # Test etcd (for IM system)
+    if [ "$TEST_SUITE" = "all" ] || [ "$TEST_SUITE" = "im" ]; then
+        echo -n "Testing etcd... "
+        if docker exec im-etcd etcdctl endpoint health > /dev/null 2>&1; then
+            print_result "etcd is running" "PASS"
+        else
+            print_result "etcd is running" "FAIL"
+        fi
+    fi
+    
+    # Test Kafka (for IM system)
+    if [ "$TEST_SUITE" = "all" ] || [ "$TEST_SUITE" = "im" ]; then
+        echo -n "Testing Kafka... "
+        if docker exec im-kafka kafka-broker-api-versions --bootstrap-server localhost:9092 > /dev/null 2>&1; then
+            print_result "Kafka is running" "PASS"
+        else
+            print_result "Kafka is running" "FAIL"
+        fi
+    fi
+    
+    echo ""
+fi
+
+# Exit early if only testing infrastructure
+if [ "$TEST_SUITE" = "infra" ]; then
+    echo -e "${GREEN}=== Test Summary ===${NC}"
+    echo -e "Total tests: $TESTS_TOTAL"
+    echo -e "${GREEN}Passed: $TESTS_PASSED${NC}"
+    if [ $TESTS_FAILED -gt 0 ]; then
+        echo -e "${RED}Failed: $TESTS_FAILED${NC}"
+        exit 1
+    else
+        echo -e "Failed: $TESTS_FAILED"
+        exit 0
+    fi
+fi
+
+# Test IM Chat System
+if [ "$TEST_SUITE" = "all" ] || [ "$TEST_SUITE" = "im" ]; then
+    echo -e "${BLUE}=== IM Chat System Tests ===${NC}"
+    
+    # Test database schema
+    echo -e "${YELLOW}Testing database schema...${NC}"
+    
+    # Check offline_messages table
+    if docker exec shared-mysql mysql -u im_service -pim_service_password -D im_chat -e "DESCRIBE offline_messages" > /dev/null 2>&1; then
+        print_result "offline_messages table exists" "PASS"
+    else
+        print_result "offline_messages table exists" "FAIL"
+    fi
+    
+    # Check users table
+    if docker exec shared-mysql mysql -u im_service -pim_service_password -D im_chat -e "DESCRIBE users" > /dev/null 2>&1; then
+        print_result "users table exists" "PASS"
+    else
+        print_result "users table exists" "FAIL"
+    fi
+    
+    # Check groups table
+    if docker exec shared-mysql mysql -u im_service -pim_service_password -D im_chat -e "DESCRIBE groups" > /dev/null 2>&1; then
+        print_result "groups table exists" "PASS"
+    else
+        print_result "groups table exists" "FAIL"
+    fi
+    
+    # Check group_members table
+    if docker exec shared-mysql mysql -u im_service -pim_service_password -D im_chat -e "DESCRIBE group_members" > /dev/null 2>&1; then
+        print_result "group_members table exists" "PASS"
+    else
+        print_result "group_members table exists" "FAIL"
+    fi
+    
+    # Check sequence_snapshots table
+    if docker exec shared-mysql mysql -u im_service -pim_service_password -D im_chat -e "DESCRIBE sequence_snapshots" > /dev/null 2>&1; then
+        print_result "sequence_snapshots table exists" "PASS"
+    else
+        print_result "sequence_snapshots table exists" "FAIL"
+    fi
+    
+    # Test Kafka topics
+    echo -e "${YELLOW}Testing Kafka topics...${NC}"
+    
+    if docker exec im-kafka kafka-topics --list --bootstrap-server localhost:9092 | grep -q "group_msg"; then
+        print_result "group_msg topic exists" "PASS"
+    else
+        print_result "group_msg topic exists" "FAIL"
+    fi
+    
+    if docker exec im-kafka kafka-topics --list --bootstrap-server localhost:9092 | grep -q "offline_msg"; then
+        print_result "offline_msg topic exists" "PASS"
+    else
+        print_result "offline_msg topic exists" "FAIL"
+    fi
+    
+    if docker exec im-kafka kafka-topics --list --bootstrap-server localhost:9092 | grep -q "membership_change"; then
+        print_result "membership_change topic exists" "PASS"
+    else
+        print_result "membership_change topic exists" "FAIL"
+    fi
+    
+    # Test service builds
+    echo -e "${YELLOW}Testing service builds...${NC}"
+    
+    # Test auth-service build
+    if cd apps/auth-service && go build -o /tmp/auth-service . > /dev/null 2>&1; then
+        print_result "auth-service builds successfully" "PASS"
+        cd ../..
+    else
+        print_result "auth-service builds successfully" "FAIL"
+        cd ../..
+    fi
+    
+    # Test user-service build
+    if cd apps/user-service && go build -o /tmp/user-service . > /dev/null 2>&1; then
+        print_result "user-service builds successfully" "PASS"
+        cd ../..
+    else
+        print_result "user-service builds successfully" "FAIL"
+        cd ../..
+    fi
+    
+    # Test im-service build
+    if cd apps/im-service && go build -o /tmp/im-service . > /dev/null 2>&1; then
+        print_result "im-service builds successfully" "PASS"
+        cd ../..
+    else
+        print_result "im-service builds successfully" "FAIL"
+        cd ../..
+    fi
+    
+    # Test im-gateway-service build
+    if cd apps/im-gateway-service && go build -o /tmp/im-gateway-service . > /dev/null 2>&1; then
+        print_result "im-gateway-service builds successfully" "PASS"
+        cd ../..
+    else
+        print_result "im-gateway-service builds successfully" "FAIL"
+        cd ../..
+    fi
+    
+    # Test offline-worker build
+    if cd apps/im-service && go build -o /tmp/offline-worker ./cmd/offline-worker > /dev/null 2>&1; then
+        print_result "offline-worker builds successfully" "PASS"
+        cd ../..
+    else
+        print_result "offline-worker builds successfully" "FAIL"
+        cd ../..
+    fi
+    
+    # Test unit tests (quick smoke test)
+    echo -e "${YELLOW}Running unit tests (sample)...${NC}"
+    
+    if cd apps/auth-service && go test ./service -run TestValidateToken > /dev/null 2>&1; then
+        print_result "auth-service unit tests pass" "PASS"
+        cd ../..
+    else
+        print_result "auth-service unit tests pass" "FAIL"
+        cd ../..
+    fi
+    
+    if cd apps/im-service && go test ./sequence -run TestGenerateSequence > /dev/null 2>&1; then
+        print_result "sequence generator tests pass" "PASS"
+        cd ../..
+    else
+        print_result "sequence generator tests pass" "FAIL"
+        cd ../..
+    fi
+    
+    echo ""
+fi
+
+# Check if services are running (Hello/TODO)
+if [ "$TEST_SUITE" = "all" ] || [ "$TEST_SUITE" = "hello-todo" ]; then
+    echo -e "${BLUE}=== Hello/TODO Services Tests ===${NC}"
 test_service_running "Hello Service" 9090
 test_service_running "TODO Service" 9091
 test_service_running "Frontend" 5173
@@ -106,7 +324,7 @@ fi
 echo ""
 
 # Test Hello Service
-echo -e "${BLUE}2. Testing Hello Service...${NC}"
+echo -e "${BLUE}Testing Hello Service...${NC}"
 
 if command -v grpcurl &> /dev/null; then
     # Test with name
@@ -133,7 +351,7 @@ fi
 echo ""
 
 # Test TODO Service
-echo -e "${BLUE}3. Testing TODO Service...${NC}"
+echo -e "${BLUE}Testing TODO Service...${NC}"
 
 if command -v grpcurl &> /dev/null; then
     # Create a TODO
@@ -185,7 +403,7 @@ fi
 echo ""
 
 # Test service-to-service communication
-echo -e "${BLUE}4. Testing service-to-service communication...${NC}"
+echo -e "${BLUE}Testing service-to-service communication...${NC}"
 echo -e "${YELLOW}Note: TODO Service should be able to call Hello Service${NC}"
 echo -e "${YELLOW}This is verified by checking if TODO Service can start with HELLO_SERVICE_ADDR set${NC}"
 
@@ -198,7 +416,7 @@ fi
 echo ""
 
 # Test Frontend
-echo -e "${BLUE}5. Testing Frontend...${NC}"
+echo -e "${BLUE}Testing Frontend...${NC}"
 
 # Test if frontend is accessible
 test_http_endpoint "Frontend" "http://localhost:5173" "200"
@@ -214,7 +432,7 @@ echo ""
 
 # Test API Gateway (if running)
 if [ "$ENVOY_RUNNING" = true ]; then
-    echo -e "${BLUE}6. Testing API Gateway (Envoy)...${NC}"
+    echo -e "${BLUE}Testing API Gateway (Envoy)...${NC}"
     
     # Test Envoy admin interface
     test_http_endpoint "Envoy Admin" "http://localhost:9901" "200"
@@ -224,6 +442,7 @@ if [ "$ENVOY_RUNNING" = true ]; then
 fi
 
 echo ""
+fi
 
 # Summary
 echo -e "${GREEN}=== Test Summary ===${NC}"

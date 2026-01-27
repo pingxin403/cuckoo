@@ -1,3 +1,6 @@
+//go:build property
+// +build property
+
 package cache
 
 import (

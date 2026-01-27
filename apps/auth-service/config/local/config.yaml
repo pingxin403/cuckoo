@@ -1,0 +1,16 @@
+# Auth Service - Local Development Environment
+
+server:
+  port: 9095
+  host: "0.0.0.0"
+
+observability:
+  service_name: "auth-service"
+  environment: "local"
+  log_level: "debug"
+  log_format: "text"
+
+jwt:
+  secret: "local-dev-secret-change-me"
+  expiration: 24h
+  refresh_expiration: 168h

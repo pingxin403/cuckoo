@@ -12,9 +12,10 @@ out/
 
 # Generated code - DO NOT commit proto-generated code to git
 # Proto code is generated during build time (local dev, CI, Docker)
-# Exception: CI may temporarily generate code for Docker builds
+# Exception: api/gen is the shared proto library that all Go services depend on
 gen/
 **/gen/
+!api/gen/
 **/build/generated/
 **/src/gen/
 
@@ -96,11 +97,14 @@ Desktop.ini
 # Docker
 .dockerignore
 
-# Kubernetes
-# Generated K8s resources (copied from apps/*/k8s/ to k8s/base/)
-k8s/base/*.yaml
-!k8s/base/kustomization.yaml
+# Root docker-compose.yml is deprecated - use deploy/docker/ files instead
+/docker-compose.yml
 
 # Logs
 logs/
 *.log.*
+
+
+# test reports
+test-reports/
+*/coverage.html
