@@ -4,6 +4,7 @@ go 1.25
 
 require (
 	github.com/google/uuid v1.6.0
+	github.com/pingxin403/cuckoo/api/gen/go v0.0.0-00010101000000-000000000000
 	github.com/pingxin403/cuckoo/libs/observability v0.0.0-00010101000000-000000000000
 	github.com/stretchr/testify v1.11.1
 	google.golang.org/grpc v1.78.0
@@ -11,7 +12,10 @@ require (
 	pgregory.net/rapid v1.2.0
 )
 
-replace github.com/pingxin403/cuckoo/libs/observability => ../../libs/observability
+replace (
+	github.com/pingxin403/cuckoo/api/gen/go => ../../api/gen/go
+	github.com/pingxin403/cuckoo/libs/observability => ../../libs/observability
+)
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect

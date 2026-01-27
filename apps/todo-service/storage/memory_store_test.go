@@ -4,7 +4,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/pingxin403/cuckoo/apps/todo-service/gen/todopb"
+	"github.com/pingxin403/cuckoo/api/gen/go/todopb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/timestamppb"

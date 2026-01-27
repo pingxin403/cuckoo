@@ -9,7 +9,7 @@ import (
 
 	"pgregory.net/rapid"
 
-	"github.com/pingxin403/cuckoo/apps/todo-service/gen/todopb"
+	"github.com/pingxin403/cuckoo/api/gen/go/todopb"
 	"github.com/pingxin403/cuckoo/apps/todo-service/storage"
 )
 

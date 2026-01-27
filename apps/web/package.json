@@ -11,10 +11,10 @@
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
     "preview": "vite preview",
-    "test": "vitest",
-    "gen-proto": "mkdir -p src/gen && protoc --plugin=./node_modules/.bin/protoc-gen-ts_proto --ts_proto_out=src/gen --ts_proto_opt=esModuleInterop=true --ts_proto_opt=outputServices=grpc-web --ts_proto_opt=useOptionals=messages --ts_proto_opt=env=browser --ts_proto_opt=forceLong=string -I ../../api/v1 ../../api/v1/*.proto"
+    "test": "vitest"
   },
   "dependencies": {
+    "@cuckoo/api-gen": "file:../../api/gen/typescript",
     "@tanstack/react-query": "^5.90.18",
     "google-protobuf": "^4.0.1",
     "grpc-web": "^2.0.2",

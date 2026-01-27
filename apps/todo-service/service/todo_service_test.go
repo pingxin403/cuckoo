@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/pingxin403/cuckoo/apps/todo-service/gen/todopb"
+	"github.com/pingxin403/cuckoo/api/gen/go/todopb"
 	"github.com/pingxin403/cuckoo/apps/todo-service/storage"
 	"github.com/pingxin403/cuckoo/libs/observability"
 	"github.com/stretchr/testify/assert"

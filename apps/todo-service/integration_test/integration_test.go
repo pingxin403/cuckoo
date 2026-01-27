@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	todopb "github.com/pingxin403/cuckoo/apps/todo-service/gen/todopb"
+	todopb "github.com/pingxin403/cuckoo/api/gen/go/todopb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
