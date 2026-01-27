@@ -184,7 +184,8 @@ cmd_test() {
     case $app_type in
         java)
             if [ -f "$app_path/gradlew" ]; then
-                (cd "$app_path" && ./gradlew test) || return 1
+                # Run tests with coverage report and verification
+                (cd "$app_path" && ./gradlew clean generateProto test jacocoTestReport jacocoTestCoverageVerification) || return 1
             elif [ -f "$app_path/mvnw" ]; then
                 (cd "$app_path" && ./mvnw test) || return 1
             else
@@ -193,7 +194,12 @@ cmd_test() {
             fi
             ;;
         go)
-            (cd "$app_path" && go test ./... -timeout=10m) || return 1
+            # Run tests with coverage
+            if [ -f "$app_path/scripts/test-coverage.sh" ]; then
+                (cd "$app_path" && ./scripts/test-coverage.sh) || return 1
+            else
+                (cd "$app_path" && go test ./... -timeout=10m) || return 1
+            fi
             ;;
         node)
             (cd "$app_path" && npm test -- --run) || return 1

@@ -236,9 +236,10 @@ jobs:
         if: steps.detect-type.outputs.type == 'java'
         run: |
           chmod +x apps/${{ matrix.app }}/gradlew
-          cd apps/${{ matrix.app }}
-          # Run all tasks in sequence: generate proto, test, coverage report, verify coverage, build
-          ./gradlew clean generateProto test jacocoTestReport jacocoTestCoverageVerification build -x test --no-daemon --info
+          # Use make commands for consistency
+          make lint APP=${{ matrix.app }}
+          make test APP=${{ matrix.app }}
+          make build APP=${{ matrix.app }}
 
       - name: Upload Java test results
         if: steps.detect-type.outputs.type == 'java' && always()
@@ -271,8 +272,11 @@ jobs:
           cd apps/${{ matrix.app }}
           go mod download
           go mod verify
-          ./scripts/test-coverage.sh
-          go build -v -o bin/${{ matrix.app }} .
+          # Use make commands for consistency
+          cd ../..
+          make lint APP=${{ matrix.app }}
+          make test APP=${{ matrix.app }}
+          make build APP=${{ matrix.app }}
 
       - name: Upload Go coverage
         if: steps.detect-type.outputs.type == 'go' && always()
@@ -296,10 +300,10 @@ jobs:
       - name: Build Node.js service
         if: steps.detect-type.outputs.type == 'node'
         run: |
-          cd apps/${{ matrix.app }}
-          npm run lint
-          npm test -- --run
-          npm run build
+          # Use make commands for consistency
+          make lint APP=${{ matrix.app }}
+          make test APP=${{ matrix.app }}
+          make build APP=${{ matrix.app }}
 
       - name: Upload frontend build
         if: steps.detect-type.outputs.type == 'node'

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTodos } from '../hooks/useTodos';
-import { Todo } from '../gen/todo';
+import { Todo } from '@cuckoo/api-gen/todopb/todo';
 
 export function TodoList() {
   const { todos, isLoading, error, updateTodo, deleteTodo, isUpdating, isDeleting } = useTodos();
