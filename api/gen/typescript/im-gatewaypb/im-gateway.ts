@@ -2,7 +2,7 @@
 // versions:
 //   protoc-gen-ts_proto  v2.11.1
 //   protoc               v6.33.4
-// source: im_gateway_service.proto
+// source: im-gateway.proto
 
 /* eslint-disable */
 import { BinaryReader, BinaryWriter } from "@bufbuild/protobuf/wire";

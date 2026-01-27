@@ -66,7 +66,22 @@ check_prerequisites() {
 generate_go() {
     local proto_file=$1
     local proto_name=$(basename "$proto_file" .proto)
-    local output_dir="$API_GEN_DIR/go/${proto_name}pb"
+    
+    # Map proto file names to package directory names
+    local output_subdir
+    case "$proto_name" in
+        im-gateway)
+            output_subdir="im-gatewaypb"
+            ;;
+        shortener)
+            output_subdir="shortenerpb"
+            ;;
+        *)
+            output_subdir="${proto_name}pb"
+            ;;
+    esac
+    
+    local output_dir="$API_GEN_DIR/go/$output_subdir"
     
     log_info "  [Go] Generating from $proto_file -> $output_dir"
     
@@ -129,7 +144,22 @@ generate_java() {
 generate_typescript() {
     local proto_file=$1
     local proto_name=$(basename "$proto_file" .proto)
-    local output_dir="$API_GEN_DIR/typescript/${proto_name}pb"
+    
+    # Map proto file names to package directory names
+    local output_subdir
+    case "$proto_name" in
+        im-gateway)
+            output_subdir="im-gatewaypb"
+            ;;
+        shortener)
+            output_subdir="shortenerpb"
+            ;;
+        *)
+            output_subdir="${proto_name}pb"
+            ;;
+    esac
+    
+    local output_dir="$API_GEN_DIR/typescript/$output_subdir"
     
     log_info "  [TypeScript] Generating from $proto_file -> $output_dir"
     
