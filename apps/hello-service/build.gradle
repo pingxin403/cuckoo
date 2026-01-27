@@ -164,6 +164,15 @@ sourceSets {
 	}
 }
 
+// No-op task for CI compatibility - proto generation is handled by monorepo root
+tasks.register('generateProto') {
+	description = 'Proto generation handled by monorepo root (make proto)'
+	group = 'build'
+	doLast {
+		logger.lifecycle('Proto generation is handled by monorepo root - using pre-generated code from api/gen/java')
+	}
+}
+
 clean {
 	delete 'build/generated'
 }
