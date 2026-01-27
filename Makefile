@@ -176,7 +176,7 @@ check-versions:
 	@./scripts/check-versions.sh
 
 # Protobuf code generation
-proto: gen-proto-go gen-proto-java gen-proto-ts
+proto: gen-proto-go gen-proto-java gen-proto-typescript
 	@echo "✅ Protobuf code generation completed for all languages"
 
 # Legacy alias for backward compatibility
@@ -186,22 +186,26 @@ gen-proto: proto
 # Convenience aliases for CI (without gen- prefix)
 proto-go: gen-proto-go
 proto-java: gen-proto-java
-proto-ts: gen-proto-ts
+proto-typescript: gen-proto-typescript
+proto-ts: gen-proto-typescript
 
 gen-proto-go:
-	@./scripts/proto-generator.sh go
+	@./scripts/proto-generator-new.sh go
 
 gen-proto-java:
-	@./scripts/proto-generator.sh java
+	@./scripts/proto-generator-new.sh java
 
-gen-proto-ts:
-	@./scripts/proto-generator.sh ts
+gen-proto-typescript:
+	@./scripts/proto-generator-new.sh typescript
+
+# Legacy alias
+gen-proto-ts: gen-proto-typescript
 
 # CI verification
 verify-proto:
 	@echo "Verifying generated code is up to date..."
 	@$(MAKE) proto
-	@git diff --exit-code apps/*/gen apps/*/src/main/java-gen apps/*/src/gen || \
+	@git diff --exit-code api/gen || \
 	  (echo "Generated code is out of date. Run 'make proto' and commit changes." && exit 1)
 
 # App management targets (new unified interface)
