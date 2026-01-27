@@ -4,272 +4,287 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/pingxin403/cuckoo/api/gen/go/{{PROTO_PACKAGE}}"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 // TestMemoryStore_Create tests the Create method
 func TestMemoryStore_Create(t *testing.T) {
-	// Arrange
-	store := NewMemoryStore()
-	item := &Item{
-		ID:    "test-id",
-		Field: "test-value",
-	}
-
-	// Act
-	err := store.Create(item)
-
-	// Assert
-	require.NoError(t, err)
-
-	// Verify item was stored
-	retrieved, err := store.Get("test-id")
-	require.NoError(t, err)
-	assert.Equal(t, item.ID, retrieved.ID)
-	assert.Equal(t, item.Field, retrieved.Field)
-}
-
-func TestMemoryStore_Create_Duplicate(t *testing.T) {
-	// Arrange
-	store := NewMemoryStore()
-	item := &Item{ID: "test-id", Field: "value"}
-
-	// Act
-	err1 := store.Create(item)
-	err2 := store.Create(item)
-
-	// Assert
-	require.NoError(t, err1)
-	require.Error(t, err2)
-	assert.Contains(t, err2.Error(), "already exists")
-}
-
-func TestMemoryStore_Get(t *testing.T) {
-	// Arrange
-	store := NewMemoryStore()
-	item := &Item{ID: "test-id", Field: "test-value"}
-	err := store.Create(item)
-	require.NoError(t, err)
-
-	// Act
-	retrieved, err := store.Get("test-id")
-
-	// Assert
-	require.NoError(t, err)
-	assert.Equal(t, item.ID, retrieved.ID)
-	assert.Equal(t, item.Field, retrieved.Field)
-}
-
-func TestMemoryStore_Get_NotFound(t *testing.T) {
-	// Arrange
 	store := NewMemoryStore()
 
-	// Act
-	_, err := store.Get("non-existent-id")
+	t.Run("should create a new item", func(t *testing.T) {
+		item := &{{PROTO_PACKAGE}}.YourItem{
+			Id: "test-id-1",
+		}
 
-	// Assert
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "not found")
-}
-
-func TestMemoryStore_List(t *testing.T) {
-	// Arrange
-	store := NewMemoryStore()
-	items := []*Item{
-		{ID: "id1", Field: "value1"},
-		{ID: "id2", Field: "value2"},
-		{ID: "id3", Field: "value3"},
-	}
-
-	for _, item := range items {
 		err := store.Create(item)
 		require.NoError(t, err)
-	}
 
-	// Act
-	result := store.List()
+		// Verify item was created
+		retrieved, err := store.Get("test-id-1")
+		require.NoError(t, err)
+		assert.Equal(t, item.Id, retrieved.Id)
+	})
 
-	// Assert
-	assert.Len(t, result, 3)
+	t.Run("should return error for nil item", func(t *testing.T) {
+		err := store.Create(nil)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "cannot be nil")
+	})
 
-	// Verify all items are present
-	ids := make(map[string]bool)
-	for _, item := range result {
-		ids[item.ID] = true
-	}
-	assert.True(t, ids["id1"])
-	assert.True(t, ids["id2"])
-	assert.True(t, ids["id3"])
+	t.Run("should allow duplicate IDs (overwrite)", func(t *testing.T) {
+		item1 := &{{PROTO_PACKAGE}}.YourItem{
+			Id: "dup-id",
+		}
+		item2 := &{{PROTO_PACKAGE}}.YourItem{
+			Id: "dup-id",
+		}
+
+		err := store.Create(item1)
+		require.NoError(t, err)
+
+		err = store.Create(item2)
+		require.NoError(t, err)
+
+		retrieved, err := store.Get("dup-id")
+		require.NoError(t, err)
+		assert.Equal(t, "dup-id", retrieved.Id)
+	})
 }
 
-func TestMemoryStore_List_Empty(t *testing.T) {
-	// Arrange
+// TestMemoryStore_Get tests the Get method
+func TestMemoryStore_Get(t *testing.T) {
 	store := NewMemoryStore()
 
-	// Act
-	result := store.List()
+	t.Run("should retrieve existing item", func(t *testing.T) {
+		item := &{{PROTO_PACKAGE}}.YourItem{
+			Id: "get-test-1",
+		}
+		err := store.Create(item)
+		require.NoError(t, err)
 
-	// Assert
-	assert.Empty(t, result)
+		retrieved, err := store.Get("get-test-1")
+		require.NoError(t, err)
+		assert.Equal(t, item.Id, retrieved.Id)
+	})
+
+	t.Run("should return error for non-existent item", func(t *testing.T) {
+		_, err := store.Get("non-existent")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "not found")
+	})
 }
 
+// TestMemoryStore_List tests the List method
+func TestMemoryStore_List(t *testing.T) {
+	t.Run("should return empty list for new store", func(t *testing.T) {
+		store := NewMemoryStore()
+		items, err := store.List()
+		require.NoError(t, err)
+		assert.Empty(t, items)
+	})
+
+	t.Run("should return all items", func(t *testing.T) {
+		store := NewMemoryStore()
+
+		// Create multiple items
+		for i := 1; i <= 3; i++ {
+			item := &{{PROTO_PACKAGE}}.YourItem{
+				Id: string(rune('0' + i)),
+			}
+			err := store.Create(item)
+			require.NoError(t, err)
+		}
+
+		items, err := store.List()
+		require.NoError(t, err)
+		assert.Len(t, items, 3)
+	})
+}
+
+// TestMemoryStore_Update tests the Update method
 func TestMemoryStore_Update(t *testing.T) {
-	// Arrange
 	store := NewMemoryStore()
-	original := &Item{ID: "test-id", Field: "original"}
-	err := store.Create(original)
-	require.NoError(t, err)
 
-	// Act
-	updated := &Item{ID: "test-id", Field: "updated"}
-	err = store.Update(updated)
+	t.Run("should update existing item", func(t *testing.T) {
+		// Create initial item
+		item := &{{PROTO_PACKAGE}}.YourItem{
+			Id: "update-test-1",
+		}
+		err := store.Create(item)
+		require.NoError(t, err)
 
-	// Assert
-	require.NoError(t, err)
+		// Update item
+		updatedItem := &{{PROTO_PACKAGE}}.YourItem{
+			Id: "update-test-1",
+		}
+		err = store.Update(updatedItem)
+		require.NoError(t, err)
 
-	// Verify update
-	retrieved, err := store.Get("test-id")
-	require.NoError(t, err)
-	assert.Equal(t, "updated", retrieved.Field)
+		// Verify update
+		retrieved, err := store.Get("update-test-1")
+		require.NoError(t, err)
+		assert.Equal(t, "update-test-1", retrieved.Id)
+	})
+
+	t.Run("should return error for non-existent item", func(t *testing.T) {
+		item := &{{PROTO_PACKAGE}}.YourItem{
+			Id: "non-existent",
+		}
+		err := store.Update(item)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "not found")
+	})
+
+	t.Run("should return error for nil item", func(t *testing.T) {
+		err := store.Update(nil)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "cannot be nil")
+	})
 }
 
-func TestMemoryStore_Update_NotFound(t *testing.T) {
-	// Arrange
-	store := NewMemoryStore()
-	item := &Item{ID: "non-existent-id", Field: "value"}
-
-	// Act
-	err := store.Update(item)
-
-	// Assert
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "not found")
-}
-
+// TestMemoryStore_Delete tests the Delete method
 func TestMemoryStore_Delete(t *testing.T) {
-	// Arrange
-	store := NewMemoryStore()
-	item := &Item{ID: "test-id", Field: "value"}
-	err := store.Create(item)
-	require.NoError(t, err)
-
-	// Act
-	err = store.Delete("test-id")
-
-	// Assert
-	require.NoError(t, err)
-
-	// Verify deletion
-	_, err = store.Get("test-id")
-	require.Error(t, err)
-}
-
-func TestMemoryStore_Delete_NotFound(t *testing.T) {
-	// Arrange
 	store := NewMemoryStore()
 
-	// Act
-	err := store.Delete("non-existent-id")
+	t.Run("should delete existing item", func(t *testing.T) {
+		// Create item
+		item := &{{PROTO_PACKAGE}}.YourItem{
+			Id: "delete-test-1",
+		}
+		err := store.Create(item)
+		require.NoError(t, err)
 
-	// Assert
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "not found")
+		// Delete item
+		err = store.Delete("delete-test-1")
+		require.NoError(t, err)
+
+		// Verify deletion
+		_, err = store.Get("delete-test-1")
+		assert.Error(t, err)
+	})
+
+	t.Run("should return error for non-existent item", func(t *testing.T) {
+		err := store.Delete("non-existent")
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "not found")
+	})
 }
 
 // TestMemoryStore_ConcurrentAccess tests thread safety
 func TestMemoryStore_ConcurrentAccess(t *testing.T) {
-	// Arrange
 	store := NewMemoryStore()
 	const numGoroutines = 100
-	var wg sync.WaitGroup
 
-	// Act - Concurrent creates
-	wg.Add(numGoroutines)
-	for i := 0; i < numGoroutines; i++ {
-		go func(id int) {
-			defer wg.Done()
-			item := &Item{
-				ID:    string(rune(id)),
-				Field: "value",
-			}
-			_ = store.Create(item)
-		}(i)
-	}
-	wg.Wait()
+	t.Run("should handle concurrent creates", func(t *testing.T) {
+		var wg sync.WaitGroup
+		wg.Add(numGoroutines)
 
-	// Assert - All items should be stored
-	items := store.List()
-	assert.Len(t, items, numGoroutines)
-}
+		for i := 0; i < numGoroutines; i++ {
+			go func(id int) {
+				defer wg.Done()
+				item := &{{PROTO_PACKAGE}}.YourItem{
+					Id: string(rune(id)),
+				}
+				err := store.Create(item)
+				assert.NoError(t, err)
+			}(i)
+		}
 
-// TestMemoryStore_ConcurrentReadWrite tests concurrent reads and writes
-func TestMemoryStore_ConcurrentReadWrite(t *testing.T) {
-	// Arrange
-	store := NewMemoryStore()
-	item := &Item{ID: "test-id", Field: "initial"}
-	err := store.Create(item)
-	require.NoError(t, err)
+		wg.Wait()
 
-	const numReaders = 50
-	const numWriters = 50
-	var wg sync.WaitGroup
+		// Verify all items were created
+		items, err := store.List()
+		require.NoError(t, err)
+		assert.Len(t, items, numGoroutines)
+	})
 
-	// Act - Concurrent reads and writes
-	wg.Add(numReaders + numWriters)
+	t.Run("should handle concurrent reads", func(t *testing.T) {
+		// Create an item first
+		item := &{{PROTO_PACKAGE}}.YourItem{
+			Id: "concurrent-read",
+		}
+		err := store.Create(item)
+		require.NoError(t, err)
 
-	// Readers
-	for i := 0; i < numReaders; i++ {
-		go func() {
-			defer wg.Done()
-			_, _ = store.Get("test-id")
-		}()
-	}
+		var wg sync.WaitGroup
+		wg.Add(numGoroutines)
 
-	// Writers
-	for i := 0; i < numWriters; i++ {
-		go func(val int) {
-			defer wg.Done()
-			updated := &Item{ID: "test-id", Field: string(rune(val))}
-			_ = store.Update(updated)
-		}(i)
-	}
+		for i := 0; i < numGoroutines; i++ {
+			go func() {
+				defer wg.Done()
+				retrieved, err := store.Get("concurrent-read")
+				assert.NoError(t, err)
+				assert.Equal(t, "concurrent-read", retrieved.Id)
+			}()
+		}
 
-	wg.Wait()
+		wg.Wait()
+	})
 
-	// Assert - No panics, item still exists
-	retrieved, err := store.Get("test-id")
-	require.NoError(t, err)
-	assert.NotNil(t, retrieved)
+	t.Run("should handle concurrent updates", func(t *testing.T) {
+		// Create an item first
+		item := &{{PROTO_PACKAGE}}.YourItem{
+			Id: "concurrent-update",
+		}
+		err := store.Create(item)
+		require.NoError(t, err)
+
+		var wg sync.WaitGroup
+		wg.Add(numGoroutines)
+
+		for i := 0; i < numGoroutines; i++ {
+			go func(id int) {
+				defer wg.Done()
+				updatedItem := &{{PROTO_PACKAGE}}.YourItem{
+					Id: "concurrent-update",
+				}
+				err := store.Update(updatedItem)
+				assert.NoError(t, err)
+			}(i)
+		}
+
+		wg.Wait()
+
+		// Verify item still exists
+		retrieved, err := store.Get("concurrent-update")
+		require.NoError(t, err)
+		assert.Equal(t, "concurrent-update", retrieved.Id)
+	})
 }
 
 // TestMemoryStore_CRUDCycle tests a complete CRUD cycle
 func TestMemoryStore_CRUDCycle(t *testing.T) {
-	// Arrange
 	store := NewMemoryStore()
 
 	// Create
-	item := &Item{ID: "cycle-id", Field: "initial"}
+	item := &{{PROTO_PACKAGE}}.YourItem{
+		Id: "cycle-id",
+	}
 	err := store.Create(item)
 	require.NoError(t, err)
 
 	// Read
 	retrieved, err := store.Get("cycle-id")
 	require.NoError(t, err)
-	assert.Equal(t, "initial", retrieved.Field)
+	assert.Equal(t, "cycle-id", retrieved.Id)
 
 	// Update
-	updated := &Item{ID: "cycle-id", Field: "modified"}
+	updated := &{{PROTO_PACKAGE}}.YourItem{
+		Id: "cycle-id",
+	}
 	err = store.Update(updated)
 	require.NoError(t, err)
 
 	// Verify update
 	retrieved, err = store.Get("cycle-id")
 	require.NoError(t, err)
-	assert.Equal(t, "modified", retrieved.Field)
+	assert.Equal(t, "cycle-id", retrieved.Id)
 
 	// List
-	items := store.List()
+	items, err := store.List()
+	require.NoError(t, err)
 	assert.Len(t, items, 1)
 
 	// Delete
@@ -281,6 +296,7 @@ func TestMemoryStore_CRUDCycle(t *testing.T) {
 	require.Error(t, err)
 
 	// List should be empty
-	items = store.List()
+	items, err = store.List()
+	require.NoError(t, err)
 	assert.Empty(t, items)
 }

@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"sync"
 
-	"{{MODULE_PATH}}/gen/{{PROTO_PACKAGE}}"
+	"github.com/pingxin403/cuckoo/api/gen/go/{{PROTO_PACKAGE}}"
 )
 
-// YourStore defines the interface for storage operations
-// TODO: Update this interface to match your data model
-type YourStore interface {
+// Store 定义存储接口
+// TODO: 根据服务需求更新此接口的方法
+type Store interface {
 	Create(item *{{PROTO_PACKAGE}}.YourItem) error
 	Get(id string) (*{{PROTO_PACKAGE}}.YourItem, error)
 	List() ([]*{{PROTO_PACKAGE}}.YourItem, error)
@@ -17,20 +17,23 @@ type YourStore interface {
 	Delete(id string) error
 }
 
-// MemoryStore implements YourStore using an in-memory map
+// MemoryStore 内存存储实现
 type MemoryStore struct {
 	mu    sync.RWMutex
 	items map[string]*{{PROTO_PACKAGE}}.YourItem
 }
 
-// NewMemoryStore creates a new in-memory store
+// NewMemoryStore 创建内存存储实例
 func NewMemoryStore() *MemoryStore {
 	return &MemoryStore{
 		items: make(map[string]*{{PROTO_PACKAGE}}.YourItem),
 	}
 }
 
-// Create adds a new item to the store
+// 确保 MemoryStore 实现 Store 接口
+var _ Store = (*MemoryStore)(nil)
+
+// Create 添加新项目到存储
 func (s *MemoryStore) Create(item *{{PROTO_PACKAGE}}.YourItem) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -43,7 +46,7 @@ func (s *MemoryStore) Create(item *{{PROTO_PACKAGE}}.YourItem) error {
 	return nil
 }
 
-// Get retrieves an item by ID
+// Get 根据 ID 获取项目
 func (s *MemoryStore) Get(id string) (*{{PROTO_PACKAGE}}.YourItem, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -56,7 +59,7 @@ func (s *MemoryStore) Get(id string) (*{{PROTO_PACKAGE}}.YourItem, error) {
 	return item, nil
 }
 
-// List returns all items
+// List 返回所有项目
 func (s *MemoryStore) List() ([]*{{PROTO_PACKAGE}}.YourItem, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -69,7 +72,7 @@ func (s *MemoryStore) List() ([]*{{PROTO_PACKAGE}}.YourItem, error) {
 	return items, nil
 }
 
-// Update modifies an existing item
+// Update 更新现有项目
 func (s *MemoryStore) Update(item *{{PROTO_PACKAGE}}.YourItem) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -86,7 +89,7 @@ func (s *MemoryStore) Update(item *{{PROTO_PACKAGE}}.YourItem) error {
 	return nil
 }
 
-// Delete removes an item by ID
+// Delete 根据 ID 删除项目
 func (s *MemoryStore) Delete(id string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

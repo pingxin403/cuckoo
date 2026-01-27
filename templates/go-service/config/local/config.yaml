@@ -1,0 +1,16 @@
+# {{SERVICE_NAME}} - Local Development Configuration
+
+server:
+  port: {{GRPC_PORT}}
+  host: "0.0.0.0"
+
+observability:
+  service_name: "{{SERVICE_NAME}}"
+  service_version: "1.0.0"
+  environment: "local"
+  enable_metrics: true
+  metrics_port: 9090
+  log_level: "debug"
+  log_format: "text"
+
+# 服务特定配置可在此添加
