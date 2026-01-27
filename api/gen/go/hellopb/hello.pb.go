@@ -130,9 +130,9 @@ const file_hello_proto_rawDesc = "" +
 	"\rHelloResponse\x12\x18\n" +
 	"\amessage\x18\x01 \x01(\tR\amessage2G\n" +
 	"\fHelloService\x127\n" +
-	"\bSayHello\x12\x14.api.v1.HelloRequest\x1a\x15.api.v1.HelloResponseBM\n" +
-	"\x10com.myorg.api.v1B\n" +
-	"HelloProtoP\x01Z+github.com/pingxin403/cuckoo/api/v1/hellopbb\x06proto3"
+	"\bSayHello\x12\x14.api.v1.HelloRequest\x1a\x15.api.v1.HelloResponseB_\n" +
+	"\x1ecom.pingxin403.cuckoo.hello.v1B\n" +
+	"HelloProtoP\x01Z/github.com/pingxin403/cuckoo/api/gen/go/hellopbb\x06proto3"
 
 var (
 	file_hello_proto_rawDescOnce sync.Once

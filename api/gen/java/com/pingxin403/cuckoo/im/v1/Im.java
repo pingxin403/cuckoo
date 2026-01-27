@@ -173,9 +173,9 @@ public final class Im extends com.google.protobuf.GeneratedFile {
       "MessageRequest\032 .im.v1.RouteGroupMessage" +
       "Response\022S\n\020GetMessageStatus\022\036.im.v1.Get" +
       "MessageStatusRequest\032\037.im.v1.GetMessageS" +
-      "tatusResponseBV\n\033com.pingxin403.cuckoo.i" +
-      "m.v1P\001Z5github.com/pingxin403/cuckoo/app" +
-      "s/im-service/gen/impbb\006proto3"
+      "tatusResponseBM\n\033com.pingxin403.cuckoo.i" +
+      "m.v1P\001Z,github.com/pingxin403/cuckoo/api" +
+      "/gen/go/impbb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,

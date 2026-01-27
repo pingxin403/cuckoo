@@ -993,8 +993,8 @@ const file_user_proto_rawDesc = "" +
 	"\aGetUser\x12\x17.user.v1.GetUserRequest\x1a\x18.user.v1.GetUserResponse\x12N\n" +
 	"\rBatchGetUsers\x12\x1d.user.v1.BatchGetUsersRequest\x1a\x1e.user.v1.BatchGetUsersResponse\x12T\n" +
 	"\x0fGetGroupMembers\x12\x1f.user.v1.GetGroupMembersRequest\x1a .user.v1.GetGroupMembersResponse\x12l\n" +
-	"\x17ValidateGroupMembership\x12'.user.v1.ValidateGroupMembershipRequest\x1a(.user.v1.ValidateGroupMembershipResponseB\\\n" +
-	"\x1dcom.pingxin403.cuckoo.user.v1P\x01Z9github.com/pingxin403/cuckoo/apps/user-service/gen/userpbb\x06proto3"
+	"\x17ValidateGroupMembership\x12'.user.v1.ValidateGroupMembershipRequest\x1a(.user.v1.ValidateGroupMembershipResponseBQ\n" +
+	"\x1dcom.pingxin403.cuckoo.user.v1P\x01Z.github.com/pingxin403/cuckoo/api/gen/go/userpbb\x06proto3"
 
 var (
 	file_user_proto_rawDescOnce sync.Once

@@ -110,8 +110,8 @@ const file_im_gateway_service_proto_rawDesc = "" +
 	"\x13HealthCheckResponse\x12\x16\n" +
 	"\x06status\x18\x01 \x01(\tR\x06status2\x80\x01\n" +
 	"\x1aUimUgatewayUserviceService\x12b\n" +
-	"\vHealthCheck\x12(.im_gateway_servicepb.HealthCheckRequest\x1a).im_gateway_servicepb.HealthCheckResponseB\x8a\x01\n" +
-	" com.pingxin403.cuckoo.im.gatewayB\x15ImGatewayServiceProtoP\x01ZMgithub.com/pingxin403/cuckoo/apps/im-gateway-service/gen/im_gateway_servicepbb\x06proto3"
+	"\vHealthCheck\x12(.im_gateway_servicepb.HealthCheckRequest\x1a).im_gateway_servicepb.HealthCheckResponseB|\n" +
+	"#com.pingxin403.cuckoo.im.gateway.v1B\x15ImGatewayServiceProtoP\x01Z<github.com/pingxin403/cuckoo/api/gen/go/im_gateway_servicepbb\x06proto3"
 
 var (
 	file_im_gateway_service_proto_rawDescOnce sync.Once

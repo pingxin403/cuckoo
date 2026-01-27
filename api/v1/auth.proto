@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package auth.v1;
 
-option go_package = "github.com/pingxin403/cuckoo/apps/auth-service/gen/authpb";
+option go_package = "github.com/pingxin403/cuckoo/api/gen/go/authpb";
 option java_package = "com.pingxin403.cuckoo.auth.v1";
 option java_multiple_files = true;
 

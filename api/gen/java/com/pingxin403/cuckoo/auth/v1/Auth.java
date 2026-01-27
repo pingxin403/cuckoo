@@ -91,10 +91,9 @@ public final class Auth extends com.google.protobuf.GeneratedFile {
       "n\022\035.auth.v1.ValidateTokenRequest\032\036.auth." +
       "v1.ValidateTokenResponse\022K\n\014RefreshToken" +
       "\022\034.auth.v1.RefreshTokenRequest\032\035.auth.v1" +
-      ".RefreshTokenResponseB\\\n\035com.pingxin403." +
-      "cuckoo.auth.v1P\001Z9github.com/pingxin403/" +
-      "cuckoo/apps/auth-service/gen/authpbb\006pro" +
-      "to3"
+      ".RefreshTokenResponseBQ\n\035com.pingxin403." +
+      "cuckoo.auth.v1P\001Z.github.com/pingxin403/" +
+      "cuckoo/api/gen/go/authpbb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,

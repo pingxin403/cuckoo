@@ -1134,8 +1134,8 @@ const file_im_proto_rawDesc = "" +
 	"\tIMService\x12\\\n" +
 	"\x13RoutePrivateMessage\x12!.im.v1.RoutePrivateMessageRequest\x1a\".im.v1.RoutePrivateMessageResponse\x12V\n" +
 	"\x11RouteGroupMessage\x12\x1f.im.v1.RouteGroupMessageRequest\x1a .im.v1.RouteGroupMessageResponse\x12S\n" +
-	"\x10GetMessageStatus\x12\x1e.im.v1.GetMessageStatusRequest\x1a\x1f.im.v1.GetMessageStatusResponseBV\n" +
-	"\x1bcom.pingxin403.cuckoo.im.v1P\x01Z5github.com/pingxin403/cuckoo/apps/im-service/gen/impbb\x06proto3"
+	"\x10GetMessageStatus\x12\x1e.im.v1.GetMessageStatusRequest\x1a\x1f.im.v1.GetMessageStatusResponseBM\n" +
+	"\x1bcom.pingxin403.cuckoo.im.v1P\x01Z,github.com/pingxin403/cuckoo/api/gen/go/impbb\x06proto3"
 
 var (
 	file_im_proto_rawDescOnce sync.Once

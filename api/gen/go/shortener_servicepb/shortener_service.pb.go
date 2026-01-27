@@ -453,8 +453,8 @@ const file_shortener_service_proto_rawDesc = "" +
 	"\x10ShortenerService\x12R\n" +
 	"\x0fCreateShortLink\x12\x1e.api.v1.CreateShortLinkRequest\x1a\x1f.api.v1.CreateShortLinkResponse\x12F\n" +
 	"\vGetLinkInfo\x12\x1a.api.v1.GetLinkInfoRequest\x1a\x1b.api.v1.GetLinkInfoResponse\x12R\n" +
-	"\x0fDeleteShortLink\x12\x1e.api.v1.DeleteShortLinkRequest\x1a\x1f.api.v1.DeleteShortLinkResponseBi\n" +
-	"\x15com.pingxin403.api.v1B\x15ShortenerServiceProtoP\x01Z7github.com/pingxin403/cuckoo/api/v1/shortener_servicepbb\x06proto3"
+	"\x0fDeleteShortLink\x12\x1e.api.v1.DeleteShortLinkRequest\x1a\x1f.api.v1.DeleteShortLinkResponseBz\n" +
+	"\"com.pingxin403.cuckoo.shortener.v1B\x15ShortenerServiceProtoP\x01Z;github.com/pingxin403/cuckoo/api/gen/go/shortener_servicepbb\x06proto3"
 
 var (
 	file_shortener_service_proto_rawDescOnce sync.Once

@@ -573,8 +573,8 @@ const file_todo_proto_rawDesc = "" +
 	"\n" +
 	"UpdateTodo\x12\x19.api.v1.UpdateTodoRequest\x1a\x1a.api.v1.UpdateTodoResponse\x12C\n" +
 	"\n" +
-	"DeleteTodo\x12\x19.api.v1.DeleteTodoRequest\x1a\x1a.api.v1.DeleteTodoResponseBK\n" +
-	"\x10com.myorg.api.v1B\tTodoProtoP\x01Z*github.com/pingxin403/cuckoo/api/v1/todopbb\x06proto3"
+	"DeleteTodo\x12\x19.api.v1.DeleteTodoRequest\x1a\x1a.api.v1.DeleteTodoResponseB\\\n" +
+	"\x1dcom.pingxin403.cuckoo.todo.v1B\tTodoProtoP\x01Z.github.com/pingxin403/cuckoo/api/gen/go/todopbb\x06proto3"
 
 var (
 	file_todo_proto_rawDescOnce sync.Once

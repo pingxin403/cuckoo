@@ -146,10 +146,9 @@ public final class User extends com.google.protobuf.GeneratedFile {
       "uest\032 .user.v1.GetGroupMembersResponse\022l" +
       "\n\027ValidateGroupMembership\022\'.user.v1.Vali" +
       "dateGroupMembershipRequest\032(.user.v1.Val" +
-      "idateGroupMembershipResponseB\\\n\035com.ping" +
-      "xin403.cuckoo.user.v1P\001Z9github.com/ping" +
-      "xin403/cuckoo/apps/user-service/gen/user" +
-      "pbb\006proto3"
+      "idateGroupMembershipResponseBQ\n\035com.ping" +
+      "xin403.cuckoo.user.v1P\001Z.github.com/ping" +
+      "xin403/cuckoo/api/gen/go/userpbb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,

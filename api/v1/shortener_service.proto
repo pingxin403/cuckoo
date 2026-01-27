@@ -5,10 +5,10 @@ package api.v1;
 import "google/protobuf/timestamp.proto";
 
 // Go package path for generated code
-option go_package = "github.com/pingxin403/cuckoo/api/v1/shortener_servicepb";
+option go_package = "github.com/pingxin403/cuckoo/api/gen/go/shortener_servicepb";
 
 // Java package configuration
-option java_package = "com.pingxin403.api.v1";
+option java_package = "com.pingxin403.cuckoo.shortener.v1";
 option java_multiple_files = true;
 option java_outer_classname = "ShortenerServiceProto";
 

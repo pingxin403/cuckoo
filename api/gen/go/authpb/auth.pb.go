@@ -507,8 +507,8 @@ const file_auth_proto_rawDesc = "" +
 	"\x1dAUTH_ERROR_CODE_INVALID_TOKEN\x10\a2\xaa\x01\n" +
 	"\vAuthService\x12N\n" +
 	"\rValidateToken\x12\x1d.auth.v1.ValidateTokenRequest\x1a\x1e.auth.v1.ValidateTokenResponse\x12K\n" +
-	"\fRefreshToken\x12\x1c.auth.v1.RefreshTokenRequest\x1a\x1d.auth.v1.RefreshTokenResponseB\\\n" +
-	"\x1dcom.pingxin403.cuckoo.auth.v1P\x01Z9github.com/pingxin403/cuckoo/apps/auth-service/gen/authpbb\x06proto3"
+	"\fRefreshToken\x12\x1c.auth.v1.RefreshTokenRequest\x1a\x1d.auth.v1.RefreshTokenResponseBQ\n" +
+	"\x1dcom.pingxin403.cuckoo.auth.v1P\x01Z.github.com/pingxin403/cuckoo/api/gen/go/authpbb\x06proto3"
 
 var (
 	file_auth_proto_rawDescOnce sync.Once

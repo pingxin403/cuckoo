@@ -12,8 +12,8 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.myorg.api.v1.HelloRequest;
-import com.myorg.api.v1.HelloResponse;
+import com.pingxin403.cuckoo.hello.v1.HelloRequest;
+import com.pingxin403.cuckoo.hello.v1.HelloResponse;
 
 import io.grpc.stub.StreamObserver;
 

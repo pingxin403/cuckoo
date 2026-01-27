@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package user.v1;
 
-option go_package = "github.com/pingxin403/cuckoo/apps/user-service/gen/userpb";
+option go_package = "github.com/pingxin403/cuckoo/api/gen/go/userpb";
 option java_package = "com.pingxin403.cuckoo.user.v1";
 option java_multiple_files = true;
 
