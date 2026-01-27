@@ -99,6 +99,9 @@ jobs:
         run: |
           go install google.golang.org/protobuf/cmd/protoc-gen-go@${{ steps.versions.outputs.PROTOC_GEN_GO_VERSION }}
           go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@${{ steps.versions.outputs.PROTOC_GEN_GO_GRPC_VERSION }}
+          # Install TypeScript proto package dependencies
+          cd api/gen/typescript && npm ci && cd ../../..
+          # Install web app dependencies
           cd apps/web && npm ci && cd ../..
 
       - name: Generate Protobuf code
