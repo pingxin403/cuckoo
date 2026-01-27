@@ -4,6 +4,17 @@
 
 本系统采用 Monorepo 架构，包含多语言微服务和前端应用。
 
+### 架构文档索引
+
+| 文档 | 说明 |
+|------|------|
+| [IM Chat System](./IM_CHAT_SYSTEM.md) | 即时通讯系统架构，支持千万级并发 |
+| [URL Shortener Service](./URL_SHORTENER_SERVICE.md) | 短链接服务架构，多层缓存设计 |
+| [Observability System](./OBSERVABILITY_SYSTEM.md) | 可观测性系统，OpenTelemetry 集成 |
+| [Proto Generation](./PROTO_GENERATION.md) | 集中式 Protobuf 代码生成 |
+| [Infrastructure](./INFRASTRUCTURE.md) | 基础设施架构 |
+| [Higress Routing](./HIGRESS_ROUTING_CONFIGURATION.md) | API 网关路由配置 |
+
 ### 技术栈
 
 - **前端**: React + TypeScript + Vite + gRPC-Web

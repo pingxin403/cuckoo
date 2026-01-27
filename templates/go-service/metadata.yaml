@@ -3,9 +3,21 @@ spec:
   short_name: {{SHORT_NAME}}  # Short name for CLI convenience (e.g., 'myapp' for 'myapp-service')
   description: {{SERVICE_DESCRIPTION}}
   type: go
-  port: {{PORT}}
+  port: {{GRPC_PORT}}
   cd: true
   codeowners:
     - "@{{TEAM_NAME}}"
+  # Proto integration - specify proto files used by this service
+  proto_files:
+    - {{PROTO_FILE}}  # e.g., auth_service.proto
+  # Internal library dependencies
+  dependencies:
+    - libs/config
+    - libs/observability
+  # Features enabled in this service template
+  features:
+    proto_integration: true      # gRPC/protobuf support via api/gen/go
+    config_library: true         # Unified configuration via libs/config
+    observability_library: true  # Metrics, logging, tracing via libs/observability
 test:
   coverage: 80

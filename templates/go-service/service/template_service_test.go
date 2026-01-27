@@ -9,11 +9,22 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"{{MODULE_PATH}}/gen/templatepb"
+	"github.com/pingxin403/cuckoo/api/gen/go/{{PROTO_PACKAGE}}"
+	"github.com/pingxin403/cuckoo/libs/observability"
 	"{{MODULE_PATH}}/storage"
 )
 
-// TestTemplateService_Create tests the Create method
+// Helper function to create a test observability instance
+func createTestObservability() observability.Observability {
+	obs, _ := observability.New(observability.Config{
+		ServiceName:   "{{SERVICE_NAME}}-test",
+		EnableMetrics: false,
+		LogLevel:      "error",
+	})
+	return obs
+}
+
+// Test{{ServiceName}}Service_Create tests the Create method
 // This is a template test. Replace with actual service tests.
 //
 // Test Coverage Requirements:
@@ -28,12 +39,13 @@ import (
 // Verify coverage thresholds:
 //
 //	./scripts/test-coverage.sh
-func TestTemplateService_Create(t *testing.T) {
+func Test{{ServiceName}}Service_Create(t *testing.T) {
 	// Arrange
 	store := storage.NewMemoryStore()
-	service := NewTemplateService(store)
+	obs := createTestObservability()
+	service := New{{ServiceName}}ServiceServer(store, obs)
 
-	req := &templatepb.CreateRequest{
+	req := &{{PROTO_PACKAGE}}.CreateRequest{
 		Field: "test-value",
 	}
 
@@ -46,12 +58,13 @@ func TestTemplateService_Create(t *testing.T) {
 	assert.Equal(t, "test-value", resp.Field)
 }
 
-func TestTemplateService_Create_EmptyField(t *testing.T) {
+func Test{{ServiceName}}Service_Create_EmptyField(t *testing.T) {
 	// Arrange
 	store := storage.NewMemoryStore()
-	service := NewTemplateService(store)
+	obs := createTestObservability()
+	service := New{{ServiceName}}ServiceServer(store, obs)
 
-	req := &templatepb.CreateRequest{
+	req := &{{PROTO_PACKAGE}}.CreateRequest{
 		Field: "",
 	}
 
@@ -69,18 +82,19 @@ func TestTemplateService_Create_EmptyField(t *testing.T) {
 	// assert.Equal(t, codes.InvalidArgument, status.Code(err))
 }
 
-func TestTemplateService_Get(t *testing.T) {
+func Test{{ServiceName}}Service_Get(t *testing.T) {
 	// Arrange
 	store := storage.NewMemoryStore()
-	service := NewTemplateService(store)
+	obs := createTestObservability()
+	service := New{{ServiceName}}ServiceServer(store, obs)
 
 	// Create an item first
-	createReq := &templatepb.CreateRequest{Field: "test"}
+	createReq := &{{PROTO_PACKAGE}}.CreateRequest{Field: "test"}
 	createResp, err := service.Create(context.Background(), createReq)
 	require.NoError(t, err)
 
 	// Act
-	getReq := &templatepb.GetRequest{Id: createResp.Id}
+	getReq := &{{PROTO_PACKAGE}}.GetRequest{Id: createResp.Id}
 	resp, err := service.Get(context.Background(), getReq)
 
 	// Assert
@@ -89,12 +103,13 @@ func TestTemplateService_Get(t *testing.T) {
 	assert.Equal(t, "test", resp.Field)
 }
 
-func TestTemplateService_Get_NotFound(t *testing.T) {
+func Test{{ServiceName}}Service_Get_NotFound(t *testing.T) {
 	// Arrange
 	store := storage.NewMemoryStore()
-	service := NewTemplateService(store)
+	obs := createTestObservability()
+	service := New{{ServiceName}}ServiceServer(store, obs)
 
-	req := &templatepb.GetRequest{Id: "non-existent-id"}
+	req := &{{PROTO_PACKAGE}}.GetRequest{Id: "non-existent-id"}
 
 	// Act
 	_, err := service.Get(context.Background(), req)
@@ -104,38 +119,40 @@ func TestTemplateService_Get_NotFound(t *testing.T) {
 	assert.Equal(t, codes.NotFound, status.Code(err))
 }
 
-func TestTemplateService_List(t *testing.T) {
+func Test{{ServiceName}}Service_List(t *testing.T) {
 	// Arrange
 	store := storage.NewMemoryStore()
-	service := NewTemplateService(store)
+	obs := createTestObservability()
+	service := New{{ServiceName}}ServiceServer(store, obs)
 
 	// Create multiple items
 	for i := 0; i < 3; i++ {
-		req := &templatepb.CreateRequest{Field: "test"}
+		req := &{{PROTO_PACKAGE}}.CreateRequest{Field: "test"}
 		_, err := service.Create(context.Background(), req)
 		require.NoError(t, err)
 	}
 
 	// Act
-	resp, err := service.List(context.Background(), &templatepb.ListRequest{})
+	resp, err := service.List(context.Background(), &{{PROTO_PACKAGE}}.ListRequest{})
 
 	// Assert
 	require.NoError(t, err)
 	assert.Len(t, resp.Items, 3)
 }
 
-func TestTemplateService_Update(t *testing.T) {
+func Test{{ServiceName}}Service_Update(t *testing.T) {
 	// Arrange
 	store := storage.NewMemoryStore()
-	service := NewTemplateService(store)
+	obs := createTestObservability()
+	service := New{{ServiceName}}ServiceServer(store, obs)
 
 	// Create an item
-	createReq := &templatepb.CreateRequest{Field: "original"}
+	createReq := &{{PROTO_PACKAGE}}.CreateRequest{Field: "original"}
 	createResp, err := service.Create(context.Background(), createReq)
 	require.NoError(t, err)
 
 	// Act
-	updateReq := &templatepb.UpdateRequest{
+	updateReq := &{{PROTO_PACKAGE}}.UpdateRequest{
 		Id:    createResp.Id,
 		Field: "updated",
 	}
@@ -147,17 +164,18 @@ func TestTemplateService_Update(t *testing.T) {
 	assert.Equal(t, "updated", resp.Field)
 
 	// Verify the update persisted
-	getResp, err := service.Get(context.Background(), &templatepb.GetRequest{Id: createResp.Id})
+	getResp, err := service.Get(context.Background(), &{{PROTO_PACKAGE}}.GetRequest{Id: createResp.Id})
 	require.NoError(t, err)
 	assert.Equal(t, "updated", getResp.Field)
 }
 
-func TestTemplateService_Update_NotFound(t *testing.T) {
+func Test{{ServiceName}}Service_Update_NotFound(t *testing.T) {
 	// Arrange
 	store := storage.NewMemoryStore()
-	service := NewTemplateService(store)
+	obs := createTestObservability()
+	service := New{{ServiceName}}ServiceServer(store, obs)
 
-	req := &templatepb.UpdateRequest{
+	req := &{{PROTO_PACKAGE}}.UpdateRequest{
 		Id:    "non-existent-id",
 		Field: "updated",
 	}
@@ -170,35 +188,37 @@ func TestTemplateService_Update_NotFound(t *testing.T) {
 	assert.Equal(t, codes.NotFound, status.Code(err))
 }
 
-func TestTemplateService_Delete(t *testing.T) {
+func Test{{ServiceName}}Service_Delete(t *testing.T) {
 	// Arrange
 	store := storage.NewMemoryStore()
-	service := NewTemplateService(store)
+	obs := createTestObservability()
+	service := New{{ServiceName}}ServiceServer(store, obs)
 
 	// Create an item
-	createReq := &templatepb.CreateRequest{Field: "test"}
+	createReq := &{{PROTO_PACKAGE}}.CreateRequest{Field: "test"}
 	createResp, err := service.Create(context.Background(), createReq)
 	require.NoError(t, err)
 
 	// Act
-	deleteReq := &templatepb.DeleteRequest{Id: createResp.Id}
+	deleteReq := &{{PROTO_PACKAGE}}.DeleteRequest{Id: createResp.Id}
 	_, err = service.Delete(context.Background(), deleteReq)
 
 	// Assert
 	require.NoError(t, err)
 
 	// Verify deletion
-	_, err = service.Get(context.Background(), &templatepb.GetRequest{Id: createResp.Id})
+	_, err = service.Get(context.Background(), &{{PROTO_PACKAGE}}.GetRequest{Id: createResp.Id})
 	require.Error(t, err)
 	assert.Equal(t, codes.NotFound, status.Code(err))
 }
 
-func TestTemplateService_Delete_NotFound(t *testing.T) {
+func Test{{ServiceName}}Service_Delete_NotFound(t *testing.T) {
 	// Arrange
 	store := storage.NewMemoryStore()
-	service := NewTemplateService(store)
+	obs := createTestObservability()
+	service := New{{ServiceName}}ServiceServer(store, obs)
 
-	req := &templatepb.DeleteRequest{Id: "non-existent-id"}
+	req := &{{PROTO_PACKAGE}}.DeleteRequest{Id: "non-existent-id"}
 
 	// Act
 	_, err := service.Delete(context.Background(), req)
@@ -208,39 +228,40 @@ func TestTemplateService_Delete_NotFound(t *testing.T) {
 	assert.Equal(t, codes.NotFound, status.Code(err))
 }
 
-// TestTemplateService_CRUDCycle tests a complete CRUD cycle
-func TestTemplateService_CRUDCycle(t *testing.T) {
+// Test{{ServiceName}}Service_CRUDCycle tests a complete CRUD cycle
+func Test{{ServiceName}}Service_CRUDCycle(t *testing.T) {
 	// Arrange
 	store := storage.NewMemoryStore()
-	service := NewTemplateService(store)
+	obs := createTestObservability()
+	service := New{{ServiceName}}ServiceServer(store, obs)
 	ctx := context.Background()
 
 	// Create
-	createResp, err := service.Create(ctx, &templatepb.CreateRequest{Field: "initial"})
+	createResp, err := service.Create(ctx, &{{PROTO_PACKAGE}}.CreateRequest{Field: "initial"})
 	require.NoError(t, err)
 	id := createResp.Id
 
 	// Read
-	getResp, err := service.Get(ctx, &templatepb.GetRequest{Id: id})
+	getResp, err := service.Get(ctx, &{{PROTO_PACKAGE}}.GetRequest{Id: id})
 	require.NoError(t, err)
 	assert.Equal(t, "initial", getResp.Field)
 
 	// Update
-	updateResp, err := service.Update(ctx, &templatepb.UpdateRequest{Id: id, Field: "modified"})
+	updateResp, err := service.Update(ctx, &{{PROTO_PACKAGE}}.UpdateRequest{Id: id, Field: "modified"})
 	require.NoError(t, err)
 	assert.Equal(t, "modified", updateResp.Field)
 
 	// List
-	listResp, err := service.List(ctx, &templatepb.ListRequest{})
+	listResp, err := service.List(ctx, &{{PROTO_PACKAGE}}.ListRequest{})
 	require.NoError(t, err)
 	assert.Len(t, listResp.Items, 1)
 
 	// Delete
-	_, err = service.Delete(ctx, &templatepb.DeleteRequest{Id: id})
+	_, err = service.Delete(ctx, &{{PROTO_PACKAGE}}.DeleteRequest{Id: id})
 	require.NoError(t, err)
 
 	// Verify deletion
-	_, err = service.Get(ctx, &templatepb.GetRequest{Id: id})
+	_, err = service.Get(ctx, &{{PROTO_PACKAGE}}.GetRequest{Id: id})
 	require.Error(t, err)
 }
 
