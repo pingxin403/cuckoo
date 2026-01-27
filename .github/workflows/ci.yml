@@ -286,10 +286,18 @@ jobs:
           path: apps/${{ matrix.app }}/coverage.html
 
       # Build Node.js service
+      - name: Install TypeScript proto package dependencies
+        if: steps.detect-type.outputs.type == 'node'
+        run: |
+          # Install proto package dependencies first (required by @cuckoo/api-gen)
+          cd api/gen/typescript
+          npm ci
+          cd ../../..
+          
       - name: Generate proto for TypeScript
         if: steps.detect-type.outputs.type == 'node'
         run: |
-          # Install dependencies first
+          # Install app dependencies
           cd apps/${{ matrix.app }}
           npm ci
           # Generate proto code
