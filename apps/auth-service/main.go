@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/pingxin403/cuckoo/api/gen/authpb"
+	"github.com/pingxin403/cuckoo/api/gen/go/authpb"
 	"github.com/pingxin403/cuckoo/apps/auth-service/config"
 	"github.com/pingxin403/cuckoo/apps/auth-service/service"
 	"github.com/pingxin403/cuckoo/libs/observability"

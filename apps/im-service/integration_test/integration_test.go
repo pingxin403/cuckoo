@@ -18,7 +18,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	_ "github.com/go-sql-driver/mysql"
-	pb "github.com/pingxin403/cuckoo/api/gen/impb"
+	pb "github.com/pingxin403/cuckoo/api/gen/go/impb"
 )
 
 var (

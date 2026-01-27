@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pingxin403/cuckoo/api/gen/userpb"
+	"github.com/pingxin403/cuckoo/api/gen/go/userpb"
 	"github.com/pingxin403/cuckoo/libs/observability"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

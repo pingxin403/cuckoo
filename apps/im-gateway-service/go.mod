@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/gorilla/websocket v1.5.3
-	github.com/pingxin403/cuckoo/api/gen v0.0.0-00010101000000-000000000000
+	github.com/pingxin403/cuckoo/api/gen/go v0.0.0-00010101000000-000000000000
 	github.com/pingxin403/cuckoo/libs/config v0.0.0-00010101000000-000000000000
 	github.com/pingxin403/cuckoo/libs/observability v0.0.0-00010101000000-000000000000
 	github.com/redis/go-redis/v9 v9.17.3
@@ -83,7 +83,7 @@ require (
 )
 
 replace (
-	github.com/pingxin403/cuckoo/api/gen => ../../api/gen
+	github.com/pingxin403/cuckoo/api/gen/go => ../../api/gen/go
 	github.com/pingxin403/cuckoo/libs/config => ../../libs/config
 	github.com/pingxin403/cuckoo/libs/observability => ../../libs/observability
 )

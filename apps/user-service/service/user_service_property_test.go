@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pingxin403/cuckoo/api/gen/userpb"
+	"github.com/pingxin403/cuckoo/api/gen/go/userpb"
 	"pgregory.net/rapid"
 )
 

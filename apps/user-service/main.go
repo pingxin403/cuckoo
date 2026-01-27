@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/pingxin403/cuckoo/api/gen/userpb"
+	"github.com/pingxin403/cuckoo/api/gen/go/userpb"
 	"github.com/pingxin403/cuckoo/apps/user-service/config"
 	"github.com/pingxin403/cuckoo/apps/user-service/service"
 	"github.com/pingxin403/cuckoo/apps/user-service/storage"

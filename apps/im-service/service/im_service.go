@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pingxin403/cuckoo/api/gen/impb"
+	"github.com/pingxin403/cuckoo/api/gen/go/impb"
 	"github.com/pingxin403/cuckoo/apps/im-service/dedup"
 	"github.com/pingxin403/cuckoo/apps/im-service/filter"
 	"github.com/pingxin403/cuckoo/apps/im-service/registry"

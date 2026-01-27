@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/pingxin403/cuckoo/api/gen/authpb"
+	"github.com/pingxin403/cuckoo/api/gen/go/authpb"
 	"github.com/pingxin403/cuckoo/libs/observability"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

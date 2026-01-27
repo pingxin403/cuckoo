@@ -8,7 +8,7 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/pingxin403/cuckoo/api/gen/userpb"
+	"github.com/pingxin403/cuckoo/api/gen/go/userpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
