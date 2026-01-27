@@ -258,7 +258,8 @@ jobs:
           make proto-go
           # Verify api/gen was created
           ls -la api/gen/
-          cat api/gen/go.mod
+          ls -la api/gen/go/
+          cat api/gen/go/go.mod
 
       - name: Build Go service
         if: steps.detect-type.outputs.type == 'go'
