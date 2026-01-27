@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pingxin403/cuckoo/api/gen/go/shortenerpb"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/cache"
-	"github.com/pingxin403/cuckoo/apps/shortener-service/gen/shortener_servicepb"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/idgen"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/storage"
 	"github.com/pingxin403/cuckoo/libs/observability"
@@ -23,7 +23,7 @@ import (
 // ShortenerServiceImpl implements the ShortenerService gRPC service
 // Requirements: 1.4, 1.5, 2.1, 4.3, 9.3
 type ShortenerServiceImpl struct {
-	shortener_servicepb.UnimplementedShortenerServiceServer
+	shortenerpb.UnimplementedShortenerServiceServer
 	storage      storage.Storage
 	idGen        idgen.IDGenerator
 	validator    *URLValidator
@@ -59,8 +59,8 @@ func NewShortenerServiceImpl(
 // Requirements: 1.4, 1.5, 2.1, 4.3, 9.3
 func (s *ShortenerServiceImpl) CreateShortLink(
 	ctx context.Context,
-	req *shortener_servicepb.CreateShortLinkRequest,
-) (*shortener_servicepb.CreateShortLinkResponse, error) {
+	req *shortenerpb.CreateShortLinkRequest,
+) (*shortenerpb.CreateShortLinkResponse, error) {
 	startTime := time.Now()
 	defer func() {
 		s.obs.Metrics().RecordHistogram("shortener_operation_duration_seconds", time.Since(startTime).Seconds(), map[string]string{"operation": "create"})
@@ -152,7 +152,7 @@ func (s *ShortenerServiceImpl) CreateShortLink(
 	s.obs.Metrics().IncrementCounter("shortener_url_operations_total", map[string]string{"operation": "create", "status": "success"})
 
 	// Build response
-	response := &shortener_servicepb.CreateShortLinkResponse{
+	response := &shortenerpb.CreateShortLinkResponse{
 		ShortUrl:  fmt.Sprintf("%s/%s", s.baseURL, shortCode),
 		ShortCode: shortCode,
 		CreatedAt: timestamppb.New(now),
@@ -169,8 +169,8 @@ func (s *ShortenerServiceImpl) CreateShortLink(
 // Requirements: 9.4
 func (s *ShortenerServiceImpl) GetLinkInfo(
 	ctx context.Context,
-	req *shortener_servicepb.GetLinkInfoRequest,
-) (*shortener_servicepb.GetLinkInfoResponse, error) {
+	req *shortenerpb.GetLinkInfoRequest,
+) (*shortenerpb.GetLinkInfoResponse, error) {
 	startTime := time.Now()
 	defer func() {
 		s.obs.Metrics().RecordHistogram("shortener_operation_duration_seconds", time.Since(startTime).Seconds(), map[string]string{"operation": "resolve"})
@@ -191,7 +191,7 @@ func (s *ShortenerServiceImpl) GetLinkInfo(
 	}
 
 	// Build response
-	response := &shortener_servicepb.GetLinkInfoResponse{
+	response := &shortenerpb.GetLinkInfoResponse{
 		ShortCode:  mapping.ShortCode,
 		LongUrl:    mapping.LongURL,
 		CreatedAt:  timestamppb.New(mapping.CreatedAt),
@@ -213,8 +213,8 @@ func (s *ShortenerServiceImpl) GetLinkInfo(
 // Requirements: 4.6
 func (s *ShortenerServiceImpl) DeleteShortLink(
 	ctx context.Context,
-	req *shortener_servicepb.DeleteShortLinkRequest,
-) (*shortener_servicepb.DeleteShortLinkResponse, error) {
+	req *shortenerpb.DeleteShortLinkRequest,
+) (*shortenerpb.DeleteShortLinkResponse, error) {
 	startTime := time.Now()
 	defer func() {
 		s.obs.Metrics().RecordHistogram("shortener_operation_duration_seconds", time.Since(startTime).Seconds(), map[string]string{"operation": "delete"})
@@ -245,7 +245,7 @@ func (s *ShortenerServiceImpl) DeleteShortLink(
 	s.obs.Metrics().IncrementCounter("shortener_requests_total", map[string]string{"method": "DeleteShortLink", "status": "success"})
 	s.obs.Metrics().IncrementCounter("shortener_url_operations_total", map[string]string{"operation": "delete", "status": "success"})
 
-	return &shortener_servicepb.DeleteShortLinkResponse{
+	return &shortenerpb.DeleteShortLinkResponse{
 		Success: true,
 	}, nil
 }

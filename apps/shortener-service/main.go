@@ -10,9 +10,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/pingxin403/cuckoo/api/gen/go/shortenerpb"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/analytics"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/cache"
-	"github.com/pingxin403/cuckoo/apps/shortener-service/gen/shortener_servicepb"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/idgen"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/service"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/storage"
@@ -166,7 +166,7 @@ func main() {
 	)
 
 	// Register gRPC service
-	shortener_servicepb.RegisterShortenerServiceServer(grpcServer, svc)
+	shortenerpb.RegisterShortenerServiceServer(grpcServer, svc)
 
 	// Register reflection service for debugging (e.g., with grpcurl)
 	reflection.Register(grpcServer)

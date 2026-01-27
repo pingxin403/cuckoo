@@ -2,9 +2,9 @@
 // versions:
 // 	protoc-gen-go v1.36.6
 // 	protoc        v6.33.4
-// source: shortener_service.proto
+// source: shortener.proto
 
-package shortener_servicepb
+package shortenerpb
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
@@ -47,7 +47,7 @@ type CreateShortLinkRequest struct {
 
 func (x *CreateShortLinkRequest) Reset() {
 	*x = CreateShortLinkRequest{}
-	mi := &file_shortener_service_proto_msgTypes[0]
+	mi := &file_shortener_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -59,7 +59,7 @@ func (x *CreateShortLinkRequest) String() string {
 func (*CreateShortLinkRequest) ProtoMessage() {}
 
 func (x *CreateShortLinkRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_shortener_service_proto_msgTypes[0]
+	mi := &file_shortener_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -72,7 +72,7 @@ func (x *CreateShortLinkRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateShortLinkRequest.ProtoReflect.Descriptor instead.
 func (*CreateShortLinkRequest) Descriptor() ([]byte, []int) {
-	return file_shortener_service_proto_rawDescGZIP(), []int{0}
+	return file_shortener_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *CreateShortLinkRequest) GetLongUrl() string {
@@ -117,7 +117,7 @@ type CreateShortLinkResponse struct {
 
 func (x *CreateShortLinkResponse) Reset() {
 	*x = CreateShortLinkResponse{}
-	mi := &file_shortener_service_proto_msgTypes[1]
+	mi := &file_shortener_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -129,7 +129,7 @@ func (x *CreateShortLinkResponse) String() string {
 func (*CreateShortLinkResponse) ProtoMessage() {}
 
 func (x *CreateShortLinkResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_shortener_service_proto_msgTypes[1]
+	mi := &file_shortener_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -142,7 +142,7 @@ func (x *CreateShortLinkResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateShortLinkResponse.ProtoReflect.Descriptor instead.
 func (*CreateShortLinkResponse) Descriptor() ([]byte, []int) {
-	return file_shortener_service_proto_rawDescGZIP(), []int{1}
+	return file_shortener_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *CreateShortLinkResponse) GetShortUrl() string {
@@ -184,7 +184,7 @@ type GetLinkInfoRequest struct {
 
 func (x *GetLinkInfoRequest) Reset() {
 	*x = GetLinkInfoRequest{}
-	mi := &file_shortener_service_proto_msgTypes[2]
+	mi := &file_shortener_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -196,7 +196,7 @@ func (x *GetLinkInfoRequest) String() string {
 func (*GetLinkInfoRequest) ProtoMessage() {}
 
 func (x *GetLinkInfoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_shortener_service_proto_msgTypes[2]
+	mi := &file_shortener_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -209,7 +209,7 @@ func (x *GetLinkInfoRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetLinkInfoRequest.ProtoReflect.Descriptor instead.
 func (*GetLinkInfoRequest) Descriptor() ([]byte, []int) {
-	return file_shortener_service_proto_rawDescGZIP(), []int{2}
+	return file_shortener_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *GetLinkInfoRequest) GetShortCode() string {
@@ -247,7 +247,7 @@ type GetLinkInfoResponse struct {
 
 func (x *GetLinkInfoResponse) Reset() {
 	*x = GetLinkInfoResponse{}
-	mi := &file_shortener_service_proto_msgTypes[3]
+	mi := &file_shortener_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -259,7 +259,7 @@ func (x *GetLinkInfoResponse) String() string {
 func (*GetLinkInfoResponse) ProtoMessage() {}
 
 func (x *GetLinkInfoResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_shortener_service_proto_msgTypes[3]
+	mi := &file_shortener_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -272,7 +272,7 @@ func (x *GetLinkInfoResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetLinkInfoResponse.ProtoReflect.Descriptor instead.
 func (*GetLinkInfoResponse) Descriptor() ([]byte, []int) {
-	return file_shortener_service_proto_rawDescGZIP(), []int{3}
+	return file_shortener_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *GetLinkInfoResponse) GetShortCode() string {
@@ -328,7 +328,7 @@ type DeleteShortLinkRequest struct {
 
 func (x *DeleteShortLinkRequest) Reset() {
 	*x = DeleteShortLinkRequest{}
-	mi := &file_shortener_service_proto_msgTypes[4]
+	mi := &file_shortener_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -340,7 +340,7 @@ func (x *DeleteShortLinkRequest) String() string {
 func (*DeleteShortLinkRequest) ProtoMessage() {}
 
 func (x *DeleteShortLinkRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_shortener_service_proto_msgTypes[4]
+	mi := &file_shortener_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -353,7 +353,7 @@ func (x *DeleteShortLinkRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteShortLinkRequest.ProtoReflect.Descriptor instead.
 func (*DeleteShortLinkRequest) Descriptor() ([]byte, []int) {
-	return file_shortener_service_proto_rawDescGZIP(), []int{4}
+	return file_shortener_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *DeleteShortLinkRequest) GetShortCode() string {
@@ -376,7 +376,7 @@ type DeleteShortLinkResponse struct {
 
 func (x *DeleteShortLinkResponse) Reset() {
 	*x = DeleteShortLinkResponse{}
-	mi := &file_shortener_service_proto_msgTypes[5]
+	mi := &file_shortener_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -388,7 +388,7 @@ func (x *DeleteShortLinkResponse) String() string {
 func (*DeleteShortLinkResponse) ProtoMessage() {}
 
 func (x *DeleteShortLinkResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_shortener_service_proto_msgTypes[5]
+	mi := &file_shortener_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -401,7 +401,7 @@ func (x *DeleteShortLinkResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteShortLinkResponse.ProtoReflect.Descriptor instead.
 func (*DeleteShortLinkResponse) Descriptor() ([]byte, []int) {
-	return file_shortener_service_proto_rawDescGZIP(), []int{5}
+	return file_shortener_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *DeleteShortLinkResponse) GetSuccess() bool {
@@ -411,11 +411,11 @@ func (x *DeleteShortLinkResponse) GetSuccess() bool {
 	return false
 }
 
-var File_shortener_service_proto protoreflect.FileDescriptor
+var File_shortener_proto protoreflect.FileDescriptor
 
-const file_shortener_service_proto_rawDesc = "" +
+const file_shortener_proto_rawDesc = "" +
 	"\n" +
-	"\x17shortener_service.proto\x12\x06api.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x8f\x01\n" +
+	"\x0fshortener.proto\x12\x06api.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x8f\x01\n" +
 	"\x16CreateShortLinkRequest\x12\x19\n" +
 	"\blong_url\x18\x01 \x01(\tR\alongUrl\x129\n" +
 	"\n" +
@@ -453,23 +453,23 @@ const file_shortener_service_proto_rawDesc = "" +
 	"\x10ShortenerService\x12R\n" +
 	"\x0fCreateShortLink\x12\x1e.api.v1.CreateShortLinkRequest\x1a\x1f.api.v1.CreateShortLinkResponse\x12F\n" +
 	"\vGetLinkInfo\x12\x1a.api.v1.GetLinkInfoRequest\x1a\x1b.api.v1.GetLinkInfoResponse\x12R\n" +
-	"\x0fDeleteShortLink\x12\x1e.api.v1.DeleteShortLinkRequest\x1a\x1f.api.v1.DeleteShortLinkResponseBz\n" +
-	"\"com.pingxin403.cuckoo.shortener.v1B\x15ShortenerServiceProtoP\x01Z;github.com/pingxin403/cuckoo/api/gen/go/shortener_servicepbb\x06proto3"
+	"\x0fDeleteShortLink\x12\x1e.api.v1.DeleteShortLinkRequest\x1a\x1f.api.v1.DeleteShortLinkResponseBr\n" +
+	"\"com.pingxin403.cuckoo.shortener.v1B\x15ShortenerServiceProtoP\x01Z3github.com/pingxin403/cuckoo/api/gen/go/shortenerpbb\x06proto3"
 
 var (
-	file_shortener_service_proto_rawDescOnce sync.Once
-	file_shortener_service_proto_rawDescData []byte
+	file_shortener_proto_rawDescOnce sync.Once
+	file_shortener_proto_rawDescData []byte
 )
 
-func file_shortener_service_proto_rawDescGZIP() []byte {
-	file_shortener_service_proto_rawDescOnce.Do(func() {
-		file_shortener_service_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_shortener_service_proto_rawDesc), len(file_shortener_service_proto_rawDesc)))
+func file_shortener_proto_rawDescGZIP() []byte {
+	file_shortener_proto_rawDescOnce.Do(func() {
+		file_shortener_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_shortener_proto_rawDesc), len(file_shortener_proto_rawDesc)))
 	})
-	return file_shortener_service_proto_rawDescData
+	return file_shortener_proto_rawDescData
 }
 
-var file_shortener_service_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
-var file_shortener_service_proto_goTypes = []any{
+var file_shortener_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_shortener_proto_goTypes = []any{
 	(*CreateShortLinkRequest)(nil),  // 0: api.v1.CreateShortLinkRequest
 	(*CreateShortLinkResponse)(nil), // 1: api.v1.CreateShortLinkResponse
 	(*GetLinkInfoRequest)(nil),      // 2: api.v1.GetLinkInfoRequest
@@ -478,7 +478,7 @@ var file_shortener_service_proto_goTypes = []any{
 	(*DeleteShortLinkResponse)(nil), // 5: api.v1.DeleteShortLinkResponse
 	(*timestamppb.Timestamp)(nil),   // 6: google.protobuf.Timestamp
 }
-var file_shortener_service_proto_depIdxs = []int32{
+var file_shortener_proto_depIdxs = []int32{
 	6, // 0: api.v1.CreateShortLinkRequest.expires_at:type_name -> google.protobuf.Timestamp
 	6, // 1: api.v1.CreateShortLinkResponse.created_at:type_name -> google.protobuf.Timestamp
 	6, // 2: api.v1.CreateShortLinkResponse.expires_at:type_name -> google.protobuf.Timestamp
@@ -497,26 +497,26 @@ var file_shortener_service_proto_depIdxs = []int32{
 	0, // [0:5] is the sub-list for field type_name
 }
 
-func init() { file_shortener_service_proto_init() }
-func file_shortener_service_proto_init() {
-	if File_shortener_service_proto != nil {
+func init() { file_shortener_proto_init() }
+func file_shortener_proto_init() {
+	if File_shortener_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_shortener_service_proto_rawDesc), len(file_shortener_service_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_shortener_proto_rawDesc), len(file_shortener_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_shortener_service_proto_goTypes,
-		DependencyIndexes: file_shortener_service_proto_depIdxs,
-		MessageInfos:      file_shortener_service_proto_msgTypes,
+		GoTypes:           file_shortener_proto_goTypes,
+		DependencyIndexes: file_shortener_proto_depIdxs,
+		MessageInfos:      file_shortener_proto_msgTypes,
 	}.Build()
-	File_shortener_service_proto = out.File
-	file_shortener_service_proto_goTypes = nil
-	file_shortener_service_proto_depIdxs = nil
+	File_shortener_proto = out.File
+	file_shortener_proto_goTypes = nil
+	file_shortener_proto_depIdxs = nil
 }

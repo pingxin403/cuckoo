@@ -14,7 +14,6 @@ import (
 	"pgregory.net/rapid"
 
 	"github.com/pingxin403/cuckoo/apps/shortener-service/cache"
-	pb "github.com/pingxin403/cuckoo/apps/shortener-service/gen/shortener_servicepb"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/idgen"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/storage"
 	"github.com/pingxin403/cuckoo/libs/observability"
@@ -71,7 +70,7 @@ func TestProperty_MultiStoreWriteConsistency(t *testing.T) {
 		longURL := "https://" + domain + ".com/" + path
 
 		// Create short link
-		req := &pb.CreateShortLinkRequest{
+		req := &shortenerpb.CreateShortLinkRequest{
 			LongUrl: longURL,
 		}
 

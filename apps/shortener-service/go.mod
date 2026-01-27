@@ -6,6 +6,7 @@ require (
 	github.com/dgraph-io/ristretto v0.2.0
 	github.com/go-chi/chi/v5 v5.2.4
 	github.com/go-sql-driver/mysql v1.9.3
+	github.com/pingxin403/cuckoo/api/gen/go v0.0.0-00010101000000-000000000000
 	github.com/pingxin403/cuckoo/libs/observability v0.0.0-00010101000000-000000000000
 	github.com/redis/go-redis/v9 v9.17.3
 	github.com/segmentio/kafka-go v0.4.50
@@ -16,7 +17,10 @@ require (
 	pgregory.net/rapid v1.2.0
 )
 
-replace github.com/pingxin403/cuckoo/libs/observability => ../../libs/observability
+replace (
+	github.com/pingxin403/cuckoo/api/gen/go => ../../api/gen/go
+	github.com/pingxin403/cuckoo/libs/observability => ../../libs/observability
+)
 
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect

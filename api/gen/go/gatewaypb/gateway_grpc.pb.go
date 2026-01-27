@@ -2,9 +2,9 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v6.33.4
-// source: im_gateway_service.proto
+// source: gateway.proto
 
-package im_gateway_servicepb
+package gatewaypb
 
 import (
 	context "context"
@@ -124,5 +124,5 @@ var UimUgatewayUserviceService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "im_gateway_service.proto",
+	Metadata: "gateway.proto",
 }
