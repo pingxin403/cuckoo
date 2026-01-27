@@ -21,6 +21,12 @@ type Config struct {
 	// Kafka configuration
 	Kafka config.KafkaConfig `mapstructure:"kafka"`
 
+	// Etcd configuration
+	Etcd EtcdConfig `mapstructure:"etcd"`
+
+	// Sensitive Word Filter configuration
+	SensitiveWordFilter SensitiveWordFilterConfig `mapstructure:"sensitive_word_filter"`
+
 	// Observability configuration
 	Observability config.ObservabilityConfig `mapstructure:"observability"`
 
@@ -63,10 +69,32 @@ type ReadReceiptConfig struct {
 	Topic string `mapstructure:"topic"`
 }
 
+// EtcdConfig holds etcd configuration
+type EtcdConfig struct {
+	// Endpoints is the list of etcd endpoints
+	Endpoints []string `mapstructure:"endpoints"`
+	// TTL is the time-to-live for registry entries
+	TTL time.Duration `mapstructure:"ttl"`
+}
+
+// SensitiveWordFilterConfig holds sensitive word filter configuration
+type SensitiveWordFilterConfig struct {
+	// Enabled indicates if the filter is enabled
+	Enabled bool `mapstructure:"enabled"`
+	// DefaultAction is the default action to take (block, replace, audit)
+	DefaultAction string `mapstructure:"default_action"`
+	// WordLists is a map of language to word list file path
+	WordLists map[string]string `mapstructure:"word_lists"`
+	// CaseSensitive indicates if matching is case-sensitive
+	CaseSensitive bool `mapstructure:"case_sensitive"`
+	// NormalizeUnicode indicates if Unicode normalization is enabled
+	NormalizeUnicode bool `mapstructure:"normalize_unicode"`
+}
+
 // Load loads configuration from environment variables and config files
 func Load() (*Config, error) {
 	loader, err := config.Load(config.Options{
-		ServiceName: "im-service",
+		ServiceName: "", // Empty to use default "config" filename
 		ConfigType:  "yaml",
 		ConfigPaths: []string{".", "./config"},
 	})
@@ -130,6 +158,17 @@ func setIMServiceDefaults(loader *config.Loader) {
 	// Read Receipt defaults
 	loader.SetDefault("read_receipt.kafka_enabled", true)
 	loader.SetDefault("read_receipt.topic", "read_receipt_events")
+
+	// Etcd defaults
+	loader.SetDefault("etcd.endpoints", []string{"localhost:2379"})
+	loader.SetDefault("etcd.ttl", 90*time.Second)
+
+	// Sensitive Word Filter defaults
+	loader.SetDefault("sensitive_word_filter.enabled", false)
+	loader.SetDefault("sensitive_word_filter.default_action", "replace")
+	loader.SetDefault("sensitive_word_filter.word_lists", map[string]string{})
+	loader.SetDefault("sensitive_word_filter.case_sensitive", false)
+	loader.SetDefault("sensitive_word_filter.normalize_unicode", true)
 
 	// Observability defaults
 	loader.SetDefault("observability.service_name", "im-service")

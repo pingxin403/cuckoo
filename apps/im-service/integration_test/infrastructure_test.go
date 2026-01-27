@@ -109,10 +109,11 @@ func TestKafkaBrokerFailover(t *testing.T) {
 	// Step 1: Create a test topic with replication
 	testTopic := fmt.Sprintf("test-failover-%d", time.Now().UnixNano())
 
-	conn, err := kafka.DialLeader(ctx, "tcp", "localhost:9092", testTopic, 0)
+	// Use port 9093 for external connections from host machine
+	conn, err := kafka.DialLeader(ctx, "tcp", "localhost:9093", testTopic, 0)
 	if err != nil {
 		// Topic doesn't exist, create it
-		controller, err := kafka.Dial("tcp", "localhost:9092")
+		controller, err := kafka.Dial("tcp", "localhost:9093")
 		if err != nil {
 			t.Skipf("Skipping Kafka test: cannot connect: %v", err)
 			return
@@ -138,7 +139,7 @@ func TestKafkaBrokerFailover(t *testing.T) {
 
 	// Step 2: Create producer and send messages
 	writer := kafka.NewWriter(kafka.WriterConfig{
-		Brokers:  []string{"localhost:9092"},
+		Brokers:  []string{"localhost:9093"},
 		Topic:    testTopic,
 		Balancer: &kafka.LeastBytes{},
 	})
@@ -159,7 +160,7 @@ func TestKafkaBrokerFailover(t *testing.T) {
 
 	// Step 3: Create consumer and read messages
 	reader := kafka.NewReader(kafka.ReaderConfig{
-		Brokers:   []string{"localhost:9092"},
+		Brokers:   []string{"localhost:9093"},
 		Topic:     testTopic,
 		Partition: 0,
 		MinBytes:  1,

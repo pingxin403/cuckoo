@@ -11,12 +11,18 @@ import (
 	"syscall"
 	"time"
 
+	pb "github.com/pingxin403/cuckoo/api/gen/go/impb"
 	"github.com/pingxin403/cuckoo/apps/im-service/config"
 	"github.com/pingxin403/cuckoo/apps/im-service/dedup"
+	"github.com/pingxin403/cuckoo/apps/im-service/filter"
 	"github.com/pingxin403/cuckoo/apps/im-service/readreceipt"
+	"github.com/pingxin403/cuckoo/apps/im-service/registry"
+	"github.com/pingxin403/cuckoo/apps/im-service/sequence"
+	"github.com/pingxin403/cuckoo/apps/im-service/service"
 	"github.com/pingxin403/cuckoo/apps/im-service/storage"
 	"github.com/pingxin403/cuckoo/apps/im-service/worker"
 	"github.com/pingxin403/cuckoo/libs/observability"
+	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
 )
 
@@ -94,10 +100,46 @@ func main() {
 	cancel()
 	obs.Logger().Info(ctx, "Connected to Redis")
 
+	// Initialize IM Service dependencies
+	obs.Logger().Info(ctx, "Initializing IM Service components")
+
+	// Create sequence generator
+	seqGen, err := initializeSequenceGenerator(cfg)
+	if err != nil {
+		obs.Logger().Error(ctx, "Failed to create sequence generator", "error", err)
+		os.Exit(1)
+	}
+	obs.Logger().Info(ctx, "Sequence generator initialized")
+
+	// Create registry client
+	registryClient, err := initializeRegistryClient(cfg)
+	if err != nil {
+		obs.Logger().Error(ctx, "Failed to create registry client", "error", err)
+		os.Exit(1)
+	}
+	defer func() { _ = registryClient.Close() }()
+	obs.Logger().Info(ctx, "Registry client initialized")
+
+	// Create sensitive word filter
+	wordFilter, err := initializeSensitiveWordFilter(cfg)
+	if err != nil {
+		obs.Logger().Error(ctx, "Failed to create sensitive word filter", "error", err)
+		os.Exit(1)
+	}
+	obs.Logger().Info(ctx, "Sensitive word filter initialized")
+
+	// Create IM Service
+	imService, err := initializeIMService(cfg, seqGen, registryClient, dedupService, wordFilter)
+	if err != nil {
+		obs.Logger().Error(ctx, "Failed to create IM service", "error", err)
+		os.Exit(1)
+	}
+	obs.Logger().Info(ctx, "IM Service initialized")
+
 	// Start gRPC server for message routing
 	grpcServer := grpc.NewServer()
-	// TODO: Register IM Service gRPC handlers here when Task 9 is implemented
-	// pb.RegisterIMServiceServer(grpcServer, imService)
+	// Register IM Service gRPC handlers
+	pb.RegisterIMServiceServer(grpcServer, imService)
 
 	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", cfg.Server.GRPCPort))
 	if err != nil {
@@ -330,4 +372,82 @@ type responseWriter struct {
 func (rw *responseWriter) WriteHeader(code int) {
 	rw.statusCode = code
 	rw.ResponseWriter.WriteHeader(code)
+}
+
+// initializeSequenceGenerator creates a sequence generator with Redis backend
+func initializeSequenceGenerator(cfg *config.Config) (*sequence.SequenceGenerator, error) {
+	redisClient := redis.NewClient(&redis.Options{
+		Addr:     cfg.Redis.Addr,
+		Password: cfg.Redis.Password,
+		DB:       cfg.Redis.DB,
+	})
+
+	// Test connection
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := redisClient.Ping(ctx).Err(); err != nil {
+		return nil, fmt.Errorf("failed to connect to Redis for sequence generator: %w", err)
+	}
+
+	return sequence.NewSequenceGenerator(redisClient), nil
+}
+
+// initializeRegistryClient creates a registry client with etcd backend
+func initializeRegistryClient(cfg *config.Config) (*registry.RegistryClient, error) {
+	// Use etcd endpoints from config or default to localhost
+	endpoints := []string{"localhost:2379"}
+	if len(cfg.Etcd.Endpoints) > 0 {
+		endpoints = cfg.Etcd.Endpoints
+	}
+
+	ttl := 90 * time.Second
+	if cfg.Etcd.TTL > 0 {
+		ttl = cfg.Etcd.TTL
+	}
+
+	return registry.NewRegistryClient(endpoints, ttl)
+}
+
+// initializeSensitiveWordFilter creates a sensitive word filter
+func initializeSensitiveWordFilter(cfg *config.Config) (*filter.SensitiveWordFilter, error) {
+	filterCfg := filter.Config{
+		Enabled:          cfg.SensitiveWordFilter.Enabled,
+		DefaultAction:    filter.FilterAction(cfg.SensitiveWordFilter.DefaultAction),
+		WordLists:        cfg.SensitiveWordFilter.WordLists,
+		CaseSensitive:    cfg.SensitiveWordFilter.CaseSensitive,
+		NormalizeUnicode: cfg.SensitiveWordFilter.NormalizeUnicode,
+	}
+
+	return filter.NewSensitiveWordFilter(filterCfg)
+}
+
+// initializeIMService creates the IM service with all dependencies
+func initializeIMService(
+	cfg *config.Config,
+	seqGen *sequence.SequenceGenerator,
+	registryClient *registry.RegistryClient,
+	dedupService *dedup.DedupService,
+	wordFilter *filter.SensitiveWordFilter,
+) (*service.IMService, error) {
+	// For now, we don't have Kafka producer and encryption service
+	// These will be added when implementing group messages and encryption
+	var kafkaProducer service.KafkaProducerInterface = nil
+	var encryption service.EncryptionInterface = nil
+
+	serviceCfg := service.IMServiceConfig{
+		MaxContentLength: 10000,
+		DeliveryTimeout:  5 * time.Second,
+		MaxRetries:       3,
+		RetryBackoff:     []time.Duration{1 * time.Second, 2 * time.Second, 4 * time.Second},
+	}
+
+	return service.NewIMService(
+		seqGen,
+		registryClient,
+		dedupService,
+		wordFilter,
+		kafkaProducer,
+		encryption,
+		serviceCfg,
+	), nil
 }

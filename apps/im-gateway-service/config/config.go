@@ -46,7 +46,7 @@ type ServiceDiscoveryConfig struct {
 // Load loads configuration from environment variables and config files
 func Load() (*Config, error) {
 	loader, err := config.Load(config.Options{
-		ServiceName: "im-gateway-service",
+		ServiceName: "", // Empty to use default "config" filename
 		ConfigType:  "yaml",
 		ConfigPaths: []string{".", "./config"},
 	})

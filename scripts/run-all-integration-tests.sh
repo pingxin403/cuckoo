@@ -104,7 +104,7 @@ start_infrastructure() {
     local all_healthy=true
     
     # 检查 etcd
-    if docker exec etcd-1 etcdctl endpoint health &> /dev/null; then
+    if docker exec etcd etcdctl endpoint health &> /dev/null; then
         log_success "✓ etcd 健康"
     else
         log_error "✗ etcd 不健康"
@@ -112,7 +112,7 @@ start_infrastructure() {
     fi
     
     # 检查 MySQL
-    if docker exec mysql mysql -uroot -ppassword -e "SELECT 1" &> /dev/null; then
+    if docker exec mysql mysql -uroot -proot_password -e "SELECT 1" &> /dev/null; then
         log_success "✓ MySQL 健康"
     else
         log_error "✗ MySQL 不健康"
@@ -128,7 +128,7 @@ start_infrastructure() {
     fi
     
     # 检查 Kafka
-    if docker exec kafka-1 kafka-topics.sh --bootstrap-server localhost:9092 --list &> /dev/null; then
+    if docker exec kafka kafka-broker-api-versions --bootstrap-server localhost:9092 &> /dev/null; then
         log_success "✓ Kafka 健康"
     else
         log_error "✗ Kafka 不健康"
@@ -145,20 +145,23 @@ start_infrastructure() {
 init_database() {
     log_info "初始化数据库..."
     
-    # 创建数据库
-    docker exec mysql mysql -uroot -ppassword -e "CREATE DATABASE IF NOT EXISTS im_chat;"
+    # 创建 im_chat 数据库
+    docker exec mysql mysql -uroot -proot_password -e "CREATE DATABASE IF NOT EXISTS im_chat;"
     
-    # 创建用户
-    docker exec mysql mysql -uroot -ppassword -e "
-        CREATE USER IF NOT EXISTS 'im_service'@'%' IDENTIFIED BY 'password';
+    # 创建 im_service 用户
+    docker exec mysql mysql -uroot -proot_password -e "
+        CREATE USER IF NOT EXISTS 'im_service'@'%' IDENTIFIED BY 'im_service_password';
         GRANT ALL PRIVILEGES ON im_chat.* TO 'im_service'@'%';
         FLUSH PRIVILEGES;
     "
     
+    # 创建 user_db 数据库
+    docker exec mysql mysql -uroot -proot_password -e "CREATE DATABASE IF NOT EXISTS user_db;"
+    
     # 运行迁移
     cd "${WORKSPACE_ROOT}/apps/im-service"
     if [ -f "migrations/001_initial_schema.sql" ]; then
-        docker exec -i mysql mysql -uim_service -ppassword im_chat < migrations/001_initial_schema.sql
+        docker exec -i mysql mysql -uim_service -pim_service_password im_chat < migrations/001_initial_schema.sql
         log_success "数据库迁移完成"
     else
         log_warning "未找到迁移文件，跳过"
@@ -201,20 +204,56 @@ start_services() {
     
     sleep 2
     
-    # 启动服务
+    # 设置通用环境变量
+    export APP_ENV=local
+    
+    # 启动 Auth Service
     cd "${WORKSPACE_ROOT}/apps/auth-service"
+    APP_ENV=local \
+    SERVER_PORT=9095 \
+    OBSERVABILITY_METRICS_PORT=9190 \
+    JWT_SECRET="local-dev-secret-change-me" \
     ./bin/auth-service > /tmp/auth-service.log 2>&1 &
     log_success "✓ Auth Service 已启动 (PID: $!)"
     
+    # 启动 User Service
     cd "${WORKSPACE_ROOT}/apps/user-service"
+    APP_ENV=local \
+    SERVER_PORT=9096 \
+    OBSERVABILITY_METRICS_PORT=9191 \
+    DATABASE_HOST=localhost \
+    DATABASE_PORT=3306 \
+    DATABASE_USER=root \
+    DATABASE_PASSWORD=root_password \
+    DATABASE_DATABASE=user_db \
     ./bin/user-service > /tmp/user-service.log 2>&1 &
     log_success "✓ User Service 已启动 (PID: $!)"
     
+    # 启动 IM Service
     cd "${WORKSPACE_ROOT}/apps/im-service"
+    APP_ENV=local \
+    SERVER_GRPC_PORT=9094 \
+    SERVER_HTTP_PORT=8094 \
+    OBSERVABILITY_METRICS_PORT=9192 \
+    DATABASE_HOST=localhost \
+    DATABASE_PORT=3306 \
+    DATABASE_USER=im_service \
+    DATABASE_PASSWORD=im_service_password \
+    DATABASE_DATABASE=im_chat \
+    REDIS_ADDR=localhost:6379 \
+    ETCD_ENDPOINTS=localhost:2379 \
     ./bin/im-service > /tmp/im-service.log 2>&1 &
     log_success "✓ IM Service 已启动 (PID: $!)"
     
+    # 启动 Gateway Service
     cd "${WORKSPACE_ROOT}/apps/im-gateway-service"
+    APP_ENV=local \
+    SERVER_PORT=9093 \
+    OBSERVABILITY_METRICS_PORT=9193 \
+    REDIS_ADDR=localhost:6379 \
+    AUTH_SERVICE_ADDR=localhost:9095 \
+    USER_SERVICE_ADDR=localhost:9096 \
+    IM_SERVICE_ADDR=localhost:9094 \
     ./bin/im-gateway-service > /tmp/im-gateway-service.log 2>&1 &
     log_success "✓ Gateway Service 已启动 (PID: $!)"
     
@@ -244,10 +283,11 @@ run_im_service_tests() {
     
     # 设置环境变量
     export IM_SERVICE_ADDR="localhost:9094"
-    export MYSQL_ADDR="root:password@tcp(localhost:3306)/im_chat"
+    export MYSQL_ADDR="root:root_password@tcp(localhost:3306)/im_chat"
     export REDIS_ADDR="localhost:6379"
     export ETCD_ADDR="localhost:2379"
-    export KAFKA_ADDR="localhost:9092"
+    # Use port 9093 for external connections from host machine
+    export KAFKA_ADDR="localhost:9093"
     
     # 运行测试
     local test_output="${REPORT_DIR}/im-service-integration-${TIMESTAMP}.log"

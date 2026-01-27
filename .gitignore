@@ -103,3 +103,7 @@ Desktop.ini
 # Logs
 logs/
 *.log.*
+
+
+# test reports
+test-reports/
