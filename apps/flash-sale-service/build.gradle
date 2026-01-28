@@ -10,7 +10,7 @@ plugins {
 
 group = 'com.myorg'
 version = '0.0.1-SNAPSHOT'
-description = '{{SERVICE_DESCRIPTION}}'
+description = 'Flash sale service'
 
 java {
 	toolchain {
@@ -100,7 +100,7 @@ sourceSets {
 		}
 		proto {
 			srcDir '../../api/v1'
-			include '{{PROTO_FILE}}'
+			include 'flash_sale_service'
 		}
 	}
 }

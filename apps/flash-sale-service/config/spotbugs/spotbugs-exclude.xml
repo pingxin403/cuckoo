@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <!-- Exclude generated protobuf code -->
+    <Match>
+        <Package name="~.*\.gen\..*"/>
+    </Match>
+    
+    <!-- Exclude test code from certain checks -->
+    <Match>
+        <Class name="~.*Test$"/>
+        <Bug pattern="DM_DEFAULT_ENCODING"/>
+    </Match>
+    
+    <!-- Exclude Spring Boot generated code -->
+    <Match>
+        <Class name="~.*Application$"/>
+        <Bug pattern="UWF_FIELD_NOT_INITIALIZED_IN_CONSTRUCTOR"/>
+    </Match>
+</FindBugsFilter>

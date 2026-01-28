@@ -1,0 +1,24 @@
+# {{SERVICE_NAME}} - Testing Environment
+
+grpc:
+  server:
+    port: 0  # Random port for testing
+
+spring:
+  application:
+    name: {{SERVICE_NAME}}-test
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  tracing:
+    enabled: false
+  server:
+    port: 0  # Random port for testing
+
+logging:
+  level:
+    root: WARN
+    {{PACKAGE_NAME}}: DEBUG

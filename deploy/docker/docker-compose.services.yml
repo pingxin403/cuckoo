@@ -274,6 +274,29 @@ services:
       - monorepo-network
     restart: unless-stopped
 
+
+  # UflashUsaleUservice (java)
+  flash-sale-service:
+    build:
+      context: ../..
+      dockerfile: apps/flash-sale-service/Dockerfile
+    image: flash-sale-service:latest
+    container_name: flash-sale-service
+    ports:
+      - "1:1"
+    environment:
+      - PORT=1
+      - LOG_LEVEL=info
+      - ENVIRONMENT=development
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "java.*app.jar"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+    networks:
+      - monorepo-network
+    restart: unless-stopped
 networks:
   monorepo-network:
     external: true

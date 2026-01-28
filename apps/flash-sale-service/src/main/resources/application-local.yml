@@ -1,0 +1,39 @@
+# flash-sale-service - Local Development Environment
+
+grpc:
+  server:
+    port: 9094
+
+spring:
+  application:
+    name: flash-sale-service
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+  tracing:
+    enabled: false
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4317}
+    metrics:
+      export:
+        enabled: false
+  server:
+    port: 9091
+
+logging:
+  level:
+    root: INFO
+    com.pingxin403.cuckoo.flash.sale.service: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} %-5level [%thread] %logger{36} - %msg%n"

@@ -187,12 +187,18 @@ log_info "Replacing placeholders..."
 replace_in_file() {
     local file=$1
     if [ -f "$file" ]; then
+        # Skip binary files
+        if file "$file" | grep -qE 'binary|executable|data'; then
+            return
+        fi
+        
         # Escape special characters for sed
         local MODULE_ESC=$(echo "$MODULE" | sed 's/[\/&]/\\&/g')
         local PACKAGE_ESC=$(echo "$PACKAGE" | sed 's/[\/&]/\\&/g')
         local DESC_ESC=$(echo "$DESCRIPTION" | sed 's/[\/&]/\\&/g')
         
-        sed -i.bak \
+        # Set locale to C to avoid "illegal byte sequence" error on macOS
+        LC_ALL=C LANG=C sed -i.bak \
             -e "s/{{SERVICE_NAME}}/$APP_NAME/g" \
             -e "s/{{SHORT_NAME}}/$SHORT_NAME/g" \
             -e "s/{{SERVICE_NAME_UPPER}}/$APP_NAME_UPPER/g" \
@@ -230,19 +236,19 @@ log_info "Updating app-manager.sh..."
 APP_TYPE_SHORT=$(echo "$APP_TYPE" | sed 's/-service//')
 
 # Add to get_app_type function
-sed -i.bak "/get_app_type() {/,/^}/ {
+LC_ALL=C LANG=C sed -i.bak "/get_app_type() {/,/^}/ {
     /web) echo \"node\" ;;/a\\
         $APP_NAME) echo \"$APP_TYPE_SHORT\" ;;
 }" scripts/app-manager.sh
 
 # Add to get_app_path function
-sed -i.bak "/get_app_path() {/,/^}/ {
+LC_ALL=C LANG=C sed -i.bak "/get_app_path() {/,/^}/ {
     /web) echo \"apps\/web\" ;;/a\\
         $APP_NAME) echo \"apps/$APP_NAME\" ;;
 }" scripts/app-manager.sh
 
 # Add to get_all_apps function
-sed -i.bak "s/echo \"hello-service todo-service web\"/echo \"hello-service todo-service web $APP_NAME\"/" scripts/app-manager.sh
+LC_ALL=C LANG=C sed -i.bak "s/echo \"hello-service todo-service web\"/echo \"hello-service todo-service web $APP_NAME\"/" scripts/app-manager.sh
 
 rm -f scripts/app-manager.sh.bak
 

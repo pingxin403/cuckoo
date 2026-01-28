@@ -1,14 +1,13 @@
+# flash-sale-service - Production Environment
+
 grpc:
   server:
-    port: {{GRPC_PORT}}
+    port: 9094
 
 spring:
   application:
-    name: {{SERVICE_NAME}}
-  profiles:
-    active: ${SPRING_PROFILES_ACTIVE:local}
+    name: flash-sale-service
 
-# Actuator endpoints for health, metrics, and observability
 management:
   endpoints:
     web:
@@ -19,26 +18,27 @@ management:
       show-details: when_authorized
   metrics:
     tags:
-      application: {{SERVICE_NAME}}
+      environment: production
     export:
       prometheus:
         enabled: true
   tracing:
+    enabled: true
     sampling:
-      probability: ${TRACING_SAMPLE_RATE:0.1}
+      probability: 0.1
   otlp:
     tracing:
-      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4317}
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://otel-collector:4317}
     metrics:
       export:
-        enabled: ${OTEL_METRICS_ENABLED:false}
-        url: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4317}/v1/metrics
+        enabled: true
+        url: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://otel-collector:4317}/v1/metrics
   server:
     port: 9091
 
 logging:
   level:
-    root: INFO
-    {{PACKAGE_NAME}}: DEBUG
+    root: WARN
+    com.pingxin403.cuckoo.flash.sale.service: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} %-5level [%thread] [%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n"

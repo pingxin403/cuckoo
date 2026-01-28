@@ -1,3 +1,5 @@
+# {{SERVICE_NAME}} - Local Development Environment
+
 grpc:
   server:
     port: {{GRPC_PORT}}
@@ -5,10 +7,7 @@ grpc:
 spring:
   application:
     name: {{SERVICE_NAME}}
-  profiles:
-    active: ${SPRING_PROFILES_ACTIVE:local}
 
-# Actuator endpoints for health, metrics, and observability
 management:
   endpoints:
     web:
@@ -16,23 +15,19 @@ management:
         include: health,info,metrics,prometheus
   endpoint:
     health:
-      show-details: when_authorized
+      show-details: always
   metrics:
-    tags:
-      application: {{SERVICE_NAME}}
     export:
       prometheus:
         enabled: true
   tracing:
-    sampling:
-      probability: ${TRACING_SAMPLE_RATE:0.1}
+    enabled: false
   otlp:
     tracing:
       endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4317}
     metrics:
       export:
-        enabled: ${OTEL_METRICS_ENABLED:false}
-        url: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4317}/v1/metrics
+        enabled: false
   server:
     port: 9091
 
@@ -41,4 +36,4 @@ logging:
     root: INFO
     {{PACKAGE_NAME}}: DEBUG
   pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} %-5level [%thread] [%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n"
+    console: "%d{yyyy-MM-dd HH:mm:ss} %-5level [%thread] %logger{36} - %msg%n"
