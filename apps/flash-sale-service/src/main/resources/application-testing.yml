@@ -1,0 +1,24 @@
+# flash-sale-service - Testing Environment
+
+grpc:
+  server:
+    port: 0  # Random port for testing
+
+spring:
+  application:
+    name: flash-sale-service-test
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  tracing:
+    enabled: false
+  server:
+    port: 0  # Random port for testing
+
+logging:
+  level:
+    root: WARN
+    com.pingxin403.cuckoo.flash.sale.service: DEBUG

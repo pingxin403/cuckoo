@@ -1,0 +1,56 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: flash-sale-service
+  description: Flash sale service
+  annotations:
+    github.com/project-slug: myorg/myrepo
+    backstage.io/techdocs-ref: dir:.
+  tags:
+    - java
+    - spring-boot
+    - grpc
+    - backend
+  links:
+    - url: https://api.example.com/api/flash-sale-service
+      title: API Endpoint
+      icon: web
+    - url: https://github.com/myorg/myrepo/tree/main/apps/flash-sale-service
+      title: Source Code
+      icon: github
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: monorepo-platform
+  providesApis:
+    - flash-sale-service-api
+  dependsOn: []
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: flash-sale-service-api
+  description: flash-sale-service gRPC API
+  tags:
+    - grpc
+    - protobuf
+spec:
+  type: grpc
+  lifecycle: production
+  owner: platform-team
+  system: monorepo-platform
+  definition: |
+    # flash-sale-service API
+    
+    This API is defined in Protobuf format.
+    
+    **Location**: `api/v1/flash_sale_service`
+    
+    ## Service Definition
+    
+    See the Protobuf file for complete API definition.
+    
+    ## Usage
+    
+    [Add usage instructions here]
