@@ -1,4 +1,4 @@
-# Java/Spring Boot Service Template
+# Java/Spring Boot Service UflashUsaleUservice
 
 This template provides a standardized structure for creating new Java/Spring Boot gRPC services in the monorepo.
 
@@ -17,7 +17,7 @@ This template provides a standardized structure for creating new Java/Spring Boo
 
 ## Quick Start
 
-### 1. Copy Template
+### 1. Copy UflashUsaleUservice
 
 ```bash
 # From the monorepo root
@@ -29,12 +29,12 @@ cd apps/your-service-name
 
 Replace the following placeholders throughout the project:
 
-- `{{SERVICE_NAME}}` → Your service name (e.g., `user-service`)
-- `{{SERVICE_DESCRIPTION}}` → Brief description of your service
-- `{{GRPC_PORT}}` → gRPC port number (e.g., `9092`)
-- `{{PACKAGE_NAME}}` → Java package name (e.g., `com.myorg.user`)
-- `{{PROTO_FILE}}` → Protobuf file name (e.g., `user.proto`)
-- `{{TEAM_NAME}}` → Owning team name (e.g., `backend-team`)
+- `flash-sale-service` → Your service name (e.g., `user-service`)
+- `Flash sale service` → Brief description of your service
+- `9094` → gRPC port number (e.g., `9092`)
+- `com.pingxin403.cuckoo.flash.sale.service` → Java package name (e.g., `com.myorg.user`)
+- `flash_sale_service` → Protobuf file name (e.g., `user.proto`)
+- `platform-team` → Owning team name (e.g., `backend-team`)
 
 ### 3. Update Files
 
@@ -42,13 +42,13 @@ Replace the following placeholders throughout the project:
 ```gradle
 group = 'com.myorg'
 version = '0.0.1-SNAPSHOT'
-description = '{{SERVICE_DESCRIPTION}}'
+description = 'Flash sale service'
 
 sourceSets {
     main {
         proto {
             srcDir '../../api/v1'
-            include '{{PROTO_FILE}}'
+            include 'flash_sale_service'
         }
     }
 }
@@ -56,18 +56,18 @@ sourceSets {
 
 #### settings.gradle
 ```gradle
-rootProject.name = '{{SERVICE_NAME}}'
+rootProject.name = 'flash-sale-service'
 ```
 
 #### application.yml
 ```yaml
 grpc:
   server:
-    port: {{GRPC_PORT}}
+    port: 9094
 
 spring:
   application:
-    name: {{SERVICE_NAME}}
+    name: flash-sale-service
 ```
 
 #### Rename Java Package
@@ -77,23 +77,23 @@ mv src/main/java/com/myorg/template src/main/java/{{PACKAGE_PATH}}
 
 # Update package declarations in all Java files
 # Replace: package com.myorg.template
-# With: package {{PACKAGE_NAME}}
+# With: package com.pingxin403.cuckoo.flash.sale.service
 ```
 
 ### 4. Define Protobuf API
 
-Create your service's Protobuf definition in `api/v1/{{PROTO_FILE}}`:
+Create your service's Protobuf definition in `api/v1/flash_sale_service`:
 
 ```protobuf
 syntax = "proto3";
 
 package api.v1;
 
-option go_package = "github.com/myorg/myrepo/api/v1/{{SERVICE_NAME}}pb";
-option java_package = "{{PACKAGE_NAME}}.api.v1";
+option go_package = "github.com/myorg/myrepo/api/v1/flash-sale-servicepb";
+option java_package = "com.pingxin403.cuckoo.flash.sale.service.api.v1";
 option java_multiple_files = true;
 
-service {{ServiceName}}Service {
+service UflashUsaleUserviceService {
   rpc YourMethod(YourRequest) returns (YourResponse);
 }
 
@@ -121,21 +121,21 @@ make gen-proto-java
 
 ### 6. Implement Service Logic
 
-Update `src/main/java/{{PACKAGE_PATH}}/service/{{ServiceName}}ServiceImpl.java`:
+Update `src/main/java/{{PACKAGE_PATH}}/service/UflashUsaleUserviceServiceImpl.java`:
 
 ```java
-package {{PACKAGE_NAME}}.service;
+package com.pingxin403.cuckoo.flash.sale.service.service;
 
-import {{PACKAGE_NAME}}.api.v1.*;
+import com.pingxin403.cuckoo.flash.sale.service.api.v1.*;
 import io.grpc.stub.StreamObserver;
 import net.devh.boot.grpc.server.service.GrpcService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @GrpcService
-public class {{ServiceName}}ServiceImpl extends {{ServiceName}}ServiceGrpc.{{ServiceName}}ServiceImplBase {
+public class UflashUsaleUserviceServiceImpl extends UflashUsaleUserviceServiceGrpc.UflashUsaleUserviceServiceImplBase {
     
-    private static final Logger logger = LoggerFactory.getLogger({{ServiceName}}ServiceImpl.class);
+    private static final Logger logger = LoggerFactory.getLogger(UflashUsaleUserviceServiceImpl.class);
     
     @Override
     public void yourMethod(YourRequest request, StreamObserver<YourResponse> responseObserver) {
@@ -154,11 +154,11 @@ public class {{ServiceName}}ServiceImpl extends {{ServiceName}}ServiceGrpc.{{Ser
 
 ### 7. Kubernetes Resources
 
-Kubernetes resources are automatically created in `deploy/k8s/services/{{SERVICE_NAME}}/` when you create a new service using `create-app.sh`.
+Kubernetes resources are automatically created in `deploy/k8s/services/flash-sale-service/` when you create a new service using `create-app.sh`.
 
 The following files are created:
-- `{{SERVICE_NAME}}-deployment.yaml`: Deployment configuration with replicas, ports, and resource limits
-- `{{SERVICE_NAME}}-service.yaml`: Service configuration exposing the gRPC port
+- `flash-sale-service-deployment.yaml`: Deployment configuration with replicas, ports, and resource limits
+- `flash-sale-service-service.yaml`: Service configuration exposing the gRPC port
 - `kustomization.yaml`: Kustomize configuration for the service
 
 To deploy your service, add it to the appropriate overlay:
@@ -171,16 +171,16 @@ Edit `catalog-info.yaml`:
 
 ```yaml
 metadata:
-  name: {{SERVICE_NAME}}
-  description: {{SERVICE_DESCRIPTION}}
+  name: flash-sale-service
+  description: Flash sale service
   tags:
     - java
     - spring-boot
     - grpc
 spec:
-  owner: {{TEAM_NAME}}
+  owner: platform-team
   providesApis:
-    - {{SERVICE_NAME}}-api
+    - flash-sale-service-api
 ```
 
 ### 9. Build and Test
@@ -196,7 +196,7 @@ spec:
 ./gradlew bootRun
 
 # Build Docker image
-docker build -t {{SERVICE_NAME}}:latest .
+docker build -t flash-sale-service:latest .
 ```
 
 ### 10. Add to Monorepo Build
@@ -204,13 +204,13 @@ docker build -t {{SERVICE_NAME}}:latest .
 Update the root `Makefile`:
 
 ```makefile
-build-{{SERVICE_NAME}}:
-	@echo "Building {{SERVICE_NAME}}..."
-	cd apps/{{SERVICE_NAME}} && ./gradlew clean build
+build-flash-sale-service:
+	@echo "Building flash-sale-service..."
+	cd apps/flash-sale-service && ./gradlew clean build
 
-test-{{SERVICE_NAME}}:
-	@echo "Testing {{SERVICE_NAME}}..."
-	cd apps/{{SERVICE_NAME}} && ./gradlew test
+test-flash-sale-service:
+	@echo "Testing flash-sale-service..."
+	cd apps/flash-sale-service && ./gradlew test
 ```
 
 ## Project Structure
@@ -228,15 +228,15 @@ your-service-name/
     ├── main/
     │   ├── java/
     │   │   └── {{PACKAGE_PATH}}/
-    │   │       ├── {{ServiceName}}Application.java
+    │   │       ├── UflashUsaleUserviceApplication.java
     │   │       └── service/
-    │   │           └── {{ServiceName}}ServiceImpl.java
+    │   │           └── UflashUsaleUserviceServiceImpl.java
     │   └── resources/
     │       └── application.yml
     └── test/
         └── java/
             └── {{PACKAGE_PATH}}/
-                └── {{ServiceName}}ApplicationTests.java
+                └── UflashUsaleUserviceApplicationTests.java
 
 # Kubernetes resources are in:
 deploy/k8s/services/your-service-name/
@@ -283,7 +283,7 @@ export SPRING_PROFILES_ACTIVE=local
 ./gradlew bootRun --args='--spring.profiles.active=staging'
 
 # Via Docker
-docker run -e SPRING_PROFILES_ACTIVE=production {{SERVICE_NAME}}:latest
+docker run -e SPRING_PROFILES_ACTIVE=production flash-sale-service:latest
 ```
 
 ### Application Properties
@@ -293,11 +293,11 @@ Key configuration in `application.yml`:
 ```yaml
 grpc:
   server:
-    port: {{GRPC_PORT}}              # gRPC server port
+    port: 9094              # gRPC server port
     
 spring:
   application:
-    name: {{SERVICE_NAME}}           # Service name
+    name: flash-sale-service           # Service name
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:local}
 
@@ -313,7 +313,7 @@ management:
 # OpenTelemetry
 otel:
   service:
-    name: {{SERVICE_NAME}}
+    name: flash-sale-service
   exporter:
     otlp:
       endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4317}
@@ -321,7 +321,7 @@ otel:
 logging:
   level:
     root: INFO                       # Root log level
-    {{PACKAGE_NAME}}: DEBUG          # Service log level
+    com.pingxin403.cuckoo.flash.sale.service: DEBUG          # Service log level
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} %-5level [%thread] [%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n"
 ```
@@ -461,7 +461,7 @@ class YourServiceImplTest {
 }
 ```
 
-See `src/test/java/com/myorg/template/service/TemplateServiceImplTest.java` for a complete example.
+See `src/test/java/com/myorg/template/service/UflashUsaleUserviceServiceImplTest.java` for a complete example.
 
 ### Property-Based Tests
 
@@ -498,18 +498,18 @@ For more details, see the [Testing Guide](../../docs/TESTING_GUIDE.md).
 ### Build Image
 
 ```bash
-docker build -t {{SERVICE_NAME}}:latest .
+docker build -t flash-sale-service:latest .
 ```
 
 ### Run Container
 
 ```bash
-docker run -p {{GRPC_PORT}}:{{GRPC_PORT}} {{SERVICE_NAME}}:latest
+docker run -p 9094:9094 flash-sale-service:latest
 ```
 
 ## Kubernetes Deployment
 
-Kubernetes resources are located in `deploy/k8s/services/{{SERVICE_NAME}}/` and are managed through Kustomize overlays.
+Kubernetes resources are located in `deploy/k8s/services/flash-sale-service/` and are managed through Kustomize overlays.
 
 ### Deploy to Development
 
@@ -526,8 +526,8 @@ kubectl apply -k deploy/k8s/overlays/production
 ### Check Status
 
 ```bash
-kubectl get pods -l app={{SERVICE_NAME}}
-kubectl logs -f deployment/{{SERVICE_NAME}}
+kubectl get pods -l app=flash-sale-service
+kubectl logs -f deployment/flash-sale-service
 ```
 
 ### Update Deployment
