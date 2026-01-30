@@ -1,0 +1,68 @@
+# Flash Sale Service - Testing Environment
+# Used for unit tests and integration tests with Testcontainers
+
+grpc:
+  server:
+    port: 0  # Random port for testing
+
+server:
+  port: 0  # Random port for testing
+
+spring:
+  application:
+    name: flash-sale-service-test
+
+  # Redis - Will be overridden by Testcontainers
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: ""
+
+  # MySQL - Will be overridden by Testcontainers
+  datasource:
+    url: jdbc:mysql://localhost:3306/flash_sale_test?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: test
+    password: test
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop  # Create tables for tests, drop after
+    show-sql: true
+
+  # Kafka - Will be overridden by Testcontainers
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      auto-offset-reset: earliest
+
+# etcd - Disabled for unit tests
+etcd:
+  endpoints: http://localhost:2379
+  enabled: false
+
+# Test specific settings
+flash-sale:
+  kafka:
+    partitions: 4
+    replication-factor: 1
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  tracing:
+    enabled: false
+  server:
+    port: 0  # Random port for testing
+
+logging:
+  level:
+    root: WARN
+    com.pingxin403.cuckoo.flashsale: DEBUG
+    org.springframework.data.redis: DEBUG
+    org.springframework.kafka: DEBUG

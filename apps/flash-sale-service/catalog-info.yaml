@@ -1,0 +1,74 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: flash-sale-service
+  description: High-concurrency flash sale (seckill) system with Redis inventory, Kafka message queue, and MySQL persistence
+  annotations:
+    github.com/project-slug: pingxin403/cuckoo
+    backstage.io/techdocs-ref: dir:.
+  tags:
+    - java
+    - spring-boot
+    - grpc
+    - backend
+    - redis
+    - kafka
+    - mysql
+    - flash-sale
+    - seckill
+  links:
+    - url: https://api.example.com/api/flash-sale
+      title: API Endpoint
+      icon: web
+    - url: https://github.com/pingxin403/cuckoo/tree/main/apps/flash-sale-service
+      title: Source Code
+      icon: github
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: monorepo-platform
+  providesApis:
+    - flash-sale-service-api
+  dependsOn:
+    - resource:redis
+    - resource:kafka
+    - resource:mysql
+    - resource:etcd
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: flash-sale-service-api
+  description: Flash Sale Service gRPC and REST API
+  tags:
+    - grpc
+    - protobuf
+    - rest
+spec:
+  type: grpc
+  lifecycle: production
+  owner: platform-team
+  system: monorepo-platform
+  definition: |
+    # Flash Sale Service API
+    
+    This service provides APIs for flash sale (seckill) operations.
+    
+    **Protobuf Location**: `api/v1/flash_sale_service`
+    
+    ## REST Endpoints
+    
+    ### Flash Sale Operations
+    - `POST /api/seckill/{skuId}` - Submit flash sale request
+    - `GET /api/seckill/status/{orderId}` - Query order status
+    
+    ### Activity Management
+    - `POST /api/activities` - Create flash sale activity
+    - `GET /api/activities/{activityId}` - Get activity details
+    - `PUT /api/activities/{activityId}` - Update activity
+    - `DELETE /api/activities/{activityId}` - Delete activity
+    
+    ## Performance Targets
+    - Redis stock deduction: ≥50K QPS/instance
+    - P99 response time: <200ms

@@ -41,6 +41,35 @@ static_resources:
                   cluster: todo_service
                   prefix_rewrite: "/"
                   timeout: 30s
+              # Flash Sale Service routing
+              - match:
+                  prefix: "/api/seckill"
+                route:
+                  cluster: flash_sale_service
+                  prefix_rewrite: "/"
+                  timeout: 30s
+                typed_per_filter_config:
+                  envoy.filters.http.local_ratelimit:
+                    "@type": type.googleapis.com/envoy.extensions.filters.http.local_ratelimit.v3.LocalRateLimit
+                    stat_prefix: flash_sale_rate_limiter
+                    token_bucket:
+                      max_tokens: 10
+                      tokens_per_fill: 10
+                      fill_interval: 1s
+                    filter_enabled:
+                      default_value:
+                        numerator: 100
+                        denominator: HUNDRED
+                    filter_enforced:
+                      default_value:
+                        numerator: 100
+                        denominator: HUNDRED
+                    response_headers_to_add:
+                    - append_action: OVERWRITE_IF_EXISTS_OR_ADD
+                      header:
+                        key: x-local-rate-limit
+                        value: 'true'
+                    local_rate_limit_per_downstream_connection: false
               # Shortener Service gRPC API routing
               - match:
                   prefix: "/api/shortener"
@@ -79,6 +108,11 @@ static_resources:
           - name: envoy.filters.http.cors
             typed_config:
               "@type": type.googleapis.com/envoy.extensions.filters.http.cors.v3.Cors
+          # Local rate limit filter (enabled per-route for flash sale)
+          - name: envoy.filters.http.local_ratelimit
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.filters.http.local_ratelimit.v3.LocalRateLimit
+              stat_prefix: http_local_rate_limiter
           # Router filter (must be last)
           - name: envoy.filters.http.router
             typed_config:
@@ -172,4 +206,26 @@ static_resources:
       healthy_threshold: 2
       http_health_check:
         path: /health
+
+  # Flash Sale Service cluster
+  - name: flash_sale_service
+    connect_timeout: 1s
+    type: STRICT_DNS
+    lb_policy: ROUND_ROBIN
+    load_assignment:
+      cluster_name: flash_sale_service
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: flash-sale-service
+                port_value: 8084
+    health_checks:
+    - timeout: 1s
+      interval: 10s
+      unhealthy_threshold: 2
+      healthy_threshold: 2
+      http_health_check:
+        path: /actuator/health
 

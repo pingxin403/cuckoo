@@ -1,0 +1,12 @@
+spec:
+  name: flash-sale-service
+  short_name: flashsale  # Short name for CLI convenience
+  description: High-concurrency flash sale (seckill) system with Redis inventory, Kafka message queue, and MySQL persistence
+  type: java
+  port: 8084
+  grpc_port: 9094
+  cd: true
+  codeowners:
+    - "@platform-team"
+test:
+  coverage: 80

@@ -348,3 +348,271 @@ groups:
           runbook_url: "https://wiki.example.com/runbooks/im-gateway/slo-violation"
           dashboard_url: "http://grafana:3000/d/im-gateway-slo"
           action: "Investigate message delivery failures and implement fixes"
+
+  # Flash Sale System Alerts
+  - name: flash_sale_alerts
+    interval: 30s
+    rules:
+      # Threshold Alert: High Failure Rate
+      - alert: FlashSaleHighFailureRate
+        expr: |
+          (
+            rate(flash_sale_requests_failure[5m])
+            /
+            rate(flash_sale_requests_total[5m])
+          ) > 0.05
+        for: 3m
+        labels:
+          severity: critical
+          service: flash-sale-service
+          component: seckill
+        annotations:
+          summary: "High flash sale failure rate detected"
+          description: "Flash sale failure rate is {{ $value | humanizePercentage }} (threshold: 5%) for service {{ $labels.instance }}"
+          runbook_url: "https://wiki.example.com/runbooks/flash-sale/high-failure-rate"
+          dashboard_url: "http://grafana:3000/d/flash-sale-overview"
+          action: "Check Redis connectivity, inventory service health, and system logs"
+
+      # Threshold Alert: High Response Time (P99)
+      - alert: FlashSaleHighResponseTime
+        expr: histogram_quantile(0.99, rate(flash_sale_request_duration_bucket[5m])) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+          service: flash-sale-service
+          component: performance
+        annotations:
+          summary: "High P99 response time detected"
+          description: "P99 response time is {{ $value | humanizeDuration }} (threshold: 200ms) for service {{ $labels.instance }}"
+          runbook_url: "https://wiki.example.com/runbooks/flash-sale/high-latency"
+          dashboard_url: "http://grafana:3000/d/flash-sale-performance"
+          action: "Check Redis latency, Kafka producer lag, and system resource utilization"
+
+      # Threshold Alert: Critical Response Time (P99)
+      - alert: FlashSaleCriticalResponseTime
+        expr: histogram_quantile(0.99, rate(flash_sale_request_duration_bucket[5m])) > 0.5
+        for: 2m
+        labels:
+          severity: critical
+          service: flash-sale-service
+          component: performance
+        annotations:
+          summary: "Critical P99 response time detected"
+          description: "P99 response time is {{ $value | humanizeDuration }} (threshold: 500ms) for service {{ $labels.instance }}"
+          runbook_url: "https://wiki.example.com/runbooks/flash-sale/critical-latency"
+          dashboard_url: "http://grafana:3000/d/flash-sale-performance"
+          action: "Immediate investigation required - consider enabling circuit breaker"
+
+      # Threshold Alert: Low Inventory Warning
+      - alert: FlashSaleLowInventory
+        expr: flash_sale_inventory_remaining < 100
+        for: 1m
+        labels:
+          severity: warning
+          service: flash-sale-service
+          component: inventory
+        annotations:
+          summary: "Low inventory detected for SKU"
+          description: "Remaining inventory for SKU {{ $labels.sku_id }} is {{ $value }} units (threshold: 100)"
+          runbook_url: "https://wiki.example.com/runbooks/flash-sale/low-inventory"
+          dashboard_url: "http://grafana:3000/d/flash-sale-inventory"
+          action: "Prepare for sold-out notification and queue closure"
+
+      # Threshold Alert: Inventory Depleted
+      - alert: FlashSaleInventoryDepleted
+        expr: flash_sale_inventory_remaining == 0
+        for: 30s
+        labels:
+          severity: info
+          service: flash-sale-service
+          component: inventory
+        annotations:
+          summary: "Inventory depleted for SKU"
+          description: "SKU {{ $labels.sku_id }} is now sold out"
+          runbook_url: "https://wiki.example.com/runbooks/flash-sale/sold-out"
+          dashboard_url: "http://grafana:3000/d/flash-sale-inventory"
+          action: "Verify sold-out notification sent to queued users"
+
+      # Threshold Alert: High Queue Length
+      - alert: FlashSaleHighQueueLength
+        expr: flash_sale_queue_length > 10000
+        for: 5m
+        labels:
+          severity: warning
+          service: flash-sale-service
+          component: queue
+        annotations:
+          summary: "High queue length detected"
+          description: "Queue length is {{ $value }} (threshold: 10,000) for service {{ $labels.instance }}"
+          runbook_url: "https://wiki.example.com/runbooks/flash-sale/high-queue"
+          dashboard_url: "http://grafana:3000/d/flash-sale-queue"
+          action: "Monitor token bucket rate and consider increasing throughput"
+
+      # Threshold Alert: Critical Queue Length
+      - alert: FlashSaleCriticalQueueLength
+        expr: flash_sale_queue_length > 50000
+        for: 2m
+        labels:
+          severity: critical
+          service: flash-sale-service
+          component: queue
+        annotations:
+          summary: "Critical queue length detected"
+          description: "Queue length is {{ $value }} (threshold: 50,000) for service {{ $labels.instance }}"
+          runbook_url: "https://wiki.example.com/runbooks/flash-sale/critical-queue"
+          dashboard_url: "http://grafana:3000/d/flash-sale-queue"
+          action: "Consider rejecting new requests or scaling up service instances"
+
+      # Threshold Alert: High Token Rejection Rate
+      - alert: FlashSaleHighTokenRejectionRate
+        expr: |
+          (
+            rate(flash_sale_queue_tokens_rejected[5m])
+            /
+            (rate(flash_sale_queue_tokens_acquired[5m]) + rate(flash_sale_queue_tokens_rejected[5m]))
+          ) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          service: flash-sale-service
+          component: queue
+        annotations:
+          summary: "High token rejection rate detected"
+          description: "Token rejection rate is {{ $value | humanizePercentage }} (threshold: 80%) for service {{ $labels.instance }}"
+          runbook_url: "https://wiki.example.com/runbooks/flash-sale/high-rejection"
+          dashboard_url: "http://grafana:3000/d/flash-sale-queue"
+          action: "Review token bucket configuration and rate limits"
+
+      # Threshold Alert: High Inventory Deduction Latency
+      - alert: FlashSaleHighInventoryDeductionLatency
+        expr: histogram_quantile(0.99, rate(flash_sale_inventory_deduction_duration_bucket[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          service: flash-sale-service
+          component: inventory
+        annotations:
+          summary: "High inventory deduction latency detected"
+          description: "P99 inventory deduction latency is {{ $value | humanizeDuration }} (threshold: 50ms) for service {{ $labels.instance }}"
+          runbook_url: "https://wiki.example.com/runbooks/flash-sale/inventory-latency"
+          dashboard_url: "http://grafana:3000/d/flash-sale-inventory"
+          action: "Check Redis performance and network latency"
+
+      # Threshold Alert: High Inventory Rollback Rate
+      - alert: FlashSaleHighRollbackRate
+        expr: |
+          (
+            rate(flash_sale_inventory_rollbacks_total[10m])
+            /
+            rate(flash_sale_inventory_deductions_total[10m])
+          ) > 0.3
+        for: 5m
+        labels:
+          severity: warning
+          service: flash-sale-service
+          component: inventory
+        annotations:
+          summary: "High inventory rollback rate detected"
+          description: "Inventory rollback rate is {{ $value | humanizePercentage }} (threshold: 30%) for service {{ $labels.instance }}"
+          runbook_url: "https://wiki.example.com/runbooks/flash-sale/high-rollback"
+          dashboard_url: "http://grafana:3000/d/flash-sale-inventory"
+          action: "Investigate order timeout issues and payment processing delays"
+
+      # Fault Alert: Flash Sale Service Down
+      - alert: FlashSaleServiceDown
+        expr: up{job="flash-sale-service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: flash-sale-service
+          component: availability
+        annotations:
+          summary: "Flash Sale Service is down"
+          description: "Flash Sale Service {{ $labels.instance }} is not responding to health checks"
+          runbook_url: "https://wiki.example.com/runbooks/flash-sale/service-down"
+          dashboard_url: "http://grafana:3000/d/flash-sale-health"
+          action: "Immediate investigation required - check service logs and restart if necessary"
+
+      # Fault Alert: Redis Connection Failure
+      - alert: FlashSaleRedisConnectionFailure
+        expr: |
+          rate(flash_sale_requests_failure{error_type="redis_error"}[5m]) > 10
+        for: 2m
+        labels:
+          severity: critical
+          service: flash-sale-service
+          component: redis
+        annotations:
+          summary: "Redis connection failures detected"
+          description: "Redis connection failure rate is {{ $value }} errors/sec for service {{ $labels.instance }}"
+          runbook_url: "https://wiki.example.com/runbooks/flash-sale/redis-failure"
+          dashboard_url: "http://grafana:3000/d/flash-sale-health"
+          action: "Check Redis service health, network connectivity, and connection pool configuration"
+
+      # Fault Alert: Kafka Producer Failure
+      - alert: FlashSaleKafkaProducerFailure
+        expr: |
+          rate(flash_sale_requests_failure{error_type="kafka_error"}[5m]) > 5
+        for: 2m
+        labels:
+          severity: critical
+          service: flash-sale-service
+          component: kafka
+        annotations:
+          summary: "Kafka producer failures detected"
+          description: "Kafka producer failure rate is {{ $value }} errors/sec for service {{ $labels.instance }}"
+          runbook_url: "https://wiki.example.com/runbooks/flash-sale/kafka-failure"
+          dashboard_url: "http://grafana:3000/d/flash-sale-health"
+          action: "Check Kafka broker health, network connectivity, and producer configuration"
+
+      # Performance Alert: Low Success Rate
+      - alert: FlashSaleLowSuccessRate
+        expr: |
+          (
+            rate(flash_sale_requests_success[5m])
+            /
+            rate(flash_sale_requests_total[5m])
+          ) < 0.9
+        for: 5m
+        labels:
+          severity: warning
+          service: flash-sale-service
+          component: seckill
+        annotations:
+          summary: "Low flash sale success rate detected"
+          description: "Flash sale success rate is {{ $value | humanizePercentage }} (threshold: 90%) for service {{ $labels.instance }}"
+          runbook_url: "https://wiki.example.com/runbooks/flash-sale/low-success-rate"
+          dashboard_url: "http://grafana:3000/d/flash-sale-overview"
+          action: "Review error logs and check system dependencies (Redis, Kafka, MySQL)"
+
+      # Capacity Alert: High Request Rate
+      - alert: FlashSaleHighRequestRate
+        expr: rate(flash_sale_requests_total[1m]) > 100000
+        for: 2m
+        labels:
+          severity: warning
+          service: flash-sale-service
+          component: capacity
+        annotations:
+          summary: "High request rate detected"
+          description: "Request rate is {{ $value }} req/sec (threshold: 100K QPS) for service {{ $labels.instance }}"
+          runbook_url: "https://wiki.example.com/runbooks/flash-sale/high-qps"
+          dashboard_url: "http://grafana:3000/d/flash-sale-overview"
+          action: "Monitor system resources and consider scaling horizontally if sustained"
+
+      # Data Consistency Alert: Inventory Deduction Anomaly
+      - alert: FlashSaleInventoryDeductionAnomaly
+        expr: |
+          rate(flash_sale_inventory_deductions_total[5m]) > 
+          rate(flash_sale_requests_success[5m]) * 1.1
+        for: 5m
+        labels:
+          severity: warning
+          service: flash-sale-service
+          component: consistency
+        annotations:
+          summary: "Inventory deduction anomaly detected"
+          description: "Inventory deductions ({{ $value }}) exceed successful requests by >10% for service {{ $labels.instance }}"
+          runbook_url: "https://wiki.example.com/runbooks/flash-sale/deduction-anomaly"
+          dashboard_url: "http://grafana:3000/d/flash-sale-inventory"
+          action: "Investigate potential double-deduction or reconciliation issues"

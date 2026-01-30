@@ -14,6 +14,7 @@ resources:
   - ../../services/im-service
 
   - ../../services/im-gateway-service
+  - ../../services/flash-sale-service
 commonLabels:
   environment: development
 
@@ -34,6 +35,8 @@ replicas:
     count: 1
 
   - name: im-gateway-service
+    count: 1
+  - name: flash-sale-service
     count: 1
 patches:
   - patch: |-

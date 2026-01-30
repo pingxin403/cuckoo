@@ -1,0 +1,116 @@
+# Flash Sale Service - Production Environment
+
+grpc:
+  server:
+    port: 9094
+
+server:
+  port: 8084
+
+spring:
+  application:
+    name: flash-sale-service
+
+  # Redis - Production cluster (high availability)
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 50
+          max-idle: 20
+          min-idle: 10
+          max-wait: 2000ms
+
+  # MySQL - Production cluster
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:mysql}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:flash_sale}?useSSL=true&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8mb4
+    username: ${MYSQL_USERNAME}
+    password: ${MYSQL_PASSWORD}
+    hikari:
+      maximum-pool-size: 30
+      minimum-idle: 10
+      idle-timeout: 300000
+      connection-timeout: 10000
+      max-lifetime: 900000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 100
+
+  # Kafka - Production cluster
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    producer:
+      acks: all
+      retries: 5
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+        delivery.timeout.ms: 120000
+    consumer:
+      properties:
+        max.poll.records: 500
+    listener:
+      concurrency: 10
+
+# etcd - Production cluster
+etcd:
+  endpoints: ${ETCD_ENDPOINTS:http://etcd:2379}
+  lease-ttl: 15
+
+# Production specific settings
+flash-sale:
+  kafka:
+    partitions: 100
+    replication-factor: 3
+  
+  # Tighter timeouts for production
+  inventory:
+    dedup-ttl-days: 7
+  
+  order:
+    timeout-minutes: 10
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when_authorized
+  metrics:
+    tags:
+      environment: production
+    export:
+      prometheus:
+        enabled: true
+  tracing:
+    enabled: true
+    sampling:
+      probability: 0.1
+  otlp:
+    tracing:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://otel-collector:4317}
+    metrics:
+      export:
+        enabled: true
+        url: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://otel-collector:4317}/v1/metrics
+  server:
+    port: 9091
+
+logging:
+  level:
+    root: WARN
+    com.pingxin403.cuckoo.flashsale: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} %-5level [%thread] [%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n"
