@@ -24,15 +24,13 @@ Change WORKDIR to `/app/apps/<service-name>` so that:
 
 ## Fixed Services
 
-### ✅ Completed
+### ✅ All Go Services Fixed
 1. **todo-service** - Fixed and tested successfully
 2. **shortener-service** - Fixed (network timeout during test, but Dockerfile is correct)
 3. **auth-service** - Fixed
 4. **user-service** - Fixed (also removed unnecessary proto generation)
-
-### 🔄 Need Fixing
-5. **im-gateway-service** - Needs same fix + remove proto generation
-6. **im-service** - Needs same fix + remove proto generation
+5. **im-gateway-service** - Fixed (removed proto generation, updated WORKDIR)
+6. **im-service** - Fixed (removed proto generation, updated WORKDIR)
 
 ## Standard Dockerfile Pattern
 
@@ -158,8 +156,8 @@ docker run --rm <service-name>:latest --version
 
 ## Remaining Work
 
-1. Fix im-gateway-service Dockerfile
-2. Fix im-service Dockerfile
+1. ~~Fix im-gateway-service Dockerfile~~ ✅
+2. ~~Fix im-service Dockerfile~~ ✅
 3. Test all Go services
 4. Update CI to use `make build-image` instead of `docker-build`
 5. Document the pattern for future services
@@ -182,6 +180,6 @@ docker run --rm <service-name>:latest --version
   - `apps/shortener-service/Dockerfile`
   - `apps/auth-service/Dockerfile`
   - `apps/user-service/Dockerfile`
-- **Need Fixing**:
-  - `apps/im-gateway-service/Dockerfile`
-  - `apps/im-service/Dockerfile`
+- **All Go Services Fixed**:
+  - `apps/im-gateway-service/Dockerfile` ✅
+  - `apps/im-service/Dockerfile` ✅
