@@ -1,5 +1,5 @@
 .PHONY: help init check-env check-versions proto gen-proto gen-proto-go gen-proto-java gen-proto-ts verify-proto \
-        build test lint lint-fix format docker-build run clean list-apps create \
+        build test lint lint-fix format docker-build build-image run clean list-apps create \
         test-coverage verify-coverage test-services \
         dev pre-commit verify-auto-detection \
         deps deps-update deps-clean deps-verify deps-audit deps-status \
@@ -77,7 +77,8 @@ help:
 	@echo "  list-apps          - List all available apps"
 	@echo "  create             - Create a new app from template"
 	@echo "  build [APP=name]   - Build app(s)"
-	@echo "  docker-build [APP=name] - Build Docker image(s)"
+	@echo "  build-image [APP=name] - Build Docker image(s) with proto validation"
+	@echo "  docker-build [APP=name] - Build Docker image(s) (legacy, use build-image)"
 	@echo "  run [APP=name]     - Run app(s) locally"
 	@echo "  clean [APP=name]   - Clean build artifacts for app(s)"
 	@echo ""
@@ -101,6 +102,8 @@ help:
 	@echo "  make test-coverage             # Run coverage for all apps"
 	@echo "  make lint-fix                  # Fix linting issues in all changed apps"
 	@echo "  make build APP=todo            # Build specific app (short name)"
+	@echo "  make build-image APP=hello     # Build Docker image with proto validation"
+	@echo "  make build-image               # Build Docker images for all changed apps"
 
 # Initialization
 init:
@@ -274,6 +277,14 @@ ifdef APP
 	@./scripts/app-manager.sh docker $(APP)
 else
 	@./scripts/app-manager.sh docker
+endif
+
+# New unified Docker image builder with proto validation
+build-image:
+ifdef APP
+	@./scripts/build-image.sh $(APP) $(if $(TAG),--tag $(TAG)) $(if $(NO_CACHE),--no-cache) $(if $(PUSH),--push)
+else
+	@./scripts/build-image.sh $(if $(TAG),--tag $(TAG)) $(if $(NO_CACHE),--no-cache) $(if $(PUSH),--push)
 endif
 
 run:
