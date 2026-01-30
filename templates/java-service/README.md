@@ -7,10 +7,13 @@ This template provides a standardized structure for creating new Java/Spring Boo
 - Spring Boot 3.x with Java 17
 - gRPC server with grpc-spring-boot-starter
 - Protobuf code generation
+- OpenTelemetry integration (tracing, metrics, logging)
+- Multi-environment configuration (local, staging, production, testing)
+- Micrometer metrics with Prometheus and OTLP export
 - Kubernetes deployment configurations
 - Backstage service catalog integration
 - Docker multi-stage build
-- Health checks and monitoring
+- Health checks and monitoring via Spring Actuator
 
 ## Quick Start
 
@@ -247,13 +250,41 @@ deploy/k8s/services/your-service-name/
 The template includes:
 
 - **Spring Boot 3.5.0**: Application framework
+- **Spring Boot Actuator**: Health checks, metrics, and monitoring
 - **grpc-spring-boot-starter 3.1.0**: gRPC server integration
 - **gRPC 1.60.0**: gRPC runtime
 - **Protobuf 3.25.1**: Protocol Buffers
+- **Micrometer 1.12.2**: Metrics facade with Prometheus and OTLP exporters
+- **Micrometer Tracing**: Distributed tracing with OpenTelemetry bridge
+- **OpenTelemetry OTLP Exporter**: Export traces to OpenTelemetry Collector
 - **JUnit 5**: Unit testing
 - **jqwik 1.8.2**: Property-based testing
 
 ## Configuration
+
+### Multi-Environment Configuration
+
+The template supports multiple environments through Spring profiles:
+
+| Profile | Description | Use Case |
+|---------|-------------|----------|
+| `local` | Local development | Development on local machine |
+| `staging` | Staging environment | Pre-production testing |
+| `production` | Production environment | Live production deployment |
+| `testing` | Test environment | Unit and integration tests |
+
+**Activate a profile:**
+```bash
+# Via environment variable
+export SPRING_PROFILES_ACTIVE=local
+./gradlew bootRun
+
+# Via command line
+./gradlew bootRun --args='--spring.profiles.active=staging'
+
+# Via Docker
+docker run -e SPRING_PROFILES_ACTIVE=production {{SERVICE_NAME}}:latest
+```
 
 ### Application Properties
 
@@ -267,20 +298,102 @@ grpc:
 spring:
   application:
     name: {{SERVICE_NAME}}           # Service name
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+
+# Actuator endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  server:
+    port: 9091                       # Separate port for management
+
+# OpenTelemetry
+otel:
+  service:
+    name: {{SERVICE_NAME}}
+  exporter:
+    otlp:
+      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4317}
 
 logging:
   level:
     root: INFO                       # Root log level
     {{PACKAGE_NAME}}: DEBUG          # Service log level
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} %-5level [%thread] [%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n"
 ```
 
 ### Environment Variables
 
 Supported environment variables:
 
-- `SPRING_PROFILES_ACTIVE`: Active Spring profile (default: `default`)
+- `SPRING_PROFILES_ACTIVE`: Active Spring profile (default: `local`)
 - `GRPC_SERVER_PORT`: Override gRPC port
 - `JAVA_OPTS`: JVM options
+- `OTEL_EXPORTER_OTLP_ENDPOINT`: OpenTelemetry collector endpoint (default: `http://localhost:4317`)
+- `OTEL_METRICS_ENABLED`: Enable OTLP metrics export (default: `false` for local)
+- `TRACING_SAMPLE_RATE`: Trace sampling probability (default: `0.1`)
+
+### OpenTelemetry Configuration
+
+The template uses Micrometer Tracing with OpenTelemetry bridge for distributed tracing and OTLP export for metrics.
+
+**Local Development** (Tracing disabled by default):
+```yaml
+management:
+  tracing:
+    enabled: false
+```
+
+**Staging** (50% trace sampling):
+```yaml
+management:
+  tracing:
+    enabled: true
+    sampling:
+      probability: 0.5
+  otlp:
+    tracing:
+      endpoint: http://otel-collector:4317
+```
+
+**Production** (10% trace sampling):
+```yaml
+management:
+  tracing:
+    enabled: true
+    sampling:
+      probability: 0.1
+  otlp:
+    tracing:
+      endpoint: http://otel-collector:4317
+```
+
+**Using Micrometer Tracing in code:**
+```java
+import io.micrometer.observation.Observation;
+import io.micrometer.observation.ObservationRegistry;
+import org.springframework.beans.factory.annotation.Autowired;
+
+@Service
+public class MyService {
+    
+    @Autowired
+    private ObservationRegistry observationRegistry;
+    
+    public void processRequest(String requestId) {
+        Observation.createNotStarted("process-request", observationRegistry)
+            .lowCardinalityKeyValue("request.type", "api")
+            .highCardinalityKeyValue("request.id", requestId)
+            .observe(() -> {
+                // Your business logic
+            });
+    }
+}
+```
 
 ## Testing
 
