@@ -3,7 +3,7 @@
 // source: flash_sale_service.proto
 // Protobuf Java Version: 4.33.4
 
-package com.pingxin403.cuckoo.flash.sale.service.proto;
+package com.pingxin403.cuckoo.flashsale;
 
 @com.google.protobuf.Generated
 public final class FlashSaleService extends com.google.protobuf.GeneratedFile {
@@ -51,10 +51,10 @@ public final class FlashSaleService extends com.google.protobuf.GeneratedFile {
       "UsaleUserviceService\022b\n\013HealthCheck\022(.fl" +
       "ash_sale_servicepb.HealthCheckRequest\032)." +
       "flash_sale_servicepb.HealthCheckResponse" +
-      "B\201\001\n.com.pingxin403.cuckoo.flash.sale.se" +
-      "rvice.protoP\001ZMgithub.com/pingxin403/cuc" +
-      "koo/apps/flash-sale-service/gen/flash_sa" +
-      "le_servicepbb\006proto3"
+      "Br\n\037com.pingxin403.cuckoo.flashsaleP\001ZMg" +
+      "ithub.com/pingxin403/cuckoo/apps/flash-s" +
+      "ale-service/gen/flash_sale_servicepbb\006pr" +
+      "oto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
