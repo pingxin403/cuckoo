@@ -5,15 +5,19 @@
 # Stage 1: Build
 FROM golang:1.25-alpine AS build
 
-WORKDIR /app
+WORKDIR /app/apps/todo-service
 
 # Install git for go mod download
 RUN apk add --no-cache git
 
-# Copy go mod files and shared libraries
+# Copy go mod files first (for better caching)
 COPY apps/todo-service/go.mod apps/todo-service/go.sum ./
-COPY libs/ /app/libs/
+
+# Copy shared libraries and proto code to match go.mod replace directives
+# go.mod has: replace github.com/pingxin403/cuckoo/api/gen/go => ../../api/gen/go
+# From /app/apps/todo-service, ../../api/gen/go resolves to /app/api/gen/go
 COPY api/gen/ /app/api/gen/
+COPY libs/ /app/libs/
 
 # Download dependencies
 RUN go mod download && go mod verify
@@ -33,7 +37,7 @@ WORKDIR /app
 RUN apk --no-cache add ca-certificates
 
 # Copy binary from build stage
-COPY --from=build /app/todo-service .
+COPY --from=build /app/apps/todo-service/todo-service .
 
 # Expose gRPC port
 EXPOSE 9091

@@ -173,8 +173,10 @@ jacocoTestCoverageVerification {
 	}
 }
 
-// Disable coverage verification for unit tests only (when integration tests are excluded)
-// Use testAll task for full coverage verification
+// Disable coverage verification by default (Docker builds, CI builds without tests)
+// Only enable for testAll task which runs full test suite
+jacocoTestCoverageVerification.enabled = false
+
 test {
 	doFirst {
 		// Skip coverage verification for unit tests only
@@ -189,7 +191,8 @@ testAll {
 	}
 }
 
-check.dependsOn jacocoTestCoverageVerification
+// Don't add coverage verification to check task by default
+// check.dependsOn jacocoTestCoverageVerification
 
 // Note: Proto code is pre-generated in ../../api/gen/java
 // Add only the flash-sale service proto files as source
