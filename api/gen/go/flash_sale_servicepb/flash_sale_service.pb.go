@@ -110,8 +110,8 @@ const file_flash_sale_service_proto_rawDesc = "" +
 	"\x13HealthCheckResponse\x12\x16\n" +
 	"\x06status\x18\x01 \x01(\tR\x06status2\x80\x01\n" +
 	"\x1aUflashUsaleUserviceService\x12b\n" +
-	"\vHealthCheck\x12(.flash_sale_servicepb.HealthCheckRequest\x1a).flash_sale_servicepb.HealthCheckResponseB\x81\x01\n" +
-	".com.pingxin403.cuckoo.flash.sale.service.protoP\x01ZMgithub.com/pingxin403/cuckoo/apps/flash-sale-service/gen/flash_sale_servicepbb\x06proto3"
+	"\vHealthCheck\x12(.flash_sale_servicepb.HealthCheckRequest\x1a).flash_sale_servicepb.HealthCheckResponseBr\n" +
+	"\x1fcom.pingxin403.cuckoo.flashsaleP\x01ZMgithub.com/pingxin403/cuckoo/apps/flash-sale-service/gen/flash_sale_servicepbb\x06proto3"
 
 var (
 	file_flash_sale_service_proto_rawDescOnce sync.Once
