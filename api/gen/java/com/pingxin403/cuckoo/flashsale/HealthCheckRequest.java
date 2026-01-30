@@ -3,7 +3,7 @@
 // source: flash_sale_service.proto
 // Protobuf Java Version: 4.33.4
 
-package com.pingxin403.cuckoo.flash.sale.service.proto;
+package com.pingxin403.cuckoo.flashsale;
 
 /**
  * Protobuf type {@code flash_sale_servicepb.HealthCheckRequest}
@@ -32,15 +32,15 @@ private static final long serialVersionUID = 0L;
 
   public static final com.google.protobuf.Descriptors.Descriptor
       getDescriptor() {
-    return com.pingxin403.cuckoo.flash.sale.service.proto.FlashSaleService.internal_static_flash_sale_servicepb_HealthCheckRequest_descriptor;
+    return com.pingxin403.cuckoo.flashsale.FlashSaleService.internal_static_flash_sale_servicepb_HealthCheckRequest_descriptor;
   }
 
   @java.lang.Override
   protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internalGetFieldAccessorTable() {
-    return com.pingxin403.cuckoo.flash.sale.service.proto.FlashSaleService.internal_static_flash_sale_servicepb_HealthCheckRequest_fieldAccessorTable
+    return com.pingxin403.cuckoo.flashsale.FlashSaleService.internal_static_flash_sale_servicepb_HealthCheckRequest_fieldAccessorTable
         .ensureFieldAccessorsInitialized(
-            com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest.class, com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest.Builder.class);
+            com.pingxin403.cuckoo.flashsale.HealthCheckRequest.class, com.pingxin403.cuckoo.flashsale.HealthCheckRequest.Builder.class);
   }
 
   private byte memoizedIsInitialized = -1;
@@ -76,10 +76,10 @@ private static final long serialVersionUID = 0L;
     if (obj == this) {
      return true;
     }
-    if (!(obj instanceof com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest)) {
+    if (!(obj instanceof com.pingxin403.cuckoo.flashsale.HealthCheckRequest)) {
       return super.equals(obj);
     }
-    com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest other = (com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest) obj;
+    com.pingxin403.cuckoo.flashsale.HealthCheckRequest other = (com.pingxin403.cuckoo.flashsale.HealthCheckRequest) obj;
 
     if (!getUnknownFields().equals(other.getUnknownFields())) return false;
     return true;
@@ -97,44 +97,44 @@ private static final long serialVersionUID = 0L;
     return hash;
   }
 
-  public static com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest parseFrom(
+  public static com.pingxin403.cuckoo.flashsale.HealthCheckRequest parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest parseFrom(
+  public static com.pingxin403.cuckoo.flashsale.HealthCheckRequest parseFrom(
       java.nio.ByteBuffer data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest parseFrom(
+  public static com.pingxin403.cuckoo.flashsale.HealthCheckRequest parseFrom(
       com.google.protobuf.ByteString data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest parseFrom(
+  public static com.pingxin403.cuckoo.flashsale.HealthCheckRequest parseFrom(
       com.google.protobuf.ByteString data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest parseFrom(byte[] data)
+  public static com.pingxin403.cuckoo.flashsale.HealthCheckRequest parseFrom(byte[] data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest parseFrom(
+  public static com.pingxin403.cuckoo.flashsale.HealthCheckRequest parseFrom(
       byte[] data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest parseFrom(java.io.InputStream input)
+  public static com.pingxin403.cuckoo.flashsale.HealthCheckRequest parseFrom(java.io.InputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessage
         .parseWithIOException(PARSER, input);
   }
-  public static com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest parseFrom(
+  public static com.pingxin403.cuckoo.flashsale.HealthCheckRequest parseFrom(
       java.io.InputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
@@ -142,26 +142,26 @@ private static final long serialVersionUID = 0L;
         .parseWithIOException(PARSER, input, extensionRegistry);
   }
 
-  public static com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest parseDelimitedFrom(java.io.InputStream input)
+  public static com.pingxin403.cuckoo.flashsale.HealthCheckRequest parseDelimitedFrom(java.io.InputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessage
         .parseDelimitedWithIOException(PARSER, input);
   }
 
-  public static com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest parseDelimitedFrom(
+  public static com.pingxin403.cuckoo.flashsale.HealthCheckRequest parseDelimitedFrom(
       java.io.InputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessage
         .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
   }
-  public static com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest parseFrom(
+  public static com.pingxin403.cuckoo.flashsale.HealthCheckRequest parseFrom(
       com.google.protobuf.CodedInputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessage
         .parseWithIOException(PARSER, input);
   }
-  public static com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest parseFrom(
+  public static com.pingxin403.cuckoo.flashsale.HealthCheckRequest parseFrom(
       com.google.protobuf.CodedInputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
@@ -174,7 +174,7 @@ private static final long serialVersionUID = 0L;
   public static Builder newBuilder() {
     return DEFAULT_INSTANCE.toBuilder();
   }
-  public static Builder newBuilder(com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest prototype) {
+  public static Builder newBuilder(com.pingxin403.cuckoo.flashsale.HealthCheckRequest prototype) {
     return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
   }
   @java.lang.Override
@@ -195,21 +195,21 @@ private static final long serialVersionUID = 0L;
   public static final class Builder extends
       com.google.protobuf.GeneratedMessage.Builder<Builder> implements
       // @@protoc_insertion_point(builder_implements:flash_sale_servicepb.HealthCheckRequest)
-      com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequestOrBuilder {
+      com.pingxin403.cuckoo.flashsale.HealthCheckRequestOrBuilder {
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
-      return com.pingxin403.cuckoo.flash.sale.service.proto.FlashSaleService.internal_static_flash_sale_servicepb_HealthCheckRequest_descriptor;
+      return com.pingxin403.cuckoo.flashsale.FlashSaleService.internal_static_flash_sale_servicepb_HealthCheckRequest_descriptor;
     }
 
     @java.lang.Override
     protected com.google.protobuf.GeneratedMessage.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return com.pingxin403.cuckoo.flash.sale.service.proto.FlashSaleService.internal_static_flash_sale_servicepb_HealthCheckRequest_fieldAccessorTable
+      return com.pingxin403.cuckoo.flashsale.FlashSaleService.internal_static_flash_sale_servicepb_HealthCheckRequest_fieldAccessorTable
           .ensureFieldAccessorsInitialized(
-              com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest.class, com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest.Builder.class);
+              com.pingxin403.cuckoo.flashsale.HealthCheckRequest.class, com.pingxin403.cuckoo.flashsale.HealthCheckRequest.Builder.class);
     }
 
-    // Construct using com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest.newBuilder()
+    // Construct using com.pingxin403.cuckoo.flashsale.HealthCheckRequest.newBuilder()
     private Builder() {
 
     }
@@ -228,17 +228,17 @@ private static final long serialVersionUID = 0L;
     @java.lang.Override
     public com.google.protobuf.Descriptors.Descriptor
         getDescriptorForType() {
-      return com.pingxin403.cuckoo.flash.sale.service.proto.FlashSaleService.internal_static_flash_sale_servicepb_HealthCheckRequest_descriptor;
+      return com.pingxin403.cuckoo.flashsale.FlashSaleService.internal_static_flash_sale_servicepb_HealthCheckRequest_descriptor;
     }
 
     @java.lang.Override
-    public com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest getDefaultInstanceForType() {
-      return com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest.getDefaultInstance();
+    public com.pingxin403.cuckoo.flashsale.HealthCheckRequest getDefaultInstanceForType() {
+      return com.pingxin403.cuckoo.flashsale.HealthCheckRequest.getDefaultInstance();
     }
 
     @java.lang.Override
-    public com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest build() {
-      com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest result = buildPartial();
+    public com.pingxin403.cuckoo.flashsale.HealthCheckRequest build() {
+      com.pingxin403.cuckoo.flashsale.HealthCheckRequest result = buildPartial();
       if (!result.isInitialized()) {
         throw newUninitializedMessageException(result);
       }
@@ -246,24 +246,24 @@ private static final long serialVersionUID = 0L;
     }
 
     @java.lang.Override
-    public com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest buildPartial() {
-      com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest result = new com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest(this);
+    public com.pingxin403.cuckoo.flashsale.HealthCheckRequest buildPartial() {
+      com.pingxin403.cuckoo.flashsale.HealthCheckRequest result = new com.pingxin403.cuckoo.flashsale.HealthCheckRequest(this);
       onBuilt();
       return result;
     }
 
     @java.lang.Override
     public Builder mergeFrom(com.google.protobuf.Message other) {
-      if (other instanceof com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest) {
-        return mergeFrom((com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest)other);
+      if (other instanceof com.pingxin403.cuckoo.flashsale.HealthCheckRequest) {
+        return mergeFrom((com.pingxin403.cuckoo.flashsale.HealthCheckRequest)other);
       } else {
         super.mergeFrom(other);
         return this;
       }
     }
 
-    public Builder mergeFrom(com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest other) {
-      if (other == com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest.getDefaultInstance()) return this;
+    public Builder mergeFrom(com.pingxin403.cuckoo.flashsale.HealthCheckRequest other) {
+      if (other == com.pingxin403.cuckoo.flashsale.HealthCheckRequest.getDefaultInstance()) return this;
       this.mergeUnknownFields(other.getUnknownFields());
       onChanged();
       return this;
@@ -310,12 +310,12 @@ private static final long serialVersionUID = 0L;
   }
 
   // @@protoc_insertion_point(class_scope:flash_sale_servicepb.HealthCheckRequest)
-  private static final com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest DEFAULT_INSTANCE;
+  private static final com.pingxin403.cuckoo.flashsale.HealthCheckRequest DEFAULT_INSTANCE;
   static {
-    DEFAULT_INSTANCE = new com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest();
+    DEFAULT_INSTANCE = new com.pingxin403.cuckoo.flashsale.HealthCheckRequest();
   }
 
-  public static com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest getDefaultInstance() {
+  public static com.pingxin403.cuckoo.flashsale.HealthCheckRequest getDefaultInstance() {
     return DEFAULT_INSTANCE;
   }
 
@@ -351,7 +351,7 @@ private static final long serialVersionUID = 0L;
   }
 
   @java.lang.Override
-  public com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest getDefaultInstanceForType() {
+  public com.pingxin403.cuckoo.flashsale.HealthCheckRequest getDefaultInstanceForType() {
     return DEFAULT_INSTANCE;
   }
 

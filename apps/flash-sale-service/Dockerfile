@@ -1,25 +1,26 @@
 # Multi-stage Dockerfile for Java/Spring Boot Service
 # NOTE: This Dockerfile should be built from the repository root directory
 # Example: docker build -f apps/flash-sale-service/Dockerfile -t flash-sale-service:latest .
-# IMPORTANT: Proto code must be generated before building Docker image
 
 # Stage 1: Build stage
 FROM gradle:8.14.3-jdk17 AS build
 
-WORKDIR /app
+WORKDIR /workspace
 
-# Copy Gradle configuration files
-COPY apps/flash-sale-service/build.gradle apps/flash-sale-service/settings.gradle apps/flash-sale-service/gradlew ./
-COPY apps/flash-sale-service/gradle ./gradle
+# Copy centralized proto generated code
+COPY api/gen/java ./api/gen/java
+
+# Copy flash-sale-service
+COPY apps/flash-sale-service ./apps/flash-sale-service
+
+# Build from the service directory
+WORKDIR /workspace/apps/flash-sale-service
 
 # Download dependencies (cached layer)
 RUN ./gradlew dependencies --no-daemon || true
 
-# Copy source code and pre-generated proto code
-COPY apps/flash-sale-service/ ./
-
-# Build application (skip proto generation, use pre-generated code)
-RUN ./gradlew build -x test -x generateProto --no-daemon
+# Build application (uses pre-generated proto code from api/gen/java)
+RUN ./gradlew build -x test --no-daemon --no-configuration-cache
 
 # Stage 2: Runtime stage
 # Use multi-arch base image that works on both ARM64 (local dev) and AMD64 (production)
@@ -32,7 +33,7 @@ RUN groupadd -r spring && useradd -r -g spring spring
 USER spring:spring
 
 # Copy JAR file from build stage
-COPY --from=build /app/build/libs/*.jar app.jar
+COPY --from=build /workspace/apps/flash-sale-service/build/libs/*.jar app.jar
 
 # Expose gRPC port
 EXPOSE 9094

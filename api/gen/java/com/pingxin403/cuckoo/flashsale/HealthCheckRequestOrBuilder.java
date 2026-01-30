@@ -3,7 +3,7 @@
 // source: flash_sale_service.proto
 // Protobuf Java Version: 4.33.4
 
-package com.pingxin403.cuckoo.flash.sale.service.proto;
+package com.pingxin403.cuckoo.flashsale;
 
 @com.google.protobuf.Generated
 public interface HealthCheckRequestOrBuilder extends

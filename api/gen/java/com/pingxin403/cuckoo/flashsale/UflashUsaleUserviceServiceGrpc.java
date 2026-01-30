@@ -1,4 +1,4 @@
-package com.pingxin403.cuckoo.flash.sale.service.proto;
+package com.pingxin403.cuckoo.flashsale;
 
 import static io.grpc.MethodDescriptor.generateFullMethodName;
 
@@ -15,29 +15,29 @@ public final class UflashUsaleUserviceServiceGrpc {
   public static final java.lang.String SERVICE_NAME = "flash_sale_servicepb.UflashUsaleUserviceService";
 
   // Static method descriptors that strictly reflect the proto.
-  private static volatile io.grpc.MethodDescriptor<com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest,
-      com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckResponse> getHealthCheckMethod;
+  private static volatile io.grpc.MethodDescriptor<com.pingxin403.cuckoo.flashsale.HealthCheckRequest,
+      com.pingxin403.cuckoo.flashsale.HealthCheckResponse> getHealthCheckMethod;
 
   @io.grpc.stub.annotations.RpcMethod(
       fullMethodName = SERVICE_NAME + '/' + "HealthCheck",
-      requestType = com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest.class,
-      responseType = com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckResponse.class,
+      requestType = com.pingxin403.cuckoo.flashsale.HealthCheckRequest.class,
+      responseType = com.pingxin403.cuckoo.flashsale.HealthCheckResponse.class,
       methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
-  public static io.grpc.MethodDescriptor<com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest,
-      com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckResponse> getHealthCheckMethod() {
-    io.grpc.MethodDescriptor<com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest, com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckResponse> getHealthCheckMethod;
+  public static io.grpc.MethodDescriptor<com.pingxin403.cuckoo.flashsale.HealthCheckRequest,
+      com.pingxin403.cuckoo.flashsale.HealthCheckResponse> getHealthCheckMethod() {
+    io.grpc.MethodDescriptor<com.pingxin403.cuckoo.flashsale.HealthCheckRequest, com.pingxin403.cuckoo.flashsale.HealthCheckResponse> getHealthCheckMethod;
     if ((getHealthCheckMethod = UflashUsaleUserviceServiceGrpc.getHealthCheckMethod) == null) {
       synchronized (UflashUsaleUserviceServiceGrpc.class) {
         if ((getHealthCheckMethod = UflashUsaleUserviceServiceGrpc.getHealthCheckMethod) == null) {
           UflashUsaleUserviceServiceGrpc.getHealthCheckMethod = getHealthCheckMethod =
-              io.grpc.MethodDescriptor.<com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest, com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckResponse>newBuilder()
+              io.grpc.MethodDescriptor.<com.pingxin403.cuckoo.flashsale.HealthCheckRequest, com.pingxin403.cuckoo.flashsale.HealthCheckResponse>newBuilder()
               .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
               .setFullMethodName(generateFullMethodName(SERVICE_NAME, "HealthCheck"))
               .setSampledToLocalTracing(true)
               .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
-                  com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest.getDefaultInstance()))
+                  com.pingxin403.cuckoo.flashsale.HealthCheckRequest.getDefaultInstance()))
               .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
-                  com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckResponse.getDefaultInstance()))
+                  com.pingxin403.cuckoo.flashsale.HealthCheckResponse.getDefaultInstance()))
               .setSchemaDescriptor(new UflashUsaleUserviceServiceMethodDescriptorSupplier("HealthCheck"))
               .build();
         }
@@ -117,8 +117,8 @@ public final class UflashUsaleUserviceServiceGrpc {
      * Add your RPC methods here
      * </pre>
      */
-    default void healthCheck(com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest request,
-        io.grpc.stub.StreamObserver<com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckResponse> responseObserver) {
+    default void healthCheck(com.pingxin403.cuckoo.flashsale.HealthCheckRequest request,
+        io.grpc.stub.StreamObserver<com.pingxin403.cuckoo.flashsale.HealthCheckResponse> responseObserver) {
       io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getHealthCheckMethod(), responseObserver);
     }
   }
@@ -161,8 +161,8 @@ public final class UflashUsaleUserviceServiceGrpc {
      * Add your RPC methods here
      * </pre>
      */
-    public void healthCheck(com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest request,
-        io.grpc.stub.StreamObserver<com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckResponse> responseObserver) {
+    public void healthCheck(com.pingxin403.cuckoo.flashsale.HealthCheckRequest request,
+        io.grpc.stub.StreamObserver<com.pingxin403.cuckoo.flashsale.HealthCheckResponse> responseObserver) {
       io.grpc.stub.ClientCalls.asyncUnaryCall(
           getChannel().newCall(getHealthCheckMethod(), getCallOptions()), request, responseObserver);
     }
@@ -192,7 +192,7 @@ public final class UflashUsaleUserviceServiceGrpc {
      * Add your RPC methods here
      * </pre>
      */
-    public com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckResponse healthCheck(com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest request) throws io.grpc.StatusException {
+    public com.pingxin403.cuckoo.flashsale.HealthCheckResponse healthCheck(com.pingxin403.cuckoo.flashsale.HealthCheckRequest request) throws io.grpc.StatusException {
       return io.grpc.stub.ClientCalls.blockingV2UnaryCall(
           getChannel(), getHealthCheckMethod(), getCallOptions(), request);
     }
@@ -222,7 +222,7 @@ public final class UflashUsaleUserviceServiceGrpc {
      * Add your RPC methods here
      * </pre>
      */
-    public com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckResponse healthCheck(com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest request) {
+    public com.pingxin403.cuckoo.flashsale.HealthCheckResponse healthCheck(com.pingxin403.cuckoo.flashsale.HealthCheckRequest request) {
       return io.grpc.stub.ClientCalls.blockingUnaryCall(
           getChannel(), getHealthCheckMethod(), getCallOptions(), request);
     }
@@ -252,8 +252,8 @@ public final class UflashUsaleUserviceServiceGrpc {
      * Add your RPC methods here
      * </pre>
      */
-    public com.google.common.util.concurrent.ListenableFuture<com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckResponse> healthCheck(
-        com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest request) {
+    public com.google.common.util.concurrent.ListenableFuture<com.pingxin403.cuckoo.flashsale.HealthCheckResponse> healthCheck(
+        com.pingxin403.cuckoo.flashsale.HealthCheckRequest request) {
       return io.grpc.stub.ClientCalls.futureUnaryCall(
           getChannel().newCall(getHealthCheckMethod(), getCallOptions()), request);
     }
@@ -279,8 +279,8 @@ public final class UflashUsaleUserviceServiceGrpc {
     public void invoke(Req request, io.grpc.stub.StreamObserver<Resp> responseObserver) {
       switch (methodId) {
         case METHODID_HEALTH_CHECK:
-          serviceImpl.healthCheck((com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest) request,
-              (io.grpc.stub.StreamObserver<com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckResponse>) responseObserver);
+          serviceImpl.healthCheck((com.pingxin403.cuckoo.flashsale.HealthCheckRequest) request,
+              (io.grpc.stub.StreamObserver<com.pingxin403.cuckoo.flashsale.HealthCheckResponse>) responseObserver);
           break;
         default:
           throw new AssertionError();
@@ -304,8 +304,8 @@ public final class UflashUsaleUserviceServiceGrpc {
           getHealthCheckMethod(),
           io.grpc.stub.ServerCalls.asyncUnaryCall(
             new MethodHandlers<
-              com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckRequest,
-              com.pingxin403.cuckoo.flash.sale.service.proto.HealthCheckResponse>(
+              com.pingxin403.cuckoo.flashsale.HealthCheckRequest,
+              com.pingxin403.cuckoo.flashsale.HealthCheckResponse>(
                 service, METHODID_HEALTH_CHECK)))
         .build();
   }
@@ -316,7 +316,7 @@ public final class UflashUsaleUserviceServiceGrpc {
 
     @java.lang.Override
     public com.google.protobuf.Descriptors.FileDescriptor getFileDescriptor() {
-      return com.pingxin403.cuckoo.flash.sale.service.proto.FlashSaleService.getDescriptor();
+      return com.pingxin403.cuckoo.flashsale.FlashSaleService.getDescriptor();
     }
 
     @java.lang.Override
