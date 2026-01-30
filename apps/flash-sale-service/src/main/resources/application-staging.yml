@@ -1,12 +1,55 @@
-# flash-sale-service - Staging Environment
+# Flash Sale Service - Staging Environment
 
 grpc:
   server:
     port: 9094
 
+server:
+  port: 8084
+
 spring:
   application:
     name: flash-sale-service
+
+  # Redis - Staging cluster
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      lettuce:
+        pool:
+          max-active: 30
+          max-idle: 15
+          min-idle: 5
+
+  # MySQL - Staging instance
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:mysql}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:flash_sale}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8mb4
+    username: ${MYSQL_USERNAME:flash_sale_user}
+    password: ${MYSQL_PASSWORD:flash_sale_password}
+    hikari:
+      maximum-pool-size: 15
+      minimum-idle: 5
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+
+  # Kafka - Staging cluster
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+
+# etcd - Staging cluster
+etcd:
+  endpoints: ${ETCD_ENDPOINTS:http://etcd:2379}
+
+# Staging specific settings
+flash-sale:
+  kafka:
+    partitions: 50
+    replication-factor: 2
 
 management:
   endpoints:
@@ -39,6 +82,6 @@ management:
 logging:
   level:
     root: INFO
-    com.pingxin403.cuckoo.flash.sale.service: INFO
+    com.pingxin403.cuckoo.flashsale: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} %-5level [%thread] [%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n"

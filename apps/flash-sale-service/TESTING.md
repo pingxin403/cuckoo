@@ -1,441 +1,421 @@
-# Testing Guide - flash-sale-service
+# Testing Guide - Flash Sale Service
 
-This document provides comprehensive testing guidance for the flash-sale-service.
+Complete testing guide for the flash-sale-service, covering unit tests, property-based tests, and integration tests.
 
-## Test Structure
+## Table of Contents
 
-```
-src/test/java/
-└── com/pingxin403/cuckoo/{{service_name}}/
-    └── service/
-        ├── UflashUsaleUserviceImplTest.java          # Unit tests
-        └── UflashUsaleUservicePropertyTest.java      # Property-based tests (jqwik)
-```
+- [Overview](#overview)
+- [Test Execution](#test-execution)
+- [Unit Testing](#unit-testing)
+- [Property-Based Testing](#property-based-testing)
+- [Integration Testing](#integration-testing)
+- [Coverage Requirements](#coverage-requirements)
+- [Troubleshooting](#troubleshooting)
+- [CI/CD Integration](#cicd-integration)
 
-## Running Tests
+## Overview
 
-### Quick Test Commands
+The flash-sale-service has three types of tests:
+
+1. **Unit Tests** (168 tests) - Fast tests without external dependencies
+2. **Property-Based Tests** (15 tests) - Parameterized tests requiring Docker
+3. **Integration Tests** (10 tests) - End-to-end tests requiring Docker
+
+### Test Statistics
+
+| Test Type | Count | Time | Docker Required |
+|-----------|-------|------|-----------------|
+| Unit tests | 168 | ~20-30s | No |
+| Property tests | 15 | ~3-5min | Yes |
+| Integration tests | 10 | ~2-3min | Yes |
+| **Total** | **193** | **~5-10min** | **Partial** |
+
+## Test Execution
+
+### Quick Commands
 
 ```bash
-# Run all tests
+# Run unit tests only (default, no Docker required)
+make test APP=flash-sale-service
+# or
 ./gradlew test
 
-# Run tests with coverage report
+# Run all tests including Docker-dependent ones
+./gradlew testAll
+
+# Run only Docker-dependent tests (integration + property)
+./gradlew testDocker
+
+# Run specific test class
+./gradlew test --tests "InventoryServiceImplTest"
+
+# Run with coverage report
 ./gradlew test jacocoTestReport
-
-# Verify coverage thresholds
-./gradlew test jacocoTestCoverageVerification
-
-# Run only unit tests (exclude property tests)
-./gradlew test --tests '*Test' --exclude-tests '*PropertyTest'
-
-# Run only property-based tests
-./gradlew test --tests '*PropertyTest'
-
-# Run tests in continuous mode (watch for changes)
-./gradlew test --continuous
 ```
+
+### Test Task Configuration
+
+The build is configured with three test tasks:
+
+1. **`test`** (default) - Excludes Docker-dependent tests
+   - Excludes: `*IntegrationTest`, `*PropertyTest`, `TracingConfigTest`, `TracingUtilTest`
+   - Coverage verification: Disabled
+   - Use for: Fast feedback during development
+
+2. **`testAll`** - Runs all tests
+   - Includes: All unit, integration, and property tests
+   - Coverage verification: Enabled
+   - Use for: Pre-commit validation, CI/CD
+
+3. **`testDocker`** - Runs only Docker-dependent tests
+   - Includes: `*IntegrationTest`, `*PropertyTest`
+   - Use for: Testing infrastructure integration
 
 ### Coverage Reports
 
-After running tests with coverage, reports are generated at:
-- **HTML Report**: `build/reports/jacoco/test/html/index.html`
-- **XML Report**: `build/reports/jacoco/test/jacocoTestReport.xml`
+After running tests with coverage:
 
-Open the HTML report in your browser:
 ```bash
+# Generate HTML report
+./gradlew test jacocoTestReport
+
+# Open report in browser
 open build/reports/jacoco/test/html/index.html
 ```
 
-## Coverage Requirements
-
-The service enforces test coverage thresholds:
-- **Overall coverage**: 80% minimum
-- **Service classes**: 90% minimum
-
-These thresholds are verified in CI and will fail the build if not met.
-
 ## Unit Testing
 
-### Test Framework
+### Framework
 
 - **JUnit 5** (Jupiter) for test structure
 - **AssertJ** for fluent assertions
 - **Mockito** for mocking dependencies
+- **Spring Boot Test** for Spring context
+
+### Test Structure
+
+```
+src/test/java/com/pingxin403/cuckoo/flashsale/
+├── service/
+│   └── impl/
+│       ├── InventoryServiceImplTest.java
+│       ├── OrderServiceImplTest.java
+│       ├── QueueServiceImplTest.java
+│       ├── AntiFraudServiceImplTest.java
+│       ├── ActivityServiceImplTest.java
+│       └── ReconciliationServiceImplTest.java
+├── controller/
+│   └── SeckillControllerTest.java
+├── scheduled/
+│   ├── OrderTimeoutScheduledTaskTest.java
+│   └── ReconciliationScheduledTaskTest.java
+└── config/
+    └── MetricsConfigTest.java
+```
 
 ### Example Unit Test
 
 ```java
-package com.pingxin403.cuckoo.{{service_name}}.service;
-
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.BeforeEach;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
-
-class UflashUsaleUserviceImplTest {
+@ExtendWith(MockitoExtension.class)
+class InventoryServiceImplTest {
     
-    private UflashUsaleUserviceImpl service;
+    @Mock
+    private RedisTemplate<String, String> redisTemplate;
     
-    @BeforeEach
-    void setUp() {
-        service = new UflashUsaleUserviceImpl();
-    }
+    @Mock
+    private ValueOperations<String, String> valueOperations;
+    
+    @InjectMocks
+    private InventoryServiceImpl inventoryService;
     
     @Test
-    void methodName_withValidInput_returnsExpectedResult() {
+    @DisplayName("Warmup stock successfully stores inventory in Redis")
+    void warmupStock_withValidInput_storesInRedis() {
         // Arrange
-        Request request = Request.newBuilder()
-            .setField("value")
-            .build();
+        String skuId = "SKU001";
+        int totalStock = 1000;
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         
         // Act
-        Response response = service.methodName(request);
+        inventoryService.warmupStock(skuId, totalStock);
         
         // Assert
-        assertThat(response).isNotNull();
-        assertThat(response.getField()).isEqualTo("expected");
-    }
-    
-    @Test
-    void methodName_withInvalidInput_throwsException() {
-        // Arrange
-        Request request = Request.newBuilder()
-            .setField("")
-            .build();
-        
-        // Act & Assert
-        assertThatThrownBy(() -> service.methodName(request))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("field cannot be empty");
+        verify(valueOperations).set("stock:sku_" + skuId, "1000");
+        verify(valueOperations).set("sold:sku_" + skuId, "0");
     }
 }
 ```
 
-### Parameterized Tests
+### Best Practices
 
-Use `@ParameterizedTest` for testing multiple scenarios:
-
-```java
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.ValueSource;
-
-@ParameterizedTest
-@CsvSource({
-    "'input1', 'output1'",
-    "'input2', 'output2'",
-    "'input3', 'output3'"
-})
-void methodName_variousInputs_returnsExpectedOutput(String input, String expected) {
-    Request request = Request.newBuilder()
-        .setField(input)
-        .build();
-    
-    Response response = service.methodName(request);
-    
-    assertThat(response.getField()).isEqualTo(expected);
-}
-
-@ParameterizedTest
-@ValueSource(strings = {"", " ", "  "})
-void methodName_withBlankInput_throwsException(String input) {
-    Request request = Request.newBuilder()
-        .setField(input)
-        .build();
-    
-    assertThatThrownBy(() -> service.methodName(request))
-        .isInstanceOf(IllegalArgumentException.class);
-}
-```
+1. **Test Naming**: Use `methodName_scenario_expectedResult` format
+2. **AAA Pattern**: Arrange-Act-Assert structure
+3. **One Assertion Focus**: Keep tests focused on single behavior
+4. **Mock External Dependencies**: Use Mockito for Redis, Kafka, MySQL
+5. **Test Edge Cases**: Empty inputs, nulls, boundaries, max values
 
 ## Property-Based Testing
 
+### Overview
+
+Property-based tests validate universal correctness properties across many randomly generated inputs. The flash-sale-service has 15 property tests covering critical business logic.
+
 ### Framework
 
-The service uses **jqwik** for property-based testing, which generates random test data to verify properties hold across many inputs.
+- **JUnit 5 @ParameterizedTest** with **@MethodSource**
+- **Random data generation** using `Stream.generate()`
+- **100+ iterations** per property
+- **Testcontainers** for Redis, Kafka, MySQL
+
+### Property Tests Implemented
+
+| Property | File | Requirements | Docker |
+|----------|------|--------------|--------|
+| 1. 库存预热Round-Trip | InventoryWarmupRoundTripPropertyTest | 1.1 | Yes |
+| 2. 库存扣减原子性 | StockDeductionAtomicityPropertyTest | 1.2, 6.1 | Yes |
+| 3. 库存扣减返回值正确性 | StockDeductionResultPropertyTest | 1.3, 1.4 | Yes |
+| 4. 超时回滚Round-Trip | StockRollbackRoundTripPropertyTest | 1.5, 5.3 | Yes |
+| 5. Kafka消息发送一致性 | KafkaMessageConsistencyPropertyTest | 2.1 | Yes |
+| 6. Kafka分区路由一致性 | KafkaPartitionRoutingPropertyTest | 2.2 | Yes |
+| 7. 批量写入正确性 | BatchWriteCorrectnessPropertyTest | 2.3 | Yes |
+| 8. 风险等级动作映射 | RiskLevelActionMappingPropertyTest | 3.4-3.6 | No |
+| 9. 令牌桶流量控制 | TokenBucketFlowControlPropertyTest | 4.1, 4.4 | Yes |
+| 10. 订单状态流转正确性 | OrderStatusTransitionPropertyTest | 5.1, 5.2 | Yes |
+| 11. 订单状态变更幂等性 | OrderStatusIdempotencyPropertyTest | 5.4 | Yes |
+| 12. 对账差异检测 | ReconciliationDiscrepancyPropertyTest | 6.5 | Yes |
+| 13. 限流阈值动态生效 | RateLimitThresholdPropertyTest | 7.4 | Yes |
+| 14. 活动状态自动管理 | ActivityStatusManagementPropertyTest | 8.2, 8.3 | Yes |
+| 15. 限购拦截 | PurchaseLimitPropertyTest | 8.6 | Yes |
 
 ### Example Property Test
 
 ```java
-package com.pingxin403.cuckoo.{{service_name}}.service;
-
-import net.jqwik.api.*;
-
-class UflashUsaleUservicePropertyTest {
-    
-    @Property
-    void methodName_neverReturnsNull(@ForAll String input) {
-        // Arrange
-        UflashUsaleUserviceImpl service = new UflashUsaleUserviceImpl();
-        Request request = Request.newBuilder()
-            .setField(input)
-            .build();
-        
-        // Act
-        Response response = service.methodName(request);
-        
-        // Assert - Property: response is never null
-        assertThat(response).isNotNull();
-    }
-    
-    @Property
-    void methodName_outputLengthNeverExceedsInput(
-        @ForAll @StringLength(min = 1, max = 100) String input
-    ) {
-        // Arrange
-        UflashUsaleUserviceImpl service = new UflashUsaleUserviceImpl();
-        Request request = Request.newBuilder()
-            .setField(input)
-            .build();
-        
-        // Act
-        Response response = service.methodName(request);
-        
-        // Assert - Property: output length <= input length
-        assertThat(response.getField().length()).isLessThanOrEqualTo(input.length());
-    }
-    
-    @Property
-    void methodName_isIdempotent(@ForAll String input) {
-        // Arrange
-        UflashUsaleUserviceImpl service = new UflashUsaleUserviceImpl();
-        Request request = Request.newBuilder()
-            .setField(input)
-            .build();
-        
-        // Act
-        Response first = service.methodName(request);
-        Response second = service.methodName(request);
-        
-        // Assert - Property: calling twice gives same result
-        assertThat(first).isEqualTo(second);
-    }
-}
-```
-
-### Property Test Configuration
-
-Configure jqwik in `src/test/resources/jqwik.properties`:
-
-```properties
-# Number of tries per property (default: 1000)
-jqwik.tries.default = 100
-
-# Seed for reproducible tests
-# jqwik.seed = 42
-
-# Report only failures
-jqwik.reporting.onlyFailures = true
-```
-
-### Common Property Patterns
-
-1. **Invariants**: Properties that always hold
-   ```java
-   @Property
-   void resultIsNeverNull(@ForAll Input input) {
-       assertThat(service.process(input)).isNotNull();
-   }
-   ```
-
-2. **Idempotence**: Applying operation twice gives same result
-   ```java
-   @Property
-   void operationIsIdempotent(@ForAll Input input) {
-       Result first = service.process(input);
-       Result second = service.process(input);
-       assertThat(first).isEqualTo(second);
-   }
-   ```
-
-3. **Round-trip**: Encode then decode returns original
-   ```java
-   @Property
-   void encodeDecodeRoundTrip(@ForAll Data data) {
-       String encoded = service.encode(data);
-       Data decoded = service.decode(encoded);
-       assertThat(decoded).isEqualTo(data);
-   }
-   ```
-
-4. **Commutativity**: Order doesn't matter
-   ```java
-   @Property
-   void operationIsCommutative(@ForAll int a, @ForAll int b) {
-       assertThat(service.combine(a, b)).isEqualTo(service.combine(b, a));
-   }
-   ```
-
-## Integration Testing
-
-For integration tests that require external services (databases, message queues, etc.):
-
-### Test Containers
-
-Use Testcontainers for integration tests:
-
-```java
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.MySQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-
+@SpringBootTest
 @Testcontainers
-class UflashUsaleUserviceIntegrationTest {
-    
-    @Container
-    static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
-        .withDatabaseName("testdb")
-        .withUsername("test")
-        .withPassword("test");
+@Tag("Feature: flash-sale-system, Property 1: 库存预热Round-Trip")
+class InventoryWarmupRoundTripPropertyTest {
     
     @Container
     static GenericContainer<?> redis = new GenericContainer<>("redis:7-alpine")
         .withExposedPorts(6379);
     
-    @Test
-    void integrationTest() {
-        // Test with real MySQL and Redis containers
-        String jdbcUrl = mysql.getJdbcUrl();
-        String redisHost = redis.getHost();
-        Integer redisPort = redis.getFirstMappedPort();
+    @ParameterizedTest
+    @MethodSource("generateTestData")
+    @DisplayName("Property 1: For any SKU and stock N, warmup then query returns N")
+    void warmupRoundTrip(TestData data) {
+        // Arrange
+        String skuId = data.skuId();
+        int stock = data.stock();
         
-        // Configure service with test containers
-        // Run integration test
+        // Act
+        inventoryService.warmupStock(skuId, stock);
+        StockInfo result = inventoryService.getStock(skuId);
+        
+        // Assert
+        assertThat(result.totalStock()).isEqualTo(stock);
+    }
+    
+    static Stream<TestData> generateTestData() {
+        Random random = new Random();
+        return Stream.generate(() -> new TestData(
+            "SKU" + random.nextInt(1000),
+            random.nextInt(10000) + 1
+        )).limit(100);
     }
 }
 ```
 
-## Mocking
+### Running Property Tests
 
-### Mockito Basics
+```bash
+# Run all property tests (requires Docker)
+./gradlew test --tests "*PropertyTest"
+
+# Run specific property test
+./gradlew test --tests "InventoryWarmupRoundTripPropertyTest"
+
+# Run without Docker (only Property 8)
+./gradlew test --tests "RiskLevelActionMappingPropertyTest"
+```
+
+## Integration Testing
+
+### Overview
+
+Integration tests validate end-to-end flows using real infrastructure via Testcontainers. The test suite includes 10 comprehensive scenarios covering all system requirements.
+
+### Infrastructure
+
+**Testcontainers** automatically manages:
+- **Redis 7-alpine** - Inventory, caching, rate limiting
+- **Kafka (Confluent 7.4.0)** - Message queue
+- **MySQL 8.0** - Persistent storage
+
+### Integration Test Cases
+
+| Test # | Description | Requirements | Time |
+|--------|-------------|--------------|------|
+| 1 | Complete seckill flow - single user | 1.1-1.3, 2.1, 4.1, 5.1, 8.1-8.2 | ~10s |
+| 2 | Concurrent requests - no overselling | 1.2, 6.1 | ~15s |
+| 3 | Purchase limit enforcement | 8.5, 8.6 | ~8s |
+| 4 | Order timeout and rollback | 1.5, 5.3 | ~12s |
+| 5 | Data reconciliation | 6.4-6.7 | ~10s |
+| 6 | Activity lifecycle management | 8.1-8.4 | ~10s |
+| 7 | Kafka message flow | 2.1-2.3 | ~12s |
+| 8 | Batch order creation | 2.3 | ~15s |
+| 9 | Stock sold out notification | 4.6 | ~8s |
+| 10 | Complete end-to-end flow | All (1.1-8.6) | ~20s |
+
+### Example Integration Test
 
 ```java
-import org.mockito.Mock;
-import org.mockito.InjectMocks;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.junit.jupiter.api.extension.ExtendWith;
-import static org.mockito.Mockito.*;
-
-@ExtendWith(MockitoExtension.class)
-class ServiceWithDependenciesTest {
+@SpringBootTest
+@Testcontainers
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+class CompleteSeckillFlowIntegrationTest {
     
-    @Mock
-    private DependencyService dependencyService;
+    @Container
+    static GenericContainer<?> redis = new GenericContainer<>("redis:7-alpine")
+        .withExposedPorts(6379);
     
-    @InjectMocks
-    private UflashUsaleUserviceImpl service;
+    @Container
+    static KafkaContainer kafka = new KafkaContainer(
+        DockerImageName.parse("confluentinc/cp-kafka:7.4.0")
+    );
     
-    @Test
-    void testWithMock() {
-        // Arrange
-        when(dependencyService.getData()).thenReturn("mocked data");
-        
-        Request request = Request.newBuilder().build();
-        
-        // Act
-        Response response = service.methodName(request);
-        
-        // Assert
-        assertThat(response).isNotNull();
-        
-        // Verify interactions
-        verify(dependencyService).getData();
-        verify(dependencyService, times(1)).getData();
-        verify(dependencyService, never()).deleteData();
-    }
+    @Container
+    static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0")
+        .withDatabaseName("seckill_test");
     
     @Test
-    void testWithArgumentCaptor() {
-        // Arrange
-        ArgumentCaptor<String> captor = ArgumentCaptor.forClass(String.class);
+    @Order(1)
+    @DisplayName("Test 1: Complete seckill flow - single user success")
+    void testCompleteSeckillFlow() throws InterruptedException {
+        // Step 1: Create activity
+        ActivityCreateRequest request = new ActivityCreateRequest(
+            testSkuId, "iPhone 15", 100, 
+            LocalDateTime.now(), LocalDateTime.now().plusHours(1),
+            5
+        );
+        testActivityId = activityService.createActivity(request);
         
-        // Act
-        service.methodName(request);
+        // Step 2: Warmup inventory
+        inventoryService.warmupStock(testSkuId, 100);
         
-        // Assert
-        verify(dependencyService).processData(captor.capture());
-        assertThat(captor.getValue()).isEqualTo("expected value");
+        // Step 3: Acquire token
+        QueueResult queueResult = queueService.tryAcquireToken(testSkuId, testUserId);
+        assertEquals(200, queueResult.code());
+        
+        // Step 4: Deduct stock
+        DeductResult deductResult = inventoryService.deductStock(
+            testSkuId, testUserId, 1
+        );
+        assertEquals(DeductResultCode.SUCCESS, deductResult.code());
+        
+        // Step 5: Verify Kafka message and order creation
+        await()
+            .atMost(Duration.ofSeconds(10))
+            .pollInterval(Duration.ofMillis(500))
+            .untilAsserted(() -> {
+                Optional<SeckillOrder> order = orderService.getOrder(orderId);
+                assertTrue(order.isPresent());
+                assertEquals(OrderStatus.PENDING_PAYMENT, order.get().getStatus());
+            });
     }
 }
 ```
 
-## Best Practices
+### Running Integration Tests
 
-### Test Organization
+```bash
+# Prerequisites: Docker must be running
+docker ps
 
-1. **Arrange-Act-Assert (AAA)**: Structure tests clearly
-2. **One assertion per test**: Keep tests focused (or related assertions)
-3. **Descriptive names**: Use `methodName_scenario_expectedResult` format
-4. **Test edge cases**: Empty strings, nulls, boundaries, max values
-5. **Use test fixtures**: Extract common setup to `@BeforeEach`
-6. **Clean up resources**: Use `@AfterEach` for cleanup
+# Run all integration tests
+./gradlew test --tests "*IntegrationTest"
 
-### Coverage Guidelines
+# Run specific integration test
+./gradlew test --tests "CompleteSeckillFlowIntegrationTest"
 
-- **Focus on business logic**: Don't test getters/setters
-- **Test error paths**: Verify exception handling
-- **Test boundaries**: Min/max values, empty collections
-- **Property tests for algorithms**: Use jqwik for complex logic
-- **Integration tests for flows**: Verify end-to-end scenarios
+# Run with detailed output
+./gradlew test --tests "*IntegrationTest" --info
+```
 
-### Performance
+### First Run
 
-- **Keep tests fast**: Unit tests should run in milliseconds
-- **Isolate slow tests**: Use `@Tag("slow")` for integration tests
-- **Parallel execution**: Enable in `gradle.properties`:
-  ```properties
-  org.gradle.parallel=true
-  ```
-- **Use test containers wisely**: Only for integration tests
+The first run will download Docker images (~1.3 GB total):
+- redis:7-alpine (~30 MB)
+- confluentinc/cp-kafka:7.4.0 (~800 MB)
+- mysql:8.0 (~500 MB)
 
-## Continuous Integration
+Subsequent runs use cached images and start quickly.
 
-Tests run automatically in CI on:
-- Pull requests
-- Commits to main branch
-- Scheduled nightly builds
+## Coverage Requirements
 
-CI enforces:
-- All tests must pass
-- Coverage thresholds must be met
-- No test failures allowed
-- Code quality checks pass (Checkstyle, SpotBugs)
+### Thresholds
+
+- **Overall coverage**: 60% minimum (unit tests only)
+- **Service classes**: 70% minimum (excludes DTOs, entities, config)
+
+### Coverage Verification
+
+```bash
+# Run tests with coverage
+./gradlew test jacocoTestReport
+
+# Verify thresholds (disabled for unit tests)
+./gradlew testAll jacocoTestCoverageVerification
+```
+
+### Viewing Coverage
+
+```bash
+# Open HTML report
+open build/reports/jacoco/test/html/index.html
+
+# Check specific package
+./gradlew test jacocoTestReport --info | grep "flashsale.service"
+```
 
 ## Troubleshooting
 
-### Tests Fail Locally But Pass in CI
+### Docker Not Available
 
-- Check Java version: `java -version`
-- Clean build: `./gradlew clean test`
-- Check for test order dependencies
-- Verify environment variables
+**Error**: `Could not find a valid Docker environment`
 
-### Coverage Below Threshold
+**Solution**:
+1. Start Docker Desktop
+2. Verify: `docker ps`
+3. Check permissions (Linux): `sudo chmod 666 /var/run/docker.sock`
 
+### Port Conflicts
+
+**Error**: `Port already in use`
+
+**Solution**:
 ```bash
-# Generate detailed coverage report
-./gradlew test jacocoTestReport
+# Testcontainers uses random ports by default
+# If using fixed ports, stop conflicting services
 
-# Open HTML report to see uncovered lines
-open build/reports/jacoco/test/html/index.html
+# Check for zombie containers
+docker ps -a
 
-# Check coverage for specific package
-./gradlew test jacocoTestReport --info | grep "{{service_name}}"
+# Clean up
+docker stop $(docker ps -aq)
+docker rm $(docker ps -aq)
 ```
 
-### Property Tests Fail Intermittently
+### Tests Fail Intermittently
 
-- Set a fixed seed in `jqwik.properties`:
-  ```properties
-  jqwik.seed = 42
-  ```
-- Reduce number of tries for debugging:
-  ```properties
-  jqwik.tries.default = 10
-  ```
-- Check for non-deterministic behavior (time, random, threads)
+**Kafka Consumer Lag**:
+- Tests use Awaitility with 10-20s timeouts
+- Increase timeout if needed
+- Check Kafka consumer logs
+
+**Database Constraints**:
+- Tests use `create-drop` schema management
+- Ensure no manual schema modifications
+- Check for foreign key violations
 
 ### Slow Test Execution
 
@@ -443,34 +423,90 @@ open build/reports/jacoco/test/html/index.html
 # Run tests in parallel
 ./gradlew test --parallel
 
-# Profile test execution
+# Profile execution
 ./gradlew test --profile
-
-# Open profile report
 open build/reports/profile/profile-*.html
+
+# Run only unit tests for fast feedback
+make test APP=flash-sale-service
 ```
 
-### Mockito Issues
+### Coverage Below Threshold
 
 ```bash
-# Common issues:
-# 1. Verify called on non-mock: Ensure @Mock annotation is present
-# 2. Stubbing not working: Check method signature matches exactly
-# 3. Argument matchers: Use all matchers or all concrete values, not mixed
+# Generate detailed report
+./gradlew test jacocoTestReport
+
+# Identify uncovered code
+open build/reports/jacoco/test/html/index.html
+
+# Add tests for uncovered code
+# Or adjust thresholds in build.gradle if appropriate
 ```
+
+## CI/CD Integration
+
+### GitHub Actions Example
+
+```yaml
+name: Flash Sale Service Tests
+
+on: [push, pull_request]
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      
+      - name: Run unit tests
+        run: make test APP=flash-sale-service
+  
+  integration-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      
+      - name: Run all tests
+        run: |
+          cd apps/flash-sale-service
+          ./gradlew testAll
+```
+
+### Test Strategy
+
+- **PR Checks**: Run unit tests only (fast feedback)
+- **Merge to Main**: Run all tests including integration
+- **Nightly Builds**: Run full test suite with coverage verification
+- **Release**: Run all tests + performance tests
 
 ## Resources
 
 - [JUnit 5 User Guide](https://junit.org/junit5/docs/current/user-guide/)
-- [jqwik User Guide](https://jqwik.net/docs/current/user-guide.html)
 - [AssertJ Documentation](https://assertj.github.io/doc/)
 - [Mockito Documentation](https://javadoc.io/doc/org.mockito/mockito-core/latest/org/mockito/Mockito.html)
 - [Testcontainers](https://www.testcontainers.org/)
-- [Monorepo Testing Guide](../../docs/development/TESTING_GUIDE.md)
+- [Awaitility](https://github.com/awaitility/awaitility)
+- [Spring Boot Testing](https://docs.spring.io/spring-boot/docs/current/reference/html/features.html#features.testing)
 
-## Support
+## Summary
 
-For questions about testing:
-- Review existing test examples in the codebase
-- Check the monorepo testing documentation
-- Contact backend-java-team
+The flash-sale-service has comprehensive test coverage:
+
+- **168 unit tests** for fast feedback without Docker
+- **15 property tests** validating correctness properties
+- **10 integration tests** for end-to-end validation
+
+Use `make test APP=flash-sale-service` for daily development, and `./gradlew testAll` before committing to ensure all tests pass.
+
+---
+
+**Last Updated**: January 30, 2025

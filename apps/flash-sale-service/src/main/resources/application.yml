@@ -1,6 +1,12 @@
+# Flash Sale Service - Main Configuration
+# This file contains common configuration shared across all environments
+
 grpc:
   server:
     port: 9094
+
+server:
+  port: 8084
 
 spring:
   application:
@@ -8,22 +14,149 @@ spring:
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:local}
 
+  # Redis Configuration (for inventory, token bucket, caching)
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: 0
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 50
+          max-idle: 20
+          min-idle: 5
+          max-wait: 3000ms
+
+  # MySQL/JPA Configuration (for orders, activities)
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:flash_sale}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=UTF-8
+    username: ${MYSQL_USERNAME:flash_sale_user}
+    password: ${MYSQL_PASSWORD:flash_sale_password}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      idle-timeout: 300000
+      connection-timeout: 20000
+      max-lifetime: 1200000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+        jdbc:
+          batch_size: 100
+        order_inserts: true
+        order_updates: true
+
+  # Kafka Configuration (for order message queue)
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9093}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+    consumer:
+      group-id: flash-sale-consumer
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: com.pingxin403.cuckoo.flashsale.model
+      enable-auto-commit: false
+    listener:
+      ack-mode: manual_immediate
+      concurrency: 3
+
+# etcd Configuration (for service discovery)
+etcd:
+  endpoints: ${ETCD_ENDPOINTS:http://localhost:2379}
+  namespace: /flash-sale
+  lease-ttl: 30
+
+# Flash Sale specific configuration
+flash-sale:
+  # Inventory settings
+  inventory:
+    stock-key-prefix: "stock:sku_"
+    sold-key-prefix: "sold:sku_"
+    dedup-key-prefix: "dedup:order:"
+    dedup-ttl-days: 7
+  
+  # Token bucket settings
+  token-bucket:
+    key-prefix: "token_bucket:"
+    default-rate: 1000  # tokens per second
+    default-capacity: 5000
+  
+  # User purchase limit settings
+  purchase-limit:
+    key-prefix: "user_purchase:"
+  
+  # Order settings
+  order:
+    timeout-minutes: 10
+    timeout-cron: "0 * * * * ?"  # Run every minute
+    status-cache-ttl-hours: 24
+  
+  # Kafka topics
+  kafka:
+    order-topic: seckill-orders
+    dlq-topic: seckill-dlq
+    partitions: 100
+    replication-factor: 3
+  
+  # Reconciliation settings
+  reconciliation:
+    cron: "0 0 * * * ?"  # Run every hour at the top of the hour
+    alert-threshold: 5  # Send alert when discrepancies >= 5
+    critical-threshold: 20  # Pause activities when discrepancies >= 20
+
 # Actuator endpoints for health, metrics, and observability
 management:
   endpoints:
     web:
       exposure:
         include: health,info,metrics,prometheus
+      base-path: /actuator
   endpoint:
     health:
       show-details: when_authorized
+    prometheus:
+      enabled: true
+    metrics:
+      enabled: true
   metrics:
     tags:
       application: flash-sale-service
+      service: flash-sale-service
+      environment: ${SPRING_PROFILES_ACTIVE:local}
     export:
       prometheus:
         enabled: true
+        step: 10s
+        descriptions: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+        flash_sale.request.duration: true
+        flash_sale.inventory.deduction.duration: true
+        flash_sale.queue.acquisition.duration: true
+      slo:
+        http.server.requests: 50ms,100ms,200ms,500ms,1s
+        flash_sale.request.duration: 50ms,100ms,200ms,500ms,1s
   tracing:
+    enabled: true
     sampling:
       probability: ${TRACING_SAMPLE_RATE:0.1}
   otlp:
@@ -39,6 +172,8 @@ management:
 logging:
   level:
     root: INFO
-    com.pingxin403.cuckoo.flash.sale.service: DEBUG
+    com.pingxin403.cuckoo.flashsale: DEBUG
+    org.springframework.data.redis: DEBUG
+    org.springframework.kafka: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} %-5level [%thread] [%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n"

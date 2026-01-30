@@ -1,590 +1,187 @@
-# Java/Spring Boot Service UflashUsaleUservice
+# Flash Sale Service (秒杀服务)
 
-This template provides a standardized structure for creating new Java/Spring Boot gRPC services in the monorepo.
+High-concurrency flash sale (seckill) system built with Spring Boot, Redis, Kafka, and MySQL.
 
-## Features
+## Overview
 
-- Spring Boot 3.x with Java 17
-- gRPC server with grpc-spring-boot-starter
-- Protobuf code generation
-- OpenTelemetry integration (tracing, metrics, logging)
-- Multi-environment configuration (local, staging, production, testing)
-- Micrometer metrics with Prometheus and OTLP export
-- Kubernetes deployment configurations
-- Backstage service catalog integration
-- Docker multi-stage build
-- Health checks and monitoring via Spring Actuator
+This service handles flash sale scenarios with extreme concurrency requirements:
+- **100K+ QPS** peak traffic handling
+- **Atomic inventory management** using Redis Lua scripts
+- **Traffic shaping** via Kafka message queue
+- **Multi-layer anti-fraud** and rate limiting
+
+## Architecture
+
+The service follows the "Three-Layer Funnel Model":
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Layer 1: Anti-Fraud                       │
+│  - L1: Gateway IP rate limiting (10 QPS/IP)                 │
+│  - L2: User behavior analysis                               │
+│  - L3: Device fingerprint risk assessment                   │
+│  Blocks 90%+ of bot/fraudulent traffic                      │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│                    Layer 2: Queue                            │
+│  - Token bucket rate limiting                               │
+│  - User-friendly queue experience                           │
+│  - Estimated wait time calculation                          │
+│  Controls entry rate to protect backend                     │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│                    Layer 3: Inventory                        │
+│  - Redis Lua atomic stock deduction                         │
+│  - Strong consistency guarantee                             │
+│  - Zero overselling                                         │
+│  50K+ QPS per Redis instance                                │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│                    Async Processing                          │
+│  - Kafka message queue for order creation                   │
+│  - Batch database writes (100 records/batch)                │
+│  - Dead letter queue for failed messages                    │
+│  Converts 100K QPS to 2K TPS database writes                │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Tech Stack
+
+- **Framework**: Spring Boot 3.x, Java 17+
+- **Cache**: Redis 7.x with Lua scripts
+- **Message Queue**: Kafka (KRaft mode)
+- **Database**: MySQL 8.x
+- **Service Discovery**: etcd
+- **Observability**: Prometheus, Grafana, Jaeger
 
 ## Quick Start
 
-### 1. Copy UflashUsaleUservice
+### Prerequisites
+
+Start the infrastructure services:
 
 ```bash
-# From the monorepo root
-cp -r templates/java-service apps/your-service-name
-cd apps/your-service-name
+# From project root
+docker compose -f deploy/docker/docker-compose.infra.yml up -d
 ```
 
-### 2. Customize Configuration
+### Initialize Database
 
-Replace the following placeholders throughout the project:
+Create the flash_sale database and user:
 
-- `flash-sale-service` → Your service name (e.g., `user-service`)
-- `Flash sale service` → Brief description of your service
-- `9094` → gRPC port number (e.g., `9092`)
-- `com.pingxin403.cuckoo.flash.sale.service` → Java package name (e.g., `com.myorg.user`)
-- `flash_sale_service` → Protobuf file name (e.g., `user.proto`)
-- `platform-team` → Owning team name (e.g., `backend-team`)
-
-### 3. Update Files
-
-#### build.gradle
-```gradle
-group = 'com.myorg'
-version = '0.0.1-SNAPSHOT'
-description = 'Flash sale service'
-
-sourceSets {
-    main {
-        proto {
-            srcDir '../../api/v1'
-            include 'flash_sale_service'
-        }
-    }
-}
+```sql
+CREATE DATABASE IF NOT EXISTS flash_sale;
+CREATE USER IF NOT EXISTS 'flash_sale_user'@'%' IDENTIFIED BY 'flash_sale_password';
+GRANT ALL PRIVILEGES ON flash_sale.* TO 'flash_sale_user'@'%';
+FLUSH PRIVILEGES;
 ```
 
-#### settings.gradle
-```gradle
-rootProject.name = 'flash-sale-service'
-```
-
-#### application.yml
-```yaml
-grpc:
-  server:
-    port: 9094
-
-spring:
-  application:
-    name: flash-sale-service
-```
-
-#### Rename Java Package
-```bash
-# Rename the package directory
-mv src/main/java/com/myorg/template src/main/java/{{PACKAGE_PATH}}
-
-# Update package declarations in all Java files
-# Replace: package com.myorg.template
-# With: package com.pingxin403.cuckoo.flash.sale.service
-```
-
-### 4. Define Protobuf API
-
-Create your service's Protobuf definition in `api/v1/flash_sale_service`:
-
-```protobuf
-syntax = "proto3";
-
-package api.v1;
-
-option go_package = "github.com/myorg/myrepo/api/v1/flash-sale-servicepb";
-option java_package = "com.pingxin403.cuckoo.flash.sale.service.api.v1";
-option java_multiple_files = true;
-
-service UflashUsaleUserviceService {
-  rpc YourMethod(YourRequest) returns (YourResponse);
-}
-
-message YourRequest {
-  string field = 1;
-}
-
-message YourResponse {
-  string result = 1;
-}
-```
-
-### 5. Generate Protobuf Code
+### Run the Service
 
 ```bash
-# From monorepo root
-make proto  # Generates code for all languages
-
-# Or generate only Java code (advanced)
-make gen-proto-java
-
-# Or from service directory
-./gradlew generateProto
-```
-
-### 6. Implement Service Logic
-
-Update `src/main/java/{{PACKAGE_PATH}}/service/UflashUsaleUserviceServiceImpl.java`:
-
-```java
-package com.pingxin403.cuckoo.flash.sale.service.service;
-
-import com.pingxin403.cuckoo.flash.sale.service.api.v1.*;
-import io.grpc.stub.StreamObserver;
-import net.devh.boot.grpc.server.service.GrpcService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-@GrpcService
-public class UflashUsaleUserviceServiceImpl extends UflashUsaleUserviceServiceGrpc.UflashUsaleUserviceServiceImplBase {
-    
-    private static final Logger logger = LoggerFactory.getLogger(UflashUsaleUserviceServiceImpl.class);
-    
-    @Override
-    public void yourMethod(YourRequest request, StreamObserver<YourResponse> responseObserver) {
-        // Implement your logic here
-        logger.info("Processing request: {}", request);
-        
-        YourResponse response = YourResponse.newBuilder()
-                .setResult("Your result")
-                .build();
-        
-        responseObserver.onNext(response);
-        responseObserver.onCompleted();
-    }
-}
-```
-
-### 7. Kubernetes Resources
-
-Kubernetes resources are automatically created in `deploy/k8s/services/flash-sale-service/` when you create a new service using `create-app.sh`.
-
-The following files are created:
-- `flash-sale-service-deployment.yaml`: Deployment configuration with replicas, ports, and resource limits
-- `flash-sale-service-service.yaml`: Service configuration exposing the gRPC port
-- `kustomization.yaml`: Kustomize configuration for the service
-
-To deploy your service, add it to the appropriate overlay:
-- Development: `deploy/k8s/overlays/development/kustomization.yaml`
-- Production: `deploy/k8s/overlays/production/kustomization.yaml`
-
-### 8. Update Backstage Catalog
-
-Edit `catalog-info.yaml`:
-
-```yaml
-metadata:
-  name: flash-sale-service
-  description: Flash sale service
-  tags:
-    - java
-    - spring-boot
-    - grpc
-spec:
-  owner: platform-team
-  providesApis:
-    - flash-sale-service-api
-```
-
-### 9. Build and Test
-
-```bash
-# Build the service
-./gradlew clean build
-
-# Run tests
-./gradlew test
-
-# Run locally
+cd apps/flash-sale-service
 ./gradlew bootRun
-
-# Build Docker image
-docker build -t flash-sale-service:latest .
 ```
 
-### 10. Add to Monorepo Build
-
-Update the root `Makefile`:
-
-```makefile
-build-flash-sale-service:
-	@echo "Building flash-sale-service..."
-	cd apps/flash-sale-service && ./gradlew clean build
-
-test-flash-sale-service:
-	@echo "Testing flash-sale-service..."
-	cd apps/flash-sale-service && ./gradlew test
-```
-
-## Project Structure
-
-```
-your-service-name/
-├── build.gradle              # Gradle build configuration
-├── settings.gradle           # Gradle settings
-├── gradlew                   # Gradle wrapper script
-├── Dockerfile                # Multi-stage Docker build
-├── catalog-info.yaml         # Backstage service catalog
-├── metadata.yaml             # Service metadata for monorepo tooling
-├── README.md                 # Service documentation
-└── src/
-    ├── main/
-    │   ├── java/
-    │   │   └── {{PACKAGE_PATH}}/
-    │   │       ├── UflashUsaleUserviceApplication.java
-    │   │       └── service/
-    │   │           └── UflashUsaleUserviceServiceImpl.java
-    │   └── resources/
-    │       └── application.yml
-    └── test/
-        └── java/
-            └── {{PACKAGE_PATH}}/
-                └── UflashUsaleUserviceApplicationTests.java
-
-# Kubernetes resources are in:
-deploy/k8s/services/your-service-name/
-├── your-service-name-deployment.yaml
-├── your-service-name-service.yaml
-└── kustomization.yaml
-```
-
-## Dependencies
-
-The template includes:
-
-- **Spring Boot 3.5.0**: Application framework
-- **Spring Boot Actuator**: Health checks, metrics, and monitoring
-- **grpc-spring-boot-starter 3.1.0**: gRPC server integration
-- **gRPC 1.60.0**: gRPC runtime
-- **Protobuf 3.25.1**: Protocol Buffers
-- **Micrometer 1.12.2**: Metrics facade with Prometheus and OTLP exporters
-- **Micrometer Tracing**: Distributed tracing with OpenTelemetry bridge
-- **OpenTelemetry OTLP Exporter**: Export traces to OpenTelemetry Collector
-- **JUnit 5**: Unit testing
-- **jqwik 1.8.2**: Property-based testing
+The service will start on:
+- HTTP: `http://localhost:8084`
+- gRPC: `localhost:9094`
+- Actuator: `http://localhost:9091`
 
 ## Configuration
 
-### Multi-Environment Configuration
-
-The template supports multiple environments through Spring profiles:
-
-| Profile | Description | Use Case |
-|---------|-------------|----------|
-| `local` | Local development | Development on local machine |
-| `staging` | Staging environment | Pre-production testing |
-| `production` | Production environment | Live production deployment |
-| `testing` | Test environment | Unit and integration tests |
-
-**Activate a profile:**
-```bash
-# Via environment variable
-export SPRING_PROFILES_ACTIVE=local
-./gradlew bootRun
-
-# Via command line
-./gradlew bootRun --args='--spring.profiles.active=staging'
-
-# Via Docker
-docker run -e SPRING_PROFILES_ACTIVE=production flash-sale-service:latest
-```
-
-### Application Properties
-
-Key configuration in `application.yml`:
-
-```yaml
-grpc:
-  server:
-    port: 9094              # gRPC server port
-    
-spring:
-  application:
-    name: flash-sale-service           # Service name
-  profiles:
-    active: ${SPRING_PROFILES_ACTIVE:local}
-
-# Actuator endpoints
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics,prometheus
-  server:
-    port: 9091                       # Separate port for management
-
-# OpenTelemetry
-otel:
-  service:
-    name: flash-sale-service
-  exporter:
-    otlp:
-      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4317}
-
-logging:
-  level:
-    root: INFO                       # Root log level
-    com.pingxin403.cuckoo.flash.sale.service: DEBUG          # Service log level
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} %-5level [%thread] [%X{traceId:-},%X{spanId:-}] %logger{36} - %msg%n"
-```
-
 ### Environment Variables
 
-Supported environment variables:
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `REDIS_HOST` | Redis server host | `localhost` |
+| `REDIS_PORT` | Redis server port | `6379` |
+| `MYSQL_HOST` | MySQL server host | `localhost` |
+| `MYSQL_PORT` | MySQL server port | `3306` |
+| `MYSQL_DATABASE` | Database name | `flash_sale` |
+| `KAFKA_BOOTSTRAP_SERVERS` | Kafka brokers | `localhost:9093` |
+| `ETCD_ENDPOINTS` | etcd endpoints | `http://localhost:2379` |
 
-- `SPRING_PROFILES_ACTIVE`: Active Spring profile (default: `local`)
-- `GRPC_SERVER_PORT`: Override gRPC port
-- `JAVA_OPTS`: JVM options
-- `OTEL_EXPORTER_OTLP_ENDPOINT`: OpenTelemetry collector endpoint (default: `http://localhost:4317`)
-- `OTEL_METRICS_ENABLED`: Enable OTLP metrics export (default: `false` for local)
-- `TRACING_SAMPLE_RATE`: Trace sampling probability (default: `0.1`)
+### Profiles
 
-### OpenTelemetry Configuration
+- `local`: Local development with Docker infrastructure
+- `staging`: Staging environment
+- `production`: Production environment with full HA
+- `testing`: Unit/integration tests with Testcontainers
 
-The template uses Micrometer Tracing with OpenTelemetry bridge for distributed tracing and OTLP export for metrics.
+## API Endpoints
 
-**Local Development** (Tracing disabled by default):
-```yaml
-management:
-  tracing:
-    enabled: false
+### Flash Sale
+
+- `POST /api/seckill/{skuId}` - Submit flash sale request
+- `GET /api/seckill/status/{orderId}` - Query order status
+
+### Activity Management
+
+- `POST /api/activities` - Create flash sale activity
+- `GET /api/activities/{activityId}` - Get activity details
+- `PUT /api/activities/{activityId}` - Update activity
+- `DELETE /api/activities/{activityId}` - Delete activity
+
+### Health & Metrics
+
+- `GET /actuator/health` - Health check
+- `GET /actuator/prometheus` - Prometheus metrics
+
+## Redis Data Structures
+
+```
+# Inventory
+stock:sku_{skuId}              -> Integer (remaining stock)
+sold:sku_{skuId}               -> Integer (sold count)
+
+# Token Bucket
+token_bucket:{skuId}           -> Integer (available tokens)
+token_bucket_last:{skuId}      -> Long (last refill timestamp)
+
+# User Purchase Limit
+user_purchase:{skuId}:{userId} -> Integer (purchased count)
+
+# Order Status Cache
+order_status:{orderId}         -> String (PENDING/PAID/CANCELLED)
+
+# Deduplication
+dedup:order:{orderId}          -> "1" (TTL: 7 days)
 ```
 
-**Staging** (50% trace sampling):
-```yaml
-management:
-  tracing:
-    enabled: true
-    sampling:
-      probability: 0.5
-  otlp:
-    tracing:
-      endpoint: http://otel-collector:4317
-```
+## Kafka Topics
 
-**Production** (10% trace sampling):
-```yaml
-management:
-  tracing:
-    enabled: true
-    sampling:
-      probability: 0.1
-  otlp:
-    tracing:
-      endpoint: http://otel-collector:4317
-```
-
-**Using Micrometer Tracing in code:**
-```java
-import io.micrometer.observation.Observation;
-import io.micrometer.observation.ObservationRegistry;
-import org.springframework.beans.factory.annotation.Autowired;
-
-@Service
-public class MyService {
-    
-    @Autowired
-    private ObservationRegistry observationRegistry;
-    
-    public void processRequest(String requestId) {
-        Observation.createNotStarted("process-request", observationRegistry)
-            .lowCardinalityKeyValue("request.type", "api")
-            .highCardinalityKeyValue("request.id", requestId)
-            .observe(() -> {
-                // Your business logic
-            });
-    }
-}
-```
+| Topic | Partitions | Retention | Purpose |
+|-------|------------|-----------|---------|
+| `seckill-orders` | 100 | 7 days | Order messages |
+| `seckill-dlq` | 10 | 30 days | Dead letter queue |
 
 ## Testing
 
-### Unit Tests
-
-Run unit tests with coverage:
-
 ```bash
-# Run tests
+# Run all tests
 ./gradlew test
 
-# Run tests with coverage report
+# Run with coverage report
 ./gradlew test jacocoTestReport
 
-# Verify coverage thresholds (80% overall, 90% service classes)
-./gradlew test jacocoTestCoverageVerification
-```
-
-Coverage reports are generated at:
-- HTML: `build/reports/jacoco/test/html/index.html`
-- XML: `build/reports/jacoco/test/jacocoTestReport.xml`
-
-### Coverage Requirements
-
-The template enforces test coverage thresholds:
-- **Overall coverage**: 80% minimum
-- **Service classes**: 90% minimum
-
-These thresholds are verified in CI and will fail the build if not met.
-
-### Writing Tests
-
-Example unit test structure:
-
-```java
-@ExtendWith(MockitoExtension.class)
-@DisplayName("Your Service Tests")
-class YourServiceImplTest {
-    
-    @InjectMocks
-    private YourServiceImpl yourService;
-    
-    @Mock
-    private StreamObserver<YourResponse> responseObserver;
-    
-    @Test
-    @DisplayName("Should handle valid request successfully")
-    void testValidRequest() {
-        // Arrange
-        YourRequest request = YourRequest.newBuilder()
-            .setField("test-value")
-            .build();
-        
-        // Act
-        yourService.yourMethod(request, responseObserver);
-        
-        // Assert
-        ArgumentCaptor<YourResponse> captor = ArgumentCaptor.forClass(YourResponse.class);
-        verify(responseObserver).onNext(captor.capture());
-        verify(responseObserver).onCompleted();
-        
-        YourResponse response = captor.getValue();
-        assertThat(response.getResult()).isNotEmpty();
-    }
-}
-```
-
-See `src/test/java/com/myorg/template/service/UflashUsaleUserviceServiceImplTest.java` for a complete example.
-
-### Property-Based Tests
-
-The template includes jqwik for property-based testing. Example:
-
-```java
-import net.jqwik.api.*;
-
-class YourServicePropertyTest {
-    
-    @Property
-    void yourProperty(@ForAll String input) {
-        // Test property across many inputs
-        YourRequest request = YourRequest.newBuilder()
-            .setField(input)
-            .build();
-        
-        // Verify property holds for all inputs
-        assertThat(processRequest(request)).isNotNull();
-    }
-}
-```
-
-### Integration Tests
-
-```bash
+# Run integration tests (requires Docker)
 ./gradlew integrationTest
 ```
 
-For more details, see the [Testing Guide](../../docs/TESTING_GUIDE.md).
+## Performance Targets
 
-## Docker
+| Metric | Target |
+|--------|--------|
+| Redis stock deduction | ≥50K QPS/instance |
+| Gateway concurrent connections | ≥100K |
+| Kafka throughput | ≥1M msg/s |
+| Database writes | ≥2K TPS (batch) |
+| P99 response time | <200ms |
 
-### Build Image
+## License
 
-```bash
-docker build -t flash-sale-service:latest .
-```
-
-### Run Container
-
-```bash
-docker run -p 9094:9094 flash-sale-service:latest
-```
-
-## Kubernetes Deployment
-
-Kubernetes resources are located in `deploy/k8s/services/flash-sale-service/` and are managed through Kustomize overlays.
-
-### Deploy to Development
-
-```bash
-kubectl apply -k deploy/k8s/overlays/development
-```
-
-### Deploy to Production
-
-```bash
-kubectl apply -k deploy/k8s/overlays/production
-```
-
-### Check Status
-
-```bash
-kubectl get pods -l app=flash-sale-service
-kubectl logs -f deployment/flash-sale-service
-```
-
-### Update Deployment
-
-After creating your service, remember to add it to the appropriate Kustomize overlays:
-- `deploy/k8s/overlays/development/kustomization.yaml` (1 replica for dev)
-- `deploy/k8s/overlays/production/kustomization.yaml` (3 replicas for prod)
-
-## Best Practices
-
-1. **Keep Services Small**: Focus on a single domain or capability
-2. **Use Protobuf**: Define all APIs in Protobuf for type safety
-3. **Add Tests**: Write both unit tests and property-based tests
-4. **Document APIs**: Add clear comments to Protobuf definitions
-5. **Monitor Health**: Implement health checks and metrics
-6. **Handle Errors**: Use appropriate gRPC status codes
-7. **Log Appropriately**: Use structured logging with context
-8. **Version APIs**: Use semantic versioning for breaking changes
-
-## Troubleshooting
-
-### Protobuf Generation Fails
-
-```bash
-# Clean and regenerate
-./gradlew clean generateProto
-```
-
-### Port Already in Use
-
-Change the port in `application.yml` or set environment variable:
-
-```bash
-GRPC_SERVER_PORT=9093 ./gradlew bootRun
-```
-
-### Build Fails
-
-```bash
-# Clean build directory
-./gradlew clean
-
-# Update dependencies
-./gradlew dependencies --refresh-dependencies
-```
-
-## Additional Resources
-
-- [Spring Boot Documentation](https://spring.io/projects/spring-boot)
-- [gRPC Java Documentation](https://grpc.io/docs/languages/java/)
-- [grpc-spring-boot-starter](https://github.com/grpc-ecosystem/grpc-spring)
-- [Protobuf Guide](https://protobuf.dev/)
-- [Backstage Service Catalog](https://backstage.io/docs/features/software-catalog/)
-
-## Support
-
-For questions or issues:
-- Check the monorepo root README
-- Contact the platform team
-- Review existing services for examples
+Internal use only.

@@ -1,11 +1,12 @@
 spec:
-  name: {{SERVICE_NAME}}
-  short_name: {{SHORT_NAME}}  # Short name for CLI convenience (e.g., 'myapp' for 'myapp-service')
-  description: {{SERVICE_DESCRIPTION}}
+  name: flash-sale-service
+  short_name: flashsale  # Short name for CLI convenience
+  description: High-concurrency flash sale (seckill) system with Redis inventory, Kafka message queue, and MySQL persistence
   type: java
-  port: {{PORT}}
+  port: 8084
+  grpc_port: 9094
   cd: true
   codeowners:
-    - "@{{TEAM_NAME}}"
+    - "@platform-team"
 test:
-  coverage: 30
+  coverage: 80
