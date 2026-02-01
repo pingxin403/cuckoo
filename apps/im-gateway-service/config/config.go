@@ -25,6 +25,9 @@ type Config struct {
 
 	// Service Discovery configuration
 	ServiceDiscovery ServiceDiscoveryConfig `mapstructure:"service_discovery"`
+
+	// Multi-Region configuration
+	Region RegionConfig `mapstructure:"region"`
 }
 
 // ServerConfig holds server-specific configuration
@@ -41,6 +44,28 @@ type ServiceDiscoveryConfig struct {
 	AuthServiceAddr string `mapstructure:"auth_service_addr"`
 	// IMServiceAddr is the address of the IM service
 	IMServiceAddr string `mapstructure:"im_service_addr"`
+}
+
+// RegionConfig holds multi-region configuration
+type RegionConfig struct {
+	// ID is the unique identifier for this region (e.g., "region-a", "region-b")
+	ID string `mapstructure:"id" validate:"required"`
+	// Name is the human-readable name for this region
+	Name string `mapstructure:"name"`
+	// Routing holds routing configuration
+	Routing RoutingConfig `mapstructure:"routing"`
+}
+
+// RoutingConfig holds routing configuration
+type RoutingConfig struct {
+	// Enabled indicates if geo-routing is enabled
+	Enabled bool `mapstructure:"enabled"`
+	// PeerRegions is the list of peer region endpoints
+	PeerRegions map[string]string `mapstructure:"peer_regions"` // region_id -> endpoint
+	// HealthCheckInterval is the interval for health checks
+	HealthCheckInterval string `mapstructure:"health_check_interval"`
+	// FailoverEnabled indicates if automatic failover is enabled
+	FailoverEnabled bool `mapstructure:"failover_enabled"`
 }
 
 // Load loads configuration from environment variables and config files
@@ -97,4 +122,12 @@ func setIMGatewayServiceDefaults(loader *config.Loader) {
 	loader.SetDefault("observability.metrics_port", 9090)
 	loader.SetDefault("observability.log_level", "info")
 	loader.SetDefault("observability.log_format", "json")
+
+	// Multi-Region defaults
+	loader.SetDefault("region.id", "region-a")
+	loader.SetDefault("region.name", "Primary Region")
+	loader.SetDefault("region.routing.enabled", false)
+	loader.SetDefault("region.routing.peer_regions", map[string]string{})
+	loader.SetDefault("region.routing.health_check_interval", "30s")
+	loader.SetDefault("region.routing.failover_enabled", false)
 }

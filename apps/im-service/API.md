@@ -2,7 +2,7 @@
 
 ## Overview
 
-The IM Service provides gRPC APIs for message routing, offline message management, and read receipts.
+The IM Service provides gRPC APIs for message routing, offline message management, and read receipts. The service supports multi-region active-active deployment with HLC-based global ID generation and LWW conflict resolution.
 
 ## Table of Contents
 
@@ -631,8 +631,86 @@ console.log(`Total offline messages: ${count.count}`);
 3. **Caching**: Cache frequently accessed data
 4. **Monitoring**: Track P99 latency < 200ms
 
+## Multi-Region Support
+
+### Global ID Format
+
+In multi-region deployments, messages use HLC-based global IDs:
+
+```
+{region_id}-{hlc_timestamp}-{logical_counter}-{local_sequence}
+```
+
+**Example**: `region-a-1706180400000-5-12345`
+
+### Cross-Region Message Routing
+
+Messages are automatically synchronized across regions:
+
+1. **Local Write**: Message written to local region
+2. **Async Replication**: Message replicated to peer regions via Kafka
+3. **Conflict Resolution**: LWW strategy with RegionID tiebreaker
+4. **Eventual Consistency**: All regions converge to same state
+
+### Multi-Region Configuration
+
+Configure region-specific settings via environment variables:
+
+```bash
+# Region Identity
+REGION_ID=region-a
+REGION_NAME=Primary Region (Beijing)
+NODE_ID=node-1
+
+# Cross-Region Settings
+CROSS_REGION_ENABLED=true
+PEER_REGIONS=region-b
+SYNC_INTERVAL=100ms
+FAILOVER_TIMEOUT=30s
+CONFLICT_RESOLUTION=lww
+```
+
+### Health Check (Multi-Region)
+
+**Endpoint**: `GET /health/cross-region`
+
+**Response**:
+```json
+{
+  "overall": "healthy",
+  "region": "region-a",
+  "local_health": {
+    "mysql": "healthy",
+    "redis": "healthy",
+    "kafka": "healthy",
+    "etcd": "healthy"
+  },
+  "cross_region": {
+    "region-b": "healthy"
+  },
+  "timestamp": 1706180400000
+}
+```
+
+### Multi-Region Metrics
+
+Additional Prometheus metrics for multi-region deployments:
+
+```
+# Cross-region sync latency
+cross_region_sync_latency_ms{source_region="region-a",target_region="region-b"} 45.2
+
+# Conflict events
+cross_region_conflicts_total{region="region-a",conflict_type="message"} 12
+
+# Failover events
+failover_events_total{from_region="region-a",to_region="region-b"} 1
+```
+
 ## References
 
 - [Deployment Guide](./DEPLOYMENT.md)
+- [Multi-Region Integration Guide](../MULTI_REGION_INTEGRATION_COMPLETE.md)
+- [Multi-Region Deployment](../../deploy/docker/README.multi-region.md)
 - [Integration Testing Guide](./integration_test/README.md)
 - [gRPC Documentation](https://grpc.io/docs/)

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/pingxin403/cuckoo/apps/im-gateway-service/routing"
 	"github.com/redis/go-redis/v9"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
@@ -30,9 +31,11 @@ type GatewayService struct {
 	pushService   *PushService
 	cacheManager  *CacheManager
 	kafkaConsumer *KafkaConsumer
+	geoRouter     *routing.GeoRouter // Geographic routing for multi-region
 
 	// Configuration
-	config GatewayConfig
+	config   GatewayConfig
+	regionID string // Current region ID
 
 	// Shutdown
 	ctx    context.Context
@@ -213,6 +216,7 @@ func NewGatewayService(
 		imClient:       imClient,
 		redisClient:    redisClient,
 		config:         config,
+		regionID:       "region-a", // Default, should be configured
 		ctx:            ctx,
 		cancel:         cancel,
 		upgrader: websocket.Upgrader{
@@ -240,6 +244,27 @@ func NewGatewayService(
 	return gateway
 }
 
+// NewGatewayServiceWithRegion creates a new gateway service instance with region support
+func NewGatewayServiceWithRegion(
+	authClient AuthServiceClient,
+	registryClient RegistryClient,
+	imClient IMServiceClient,
+	redisClient *redis.Client,
+	config GatewayConfig,
+	regionID string,
+	routingConfig *routing.GeoRouterConfig,
+) *GatewayService {
+	gateway := NewGatewayService(authClient, registryClient, imClient, redisClient, config)
+	gateway.regionID = regionID
+
+	// Initialize geo router if config provided
+	if routingConfig != nil {
+		gateway.geoRouter = routing.NewGeoRouter(regionID, *routingConfig, nil) // TODO: Add logger
+	}
+
+	return gateway
+}
+
 // Start starts the gateway service and all internal components.
 func (g *GatewayService) Start(kafkaConfig KafkaConfig) error {
 	// Start cache manager
@@ -253,12 +278,32 @@ func (g *GatewayService) Start(kafkaConfig KafkaConfig) error {
 		return fmt.Errorf("failed to start kafka consumer: %w", err)
 	}
 
+	// Start geo router if configured
+	if g.geoRouter != nil {
+		if err := g.geoRouter.Start(); err != nil {
+			return fmt.Errorf("failed to start geo router: %w", err)
+		}
+	}
+
 	return nil
 }
 
 // HandleWebSocket handles WebSocket connection upgrade and lifecycle.
 // Validates: Requirements 6.1, 6.2, 11.1, 15.5
 func (g *GatewayService) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
+	// Check if geo-routing is enabled and route to appropriate region
+	if g.geoRouter != nil {
+		decision := g.geoRouter.RouteRequest(r)
+
+		// If target region is not local, redirect or proxy
+		if decision.TargetRegion != g.regionID {
+			// For WebSocket, we need to send a redirect response
+			// In production, this would be handled by a load balancer
+			http.Error(w, fmt.Sprintf("Please connect to region: %s", decision.TargetRegion), http.StatusTemporaryRedirect)
+			return
+		}
+	}
+
 	// Extract JWT token from query parameter or header
 	token := r.URL.Query().Get("token")
 	if token == "" {
@@ -343,6 +388,13 @@ func (g *GatewayService) getGatewayNodeID() string {
 func (g *GatewayService) Shutdown(ctx context.Context) error {
 	// Cancel context to signal shutdown
 	g.cancel()
+
+	// Stop geo router
+	if g.geoRouter != nil {
+		if err := g.geoRouter.Stop(); err != nil {
+			// Log error but continue shutdown
+		}
+	}
 
 	// Stop Kafka consumer
 	if g.kafkaConsumer != nil {

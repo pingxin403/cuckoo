@@ -686,15 +686,26 @@ shortener-service/
 
 ## Additional Resources
 
-- [Design Document](../../.kiro/specs/url-shortener-service/design.md)
-- [Requirements Document](../../.kiro/specs/url-shortener-service/requirements.md)
-- [Implementation Tasks](../../.kiro/specs/url-shortener-service/tasks.md)
+### Core Documentation
+- [Design Document](../../.kiro/specs/url-shortener-service/design.md) - Architecture and design decisions
+- [Requirements Document](../../.kiro/specs/url-shortener-service/requirements.md) - Feature requirements
+- [Implementation Tasks](../../.kiro/specs/url-shortener-service/tasks.md) - Development roadmap
 - [API Documentation](./docs/API.md) - Complete API reference
+
+### Performance and Optimization
+- [Performance Quick Reference](./PERFORMANCE_QUICK_REFERENCE.md) - ⚡ Critical issues and action items
+- [Performance Analysis](./docs/PERFORMANCE_ANALYSIS.md) - Detailed comparison with industry best practices
+
+### Setup and Testing
 - [Quick Start Guide](./QUICK_START.md) - Get started in 5 minutes
 - [Integration Test Summary](./INTEGRATION_TEST_SUMMARY.md) - Test results and coverage
 - [MVP Completion Summary](./MVP_COMPLETION_SUMMARY.md) - Feature checklist
+
+### Deployment
 - [Gateway Verification](./GATEWAY_VERIFICATION.md) - Envoy routing validation
 - [Gateway Setup Summary](./GATEWAY_SETUP_SUMMARY.md) - Quick gateway setup guide
+
+### External Resources
 - [Monorepo Documentation](../../docs/)
 - [gRPC Go Documentation](https://grpc.io/docs/languages/go/)
 - [Protocol Buffers Guide](https://protobuf.dev/)

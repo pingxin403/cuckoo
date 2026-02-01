@@ -7,6 +7,7 @@ import (
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/pingxin403/cuckoo/apps/im-service/sync"
 )
 
 // OfflineMessage represents a message stored for offline delivery
@@ -23,11 +24,17 @@ type OfflineMessage struct {
 	CreatedAt        time.Time         `json:"created_at"`
 	ExpiresAt        time.Time         `json:"expires_at"`
 	Metadata         map[string]string `json:"metadata,omitempty"`
+	// Multi-region fields
+	RegionID   string `json:"region_id,omitempty"`   // Source region
+	GlobalID   string `json:"global_id,omitempty"`   // HLC-based global ID
+	SyncStatus string `json:"sync_status,omitempty"` // pending, synced, conflict
 }
 
 // OfflineStore handles offline message storage operations
 type OfflineStore struct {
-	db *sql.DB
+	db               *sql.DB
+	regionID         string                 // Current region ID
+	conflictResolver *sync.ConflictResolver // For resolving cross-region conflicts
 }
 
 // Config holds database configuration
@@ -36,6 +43,9 @@ type Config struct {
 	MaxOpenConns    int
 	MaxIdleConns    int
 	ConnMaxLifetime time.Duration
+	// Multi-region configuration
+	RegionID                 string
+	EnableConflictResolution bool
 }
 
 // NewOfflineStore creates a new offline message store
@@ -55,7 +65,18 @@ func NewOfflineStore(config Config) (*OfflineStore, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	return &OfflineStore{db: db}, nil
+	store := &OfflineStore{
+		db:       db,
+		regionID: config.RegionID,
+	}
+
+	// Initialize conflict resolver if enabled
+	if config.EnableConflictResolution {
+		resolverConfig := sync.DefaultConflictResolverConfig(config.RegionID)
+		store.conflictResolver = sync.NewConflictResolver(resolverConfig, nil) // TODO: Add logger
+	}
+
+	return store, nil
 }
 
 // Close closes the database connection
@@ -255,4 +276,148 @@ func (s *OfflineStore) GetOldestExpiredMessage(ctx context.Context) (*time.Time,
 	}
 
 	return &expiresAt.Time, nil
+}
+
+// StoreRemoteMessage stores a message received from a remote region
+// It checks for conflicts and resolves them using the conflict resolver
+func (s *OfflineStore) StoreRemoteMessage(ctx context.Context, msg *OfflineMessage) error {
+	if s.conflictResolver == nil {
+		// No conflict resolution, just insert
+		return s.insertMessage(ctx, msg)
+	}
+
+	// Check if message already exists
+	existingMsg, err := s.getMessageByGlobalID(ctx, msg.GlobalID)
+	if err != nil && err != sql.ErrNoRows {
+		return fmt.Errorf("failed to check for existing message: %w", err)
+	}
+
+	if existingMsg == nil {
+		// No conflict, insert new message
+		msg.SyncStatus = "synced"
+		return s.insertMessage(ctx, msg)
+	}
+
+	// Conflict detected, resolve it
+	localVersion := sync.MessageVersion{
+		GlobalID:  existingMsg.GlobalID,
+		Content:   existingMsg.Content,
+		Timestamp: existingMsg.Timestamp,
+		RegionID:  existingMsg.RegionID,
+	}
+
+	remoteVersion := sync.MessageVersion{
+		GlobalID:  msg.GlobalID,
+		Content:   msg.Content,
+		Timestamp: msg.Timestamp,
+		RegionID:  msg.RegionID,
+	}
+
+	resolution, err := s.conflictResolver.ResolveConflict(ctx, localVersion, remoteVersion)
+	if err != nil {
+		return fmt.Errorf("failed to resolve conflict: %w", err)
+	}
+
+	// Apply resolution
+	if resolution.Resolution == "remote_wins" {
+		msg.SyncStatus = "synced"
+		return s.updateMessage(ctx, msg)
+	}
+
+	// Local wins or no conflict, mark as synced
+	existingMsg.SyncStatus = "synced"
+	return s.updateMessage(ctx, existingMsg)
+}
+
+// getMessageByGlobalID retrieves a message by its global ID
+func (s *OfflineStore) getMessageByGlobalID(ctx context.Context, globalID string) (*OfflineMessage, error) {
+	query := `
+		SELECT 
+			id, msg_id, user_id, sender_id, conversation_id, conversation_type,
+			content, sequence_number, timestamp, created_at, expires_at,
+			region_id, global_id, sync_status
+		FROM offline_messages
+		WHERE global_id = ?
+	`
+
+	var msg OfflineMessage
+	err := s.db.QueryRowContext(ctx, query, globalID).Scan(
+		&msg.ID,
+		&msg.MsgID,
+		&msg.UserID,
+		&msg.SenderID,
+		&msg.ConversationID,
+		&msg.ConversationType,
+		&msg.Content,
+		&msg.SequenceNumber,
+		&msg.Timestamp,
+		&msg.CreatedAt,
+		&msg.ExpiresAt,
+		&msg.RegionID,
+		&msg.GlobalID,
+		&msg.SyncStatus,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to get message: %w", err)
+	}
+
+	return &msg, nil
+}
+
+// insertMessage inserts a new message into the database
+func (s *OfflineStore) insertMessage(ctx context.Context, msg *OfflineMessage) error {
+	query := `
+		INSERT INTO offline_messages (
+			msg_id, user_id, sender_id, conversation_id, conversation_type,
+			content, sequence_number, timestamp, expires_at,
+			region_id, global_id, sync_status
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`
+
+	_, err := s.db.ExecContext(ctx, query,
+		msg.MsgID,
+		msg.UserID,
+		msg.SenderID,
+		msg.ConversationID,
+		msg.ConversationType,
+		msg.Content,
+		msg.SequenceNumber,
+		msg.Timestamp,
+		msg.ExpiresAt,
+		msg.RegionID,
+		msg.GlobalID,
+		msg.SyncStatus,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to insert message: %w", err)
+	}
+
+	return nil
+}
+
+// updateMessage updates an existing message in the database
+func (s *OfflineStore) updateMessage(ctx context.Context, msg *OfflineMessage) error {
+	query := `
+		UPDATE offline_messages
+		SET content = ?, timestamp = ?, sync_status = ?
+		WHERE global_id = ?
+	`
+
+	_, err := s.db.ExecContext(ctx, query,
+		msg.Content,
+		msg.Timestamp,
+		msg.SyncStatus,
+		msg.GlobalID,
+	)
+
+	if err != nil {
+		return fmt.Errorf("failed to update message: %w", err)
+	}
+
+	return nil
 }

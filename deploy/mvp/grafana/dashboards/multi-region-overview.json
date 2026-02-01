@@ -1,0 +1,113 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Multi-Region Active-Active Overview",
+    "tags": ["multi-region", "active-active", "im-system"],
+    "style": "dark",
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "System Health Overview",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up",
+            "legendFormat": "{{job}} - {{region}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "thresholds": {
+              "steps": [
+                {"color": "red", "value": 0},
+                {"color": "green", "value": 1}
+              ]
+            }
+          }
+        },
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+      },
+      {
+        "id": 2,
+        "title": "Cross-Region Sync Latency",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(sync_latency_seconds_bucket[5m]))",
+            "legendFormat": "P50"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(sync_latency_seconds_bucket[5m]))",
+            "legendFormat": "P95"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(sync_latency_seconds_bucket[5m]))",
+            "legendFormat": "P99"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Latency (seconds)",
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+      },
+      {
+        "id": 3,
+        "title": "Message Conflict Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(conflict_total[5m])",
+            "legendFormat": "Conflicts/sec"
+          }
+        ],
+        "yAxes": [
+          {
+            "label": "Conflicts per second",
+            "min": 0
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8}
+      },
+      {
+        "id": 4,
+        "title": "HLC Clock Status",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "hlc_physical_time_ms",
+            "legendFormat": "{{region}} Physical Time"
+          },
+          {
+            "expr": "hlc_logical_time",
+            "legendFormat": "{{region}} Logical Time"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+      },
+      {
+        "id": 5,
+        "title": "Failover Events",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "increase(failover_events_total[1h])",
+            "legendFormat": "Failover Events"
+          }
+        ],
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16}
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "refresh": "5s"
+  }
+}
