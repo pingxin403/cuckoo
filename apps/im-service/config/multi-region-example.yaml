@@ -1,0 +1,92 @@
+# Multi-Region Configuration Example for IM Service
+# This file demonstrates how to configure the IM service for multi-region deployment
+
+server:
+  grpc_port: 9094
+  http_port: 8080
+
+database:
+  host: localhost
+  port: 3306
+  user: im_service
+  password: im_password
+  database: im_chat
+  max_open_conns: 25
+  max_idle_conns: 5
+  conn_max_lifetime: 5m
+
+redis:
+  addr: localhost:6379
+  password: ""
+  db: 2
+
+kafka:
+  brokers:
+    - localhost:9092
+  consumer_group: im-service-offline-workers
+  topic: offline_msg
+
+etcd:
+  endpoints:
+    - localhost:2379
+  ttl: 90s
+
+# Multi-Region Configuration
+region:
+  # Unique identifier for this region
+  id: region-a
+  # Human-readable name
+  name: Primary Region (Beijing)
+  # Node identifier within the region
+  node_id: node-1
+  
+  # Cross-region replication settings
+  cross_region:
+    # Enable cross-region replication
+    enabled: true
+    
+    # List of peer regions to replicate to
+    peer_regions:
+      - region-b
+    
+    # Interval for cross-region sync operations
+    sync_interval: 100ms
+    
+    # Timeout for failover operations
+    failover_timeout: 30s
+    
+    # Conflict resolution strategy: lww (Last Write Wins) or manual
+    conflict_resolution: lww
+
+observability:
+  service_name: im-service
+  service_version: 1.0.0
+  environment: production
+  enable_metrics: true
+  metrics_port: 9090
+  log_level: info
+  log_format: json
+
+offline_worker:
+  enabled: true
+  batch_size: 100
+  batch_timeout: 5s
+  max_retries: 5
+  retry_backoff:
+    - 1s
+    - 2s
+    - 4s
+    - 8s
+    - 16s
+  message_ttl: 168h # 7 days
+
+read_receipt:
+  kafka_enabled: true
+  topic: read_receipt_events
+
+sensitive_word_filter:
+  enabled: false
+  default_action: replace
+  word_lists: {}
+  case_sensitive: false
+  normalize_unicode: true

@@ -1,0 +1,88 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "alert_rules.yml"
+
+scrape_configs:
+  # IM Service Region A
+  - job_name: 'im-service-region-a'
+    static_configs:
+      - targets: ['im-service-a:8080']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    labels:
+      region: 'region-a'
+      service: 'im-service'
+
+  # IM Service Region B
+  - job_name: 'im-service-region-b'
+    static_configs:
+      - targets: ['im-service-b:8080']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    labels:
+      region: 'region-b'
+      service: 'im-service'
+
+  # IM Gateway Region A
+  - job_name: 'im-gateway-region-a'
+    static_configs:
+      - targets: ['im-gateway-a:8080']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    labels:
+      region: 'region-a'
+      service: 'im-gateway'
+
+  # IM Gateway Region B
+  - job_name: 'im-gateway-region-b'
+    static_configs:
+      - targets: ['im-gateway-b:8080']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    labels:
+      region: 'region-b'
+      service: 'im-gateway'
+
+  # Arbiter Mock Service
+  - job_name: 'arbiter-mock'
+    static_configs:
+      - targets: ['arbiter-mock:9999']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+    labels:
+      service: 'arbiter'
+
+  # Redis Region A
+  - job_name: 'redis-region-a'
+    static_configs:
+      - targets: ['redis-region-a:6379']
+    labels:
+      region: 'region-a'
+      service: 'redis'
+
+  # Redis Region B
+  - job_name: 'redis-region-b'
+    static_configs:
+      - targets: ['redis-region-b:6379']
+    labels:
+      region: 'region-b'
+      service: 'redis'
+
+  # Kafka
+  - job_name: 'kafka'
+    static_configs:
+      - targets: ['kafka:9092']
+    labels:
+      service: 'kafka'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+
+# Alert rules for multi-region monitoring
+rule_files:
+  - "multi_region_alerts.yml"

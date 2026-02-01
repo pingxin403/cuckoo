@@ -297,7 +297,295 @@ services:
     networks:
       - monorepo-network
     restart: unless-stopped
+
+  # ========================================
+  # Multi-Region Services (Region A)
+  # ========================================
+
+  # IM Service - Region A (Primary)
+  im-service-region-a:
+    build:
+      context: ../..
+      dockerfile: apps/im-service/Dockerfile
+    image: im-service:latest
+    container_name: im-service-region-a
+    ports:
+      - "9194:9094"  # gRPC
+      - "8184:8080"  # HTTP (health checks and metrics)
+    environment:
+      # gRPC server
+      - GRPC_PORT=9094
+      - HTTP_PORT=8080
+      
+      # Region Configuration
+      - REGION_ID=region-a
+      - REGION_NAME=Primary Region (Beijing)
+      - NODE_ID=node-1
+      - CROSS_REGION_ENABLED=true
+      - PEER_REGIONS=region-b
+      - SYNC_INTERVAL=100ms
+      - FAILOVER_TIMEOUT=30s
+      - CONFLICT_RESOLUTION=lww
+      
+      # Kafka configuration
+      - KAFKA_BROKERS=kafka:9092
+      - KAFKA_CONSUMER_GROUP=im-service-region-a-offline-workers
+      - KAFKA_TOPIC=offline_msg
+      
+      # Database configuration
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=im_service
+      - DB_PASSWORD=im_service_password
+      - DB_NAME=im_chat
+      - DB_MAX_OPEN_CONNS=25
+      - DB_MAX_IDLE_CONNS=5
+      
+      # Redis configuration
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=
+      - REDIS_DB=2
+      
+      # Offline worker configuration
+      - OFFLINE_WORKER_ENABLED=true
+      - BATCH_SIZE=100
+      - BATCH_TIMEOUT=5s
+      - MAX_RETRIES=5
+      - RETRY_BACKOFF=1s,2s,4s,8s,16s
+      - MESSAGE_TTL=168h  # 7 days
+      
+      # Service dependencies
+      - ETCD_ENDPOINTS=etcd:2379
+      - AUTH_SERVICE_ADDR=auth-service:9095
+      - USER_SERVICE_ADDR=user-service:9096
+      - LOG_LEVEL=info
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      etcd:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      user-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+    networks:
+      - monorepo-network
+      - region-a-network
+    restart: unless-stopped
+
+  # IM Gateway Service - Region A (Primary)
+  im-gateway-service-region-a:
+    build:
+      context: ../..
+      dockerfile: apps/im-gateway-service/Dockerfile
+    image: im-gateway-service:latest
+    container_name: im-gateway-service-region-a
+    ports:
+      - "9197:9097"  # gRPC
+      - "8182:8080"  # WebSocket
+    environment:
+      - GRPC_PORT=9097
+      - WEBSOCKET_PORT=8080
+      
+      # Region Configuration
+      - REGION_ID=region-a
+      - REGION_NAME=Primary Region (Beijing)
+      - ROUTING_ENABLED=true
+      - PEER_REGION_B_ENDPOINT=http://im-gateway-service-region-b:8080
+      - HEALTH_CHECK_INTERVAL=30s
+      - FAILOVER_ENABLED=true
+      
+      # Service dependencies
+      - ETCD_ENDPOINTS=etcd:2379
+      - KAFKA_BROKERS=kafka:9092
+      - REDIS_ADDR=redis:6379
+      - AUTH_SERVICE_ADDR=auth-service:9095
+      - IM_SERVICE_ADDR=im-service-region-a:9094
+      - LOG_LEVEL=info
+    depends_on:
+      etcd:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      im-service-region-a:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "im-gateway-service"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+    networks:
+      - monorepo-network
+      - region-a-network
+    restart: unless-stopped
+
+  # ========================================
+  # Multi-Region Services (Region B)
+  # ========================================
+
+  # IM Service - Region B (Secondary)
+  im-service-region-b:
+    build:
+      context: ../..
+      dockerfile: apps/im-service/Dockerfile
+    image: im-service:latest
+    container_name: im-service-region-b
+    ports:
+      - "9294:9094"  # gRPC
+      - "8284:8080"  # HTTP (health checks and metrics)
+    environment:
+      # gRPC server
+      - GRPC_PORT=9094
+      - HTTP_PORT=8080
+      
+      # Region Configuration
+      - REGION_ID=region-b
+      - REGION_NAME=Secondary Region (Shanghai)
+      - NODE_ID=node-1
+      - CROSS_REGION_ENABLED=true
+      - PEER_REGIONS=region-a
+      - SYNC_INTERVAL=100ms
+      - FAILOVER_TIMEOUT=30s
+      - CONFLICT_RESOLUTION=lww
+      
+      # Kafka configuration
+      - KAFKA_BROKERS=kafka:9092
+      - KAFKA_CONSUMER_GROUP=im-service-region-b-offline-workers
+      - KAFKA_TOPIC=offline_msg
+      
+      # Database configuration
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=im_service
+      - DB_PASSWORD=im_service_password
+      - DB_NAME=im_chat
+      - DB_MAX_OPEN_CONNS=25
+      - DB_MAX_IDLE_CONNS=5
+      
+      # Redis configuration
+      - REDIS_ADDR=redis:6379
+      - REDIS_PASSWORD=
+      - REDIS_DB=3  # Different DB to simulate separate region
+      
+      # Offline worker configuration
+      - OFFLINE_WORKER_ENABLED=true
+      - BATCH_SIZE=100
+      - BATCH_TIMEOUT=5s
+      - MAX_RETRIES=5
+      - RETRY_BACKOFF=1s,2s,4s,8s,16s
+      - MESSAGE_TTL=168h  # 7 days
+      
+      # Service dependencies
+      - ETCD_ENDPOINTS=etcd:2379
+      - AUTH_SERVICE_ADDR=auth-service:9095
+      - USER_SERVICE_ADDR=user-service:9096
+      - LOG_LEVEL=info
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      etcd:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      user-service:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+    networks:
+      - monorepo-network
+      - region-b-network
+    restart: unless-stopped
+
+  # IM Gateway Service - Region B (Secondary)
+  im-gateway-service-region-b:
+    build:
+      context: ../..
+      dockerfile: apps/im-gateway-service/Dockerfile
+    image: im-gateway-service:latest
+    container_name: im-gateway-service-region-b
+    ports:
+      - "9297:9097"  # gRPC
+      - "8282:8080"  # WebSocket
+    environment:
+      - GRPC_PORT=9097
+      - WEBSOCKET_PORT=8080
+      
+      # Region Configuration
+      - REGION_ID=region-b
+      - REGION_NAME=Secondary Region (Shanghai)
+      - ROUTING_ENABLED=true
+      - PEER_REGION_A_ENDPOINT=http://im-gateway-service-region-a:8080
+      - HEALTH_CHECK_INTERVAL=30s
+      - FAILOVER_ENABLED=true
+      
+      # Service dependencies
+      - ETCD_ENDPOINTS=etcd:2379
+      - KAFKA_BROKERS=kafka:9092
+      - REDIS_ADDR=redis:6379
+      - AUTH_SERVICE_ADDR=auth-service:9095
+      - IM_SERVICE_ADDR=im-service-region-b:9094
+      - LOG_LEVEL=info
+    depends_on:
+      etcd:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      im-service-region-b:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "im-gateway-service"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+    networks:
+      - monorepo-network
+      - region-b-network
+    restart: unless-stopped
+
 networks:
   monorepo-network:
     external: true
     name: monorepo-network
+  
+  # Region-specific networks for isolation and cross-region communication
+  region-a-network:
+    driver: bridge
+    name: region-a-network
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+  
+  region-b-network:
+    driver: bridge
+    name: region-b-network
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16

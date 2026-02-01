@@ -2,7 +2,7 @@
 
 ## Overview
 
-The IM Gateway Service provides WebSocket and gRPC APIs for real-time messaging. This document covers all available APIs, protocols, and usage examples.
+The IM Gateway Service provides WebSocket and gRPC APIs for real-time messaging. This document covers all available APIs, protocols, and usage examples. The service supports multi-region active-active deployment with intelligent geo-routing and automatic failover.
 
 ## Table of Contents
 
@@ -1026,9 +1026,85 @@ func main() {
 
 See [openapi.yaml](./openapi.yaml) for complete OpenAPI 3.0 specification of REST endpoints.
 
+## Multi-Region Support
+
+### Geo-Routing
+
+The Gateway Service automatically routes connections to the nearest healthy region:
+
+**Configuration**:
+```bash
+# Region Identity
+REGION_ID=region-a
+REGION_NAME=Primary Region (Beijing)
+
+# Routing Settings
+ROUTING_ENABLED=true
+PEER_REGION_B_ENDPOINT=http://im-gateway-service-region-b:8080
+HEALTH_CHECK_INTERVAL=30s
+FAILOVER_ENABLED=true
+```
+
+### Automatic Failover
+
+When a region becomes unhealthy, connections automatically failover:
+
+1. **Health Check Failure**: Region marked as unhealthy after 3 consecutive failures
+2. **Reconnect Message**: Server sends reconnect message to clients
+3. **Client Reconnects**: Clients reconnect to healthy region
+4. **Session Resume**: Session state restored from etcd
+
+**Reconnect Message**:
+```json
+{
+  "type": "reconnect",
+  "endpoint": "wss://region-b.example.com:8080/ws",
+  "reason": "region_failover",
+  "timestamp": 1706180400000
+}
+```
+
+### Multi-Region Health Check
+
+**Endpoint**: `GET /health/routing`
+
+**Response**:
+```json
+{
+  "region": "region-a",
+  "status": "healthy",
+  "peer_regions": {
+    "region-b": {
+      "status": "healthy",
+      "endpoint": "http://im-gateway-service-region-b:8080",
+      "last_check": 1706180400000,
+      "latency_ms": 45
+    }
+  }
+}
+```
+
+### Multi-Region Metrics
+
+Additional Prometheus metrics for multi-region deployments:
+
+```
+# Routing decisions
+geo_routing_decisions_total{source_region="region-a",target_region="region-a"} 85234
+geo_routing_decisions_total{source_region="region-a",target_region="region-b"} 1234
+
+# Failover events
+gateway_failover_events_total{from_region="region-a",to_region="region-b"} 2
+
+# Cross-region latency
+cross_region_health_check_latency_ms{source="region-a",target="region-b"} 45.2
+```
+
 ## References
 
 - [WebSocket Protocol (RFC 6455)](https://tools.ietf.org/html/rfc6455)
 - [gRPC Documentation](https://grpc.io/docs/)
 - [JWT (RFC 7519)](https://tools.ietf.org/html/rfc7519)
 - [Prometheus Metrics](https://prometheus.io/docs/concepts/metric_types/)
+- [Multi-Region Integration Guide](../MULTI_REGION_INTEGRATION_COMPLETE.md)
+- [Multi-Region Deployment](../../deploy/docker/README.multi-region.md)
