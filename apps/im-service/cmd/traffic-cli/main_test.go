@@ -148,37 +148,37 @@ func TestGetDefaultOperator(t *testing.T) {
 	originalUser := os.Getenv("USER")
 	originalUsername := os.Getenv("USERNAME")
 	defer func() {
-		os.Setenv("USER", originalUser)
-		os.Setenv("USERNAME", originalUsername)
+		_ = os.Setenv("USER", originalUser)
+		_ = os.Setenv("USERNAME", originalUsername)
 	}()
 
 	t.Run("USER env var set", func(t *testing.T) {
-		os.Setenv("USER", "testuser")
-		os.Unsetenv("USERNAME")
+		_ = os.Setenv("USER", "testuser")
+		_ = os.Unsetenv("USERNAME")
 
 		operator := getDefaultOperator()
 		assert.Equal(t, "testuser", operator)
 	})
 
 	t.Run("USERNAME env var set", func(t *testing.T) {
-		os.Unsetenv("USER")
-		os.Setenv("USERNAME", "testuser2")
+		_ = os.Unsetenv("USER")
+		_ = os.Setenv("USERNAME", "testuser2")
 
 		operator := getDefaultOperator()
 		assert.Equal(t, "testuser2", operator)
 	})
 
 	t.Run("no env vars set", func(t *testing.T) {
-		os.Unsetenv("USER")
-		os.Unsetenv("USERNAME")
+		_ = os.Unsetenv("USER")
+		_ = os.Unsetenv("USERNAME")
 
 		operator := getDefaultOperator()
 		assert.Equal(t, "unknown", operator)
 	})
 
 	t.Run("USER takes precedence over USERNAME", func(t *testing.T) {
-		os.Setenv("USER", "user1")
-		os.Setenv("USERNAME", "user2")
+		_ = os.Setenv("USER", "user1")
+		_ = os.Setenv("USERNAME", "user2")
 
 		operator := getDefaultOperator()
 		assert.Equal(t, "user1", operator)

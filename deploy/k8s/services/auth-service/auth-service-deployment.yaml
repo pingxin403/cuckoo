@@ -25,9 +25,19 @@ spec:
         - name: grpc
           containerPort: 9095
           protocol: TCP
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        - name: metrics
+          containerPort: 9090
+          protocol: TCP
         env:
         - name: PORT
           value: "9095"
+        - name: HTTP_PORT
+          value: "8080"
+        - name: METRICS_PORT
+          value: "9090"
         - name: JWT_SECRET
           valueFrom:
             secretKeyRef:
@@ -41,12 +51,26 @@ spec:
             memory: "256Mi"
             cpu: "250m"
         livenessProbe:
-          grpc:
-            port: 9095
-          initialDelaySeconds: 15
-          periodSeconds: 10
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 3
         readinessProbe:
-          grpc:
-            port: 9095
+          httpGet:
+            path: /readyz
+            port: 8080
           initialDelaySeconds: 5
           periodSeconds: 5
+          timeoutSeconds: 1
+          failureThreshold: 1
+        startupProbe:
+          httpGet:
+            path: /readyz
+            port: 8080
+          initialDelaySeconds: 0
+          periodSeconds: 2
+          timeoutSeconds: 1
+          failureThreshold: 30

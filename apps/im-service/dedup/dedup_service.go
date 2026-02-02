@@ -96,6 +96,11 @@ func (d *DedupService) Close() error {
 	return d.client.Close()
 }
 
+// GetClient returns the underlying Redis client for health checks
+func (d *DedupService) GetClient() redis.UniversalClient {
+	return d.client
+}
+
 // Ping checks if Redis connection is alive
 func (d *DedupService) Ping(ctx context.Context) error {
 	return d.client.Ping(ctx).Err()

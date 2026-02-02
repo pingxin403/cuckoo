@@ -24,7 +24,7 @@ func TestCLIIntegration(t *testing.T) {
 	redisClient := redis.NewClient(&redis.Options{
 		Addr: mr.Addr(),
 	})
-	defer redisClient.Close()
+	defer func() { _ = redisClient.Close() }()
 
 	// Create traffic switcher
 	switcher := traffic.NewTrafficSwitcher(redisClient, nil)
@@ -284,7 +284,7 @@ func TestParseRegionWeightsIntegration(t *testing.T) {
 	redisClient := redis.NewClient(&redis.Options{
 		Addr: mr.Addr(),
 	})
-	defer redisClient.Close()
+	defer func() { _ = redisClient.Close() }()
 
 	switcher := traffic.NewTrafficSwitcher(redisClient, nil)
 

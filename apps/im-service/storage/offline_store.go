@@ -8,6 +8,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/pingxin403/cuckoo/apps/im-service/sync"
+	"github.com/pingxin403/cuckoo/libs/hlc"
 )
 
 // OfflineMessage represents a message stored for offline delivery
@@ -299,15 +300,26 @@ func (s *OfflineStore) StoreRemoteMessage(ctx context.Context, msg *OfflineMessa
 	}
 
 	// Conflict detected, resolve it
+	// Parse GlobalID strings to hlc.GlobalID structs
+	localGlobalID, err := hlc.ParseGlobalID(existingMsg.GlobalID)
+	if err != nil {
+		return fmt.Errorf("failed to parse local global ID: %w", err)
+	}
+
+	remoteGlobalID, err := hlc.ParseGlobalID(msg.GlobalID)
+	if err != nil {
+		return fmt.Errorf("failed to parse remote global ID: %w", err)
+	}
+
 	localVersion := sync.MessageVersion{
-		GlobalID:  existingMsg.GlobalID,
+		GlobalID:  localGlobalID,
 		Content:   existingMsg.Content,
 		Timestamp: existingMsg.Timestamp,
 		RegionID:  existingMsg.RegionID,
 	}
 
 	remoteVersion := sync.MessageVersion{
-		GlobalID:  msg.GlobalID,
+		GlobalID:  remoteGlobalID,
 		Content:   msg.Content,
 		Timestamp: msg.Timestamp,
 		RegionID:  msg.RegionID,

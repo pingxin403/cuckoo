@@ -162,7 +162,7 @@ func (ts *TrafficSwitcher) SwitchTrafficProportional(ctx context.Context, region
 			Message: "Another traffic switch operation is in progress",
 		}, fmt.Errorf("lock acquisition failed")
 	}
-	defer ts.releaseLock(ctx)
+	defer func() { _ = ts.releaseLock(ctx) }()
 
 	oldConfig := ts.GetCurrentConfig()
 
@@ -307,6 +307,7 @@ func (ts *TrafficSwitcher) RouteRequest(userID string) string {
 	}
 
 	// Determine target based on hash and weights
+	// #nosec G115 - totalWeight is bounded by config validation (max 100)
 	hashMod := int(hash % uint32(totalWeight))
 	cumulative := 0
 
@@ -504,7 +505,7 @@ func (h *HTTPHandler) HandleGetConfig(w http.ResponseWriter, r *http.Request) {
 	config := h.switcher.GetCurrentConfig()
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(config)
+	_ = json.NewEncoder(w).Encode(config)
 }
 
 // HandleSwitchTraffic handles traffic switching requests
@@ -540,7 +541,7 @@ func (h *HTTPHandler) HandleSwitchTraffic(w http.ResponseWriter, r *http.Request
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	_ = json.NewEncoder(w).Encode(response)
 }
 
 // HandleGetEvents returns recent traffic switching events
@@ -548,7 +549,7 @@ func (h *HTTPHandler) HandleGetEvents(w http.ResponseWriter, r *http.Request) {
 	events := h.switcher.GetTrafficEvents(50) // Last 50 events
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"events": events,
 		"count":  len(events),
 	})
@@ -565,7 +566,7 @@ func (h *HTTPHandler) HandleRouteRequest(w http.ResponseWriter, r *http.Request)
 	targetRegion := h.switcher.RouteRequest(userID)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
 		"user_id":       userID,
 		"target_region": targetRegion,
 		"config":        h.switcher.GetCurrentConfig(),

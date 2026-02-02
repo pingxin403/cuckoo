@@ -276,15 +276,24 @@ func (gr *GeoRouter) Start() error {
 	mux.HandleFunc("/status", gr.handleStatus)
 
 	gr.server = &http.Server{
-		Addr:    fmt.Sprintf(":%d", gr.config.Port),
-		Handler: mux,
+		Addr:              fmt.Sprintf(":%d", gr.config.Port),
+		Handler:           mux,
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	// Start health checking
 	go gr.startHealthChecking()
 
 	gr.logger.Printf("GeoRouter starting on port %d", gr.config.Port)
-	return gr.server.ListenAndServe()
+	
+	// Run server in goroutine to make Start() non-blocking
+	go func() {
+		if err := gr.server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			gr.logger.Printf("GeoRouter server error: %v", err)
+		}
+	}()
+	
+	return nil
 }
 
 // Stop stops the geo router
@@ -329,7 +338,7 @@ func (gr *GeoRouter) RouteRequest(r *http.Request) *RoutingDecision {
 
 	// Handle header-based region override
 	if targetRegion := r.Header.Get("X-Target-Region"); targetRegion != "" {
-		if gr.isValidRegion(targetRegion) && gr.isRegionHealthy(targetRegion) {
+		if gr.isValidRegion(targetRegion) {
 			decision.TargetRegion = targetRegion
 			decision.Reason = "Header override"
 			decision.Confidence = 1.0
@@ -517,7 +526,7 @@ func (hc *HealthChecker) checkHealth() (bool, time.Duration) {
 		hc.logger.Printf("Health check failed for %s: %v", hc.regionID, err)
 		return false, latency
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	healthy := resp.StatusCode >= 200 && resp.StatusCode < 300
 	return healthy, latency
@@ -537,7 +546,7 @@ func hashString(s string) uint32 {
 func (gr *GeoRouter) handleRoute(w http.ResponseWriter, r *http.Request) {
 	decision := gr.RouteRequest(r)
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(decision)
+	_ = json.NewEncoder(w).Encode(decision)
 }
 
 func (gr *GeoRouter) handleHealth(w http.ResponseWriter, r *http.Request) {
@@ -547,14 +556,14 @@ func (gr *GeoRouter) handleHealth(w http.ResponseWriter, r *http.Request) {
 		"region":    gr.regionID,
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(health)
+	_ = json.NewEncoder(w).Encode(health)
 }
 
 func (gr *GeoRouter) handleRegions(w http.ResponseWriter, r *http.Request) {
 	gr.mu.RLock()
 	defer gr.mu.RUnlock()
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(gr.regions)
+	_ = json.NewEncoder(w).Encode(gr.regions)
 }
 
 func (gr *GeoRouter) handleRegionDetail(w http.ResponseWriter, r *http.Request) {
@@ -570,14 +579,14 @@ func (gr *GeoRouter) handleRegionDetail(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(region)
+	_ = json.NewEncoder(w).Encode(region)
 }
 
 func (gr *GeoRouter) handleRules(w http.ResponseWriter, r *http.Request) {
 	gr.mu.RLock()
 	defer gr.mu.RUnlock()
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(gr.routingRules)
+	_ = json.NewEncoder(w).Encode(gr.routingRules)
 }
 
 func (gr *GeoRouter) handleStatus(w http.ResponseWriter, r *http.Request) {
@@ -593,7 +602,7 @@ func (gr *GeoRouter) handleStatus(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(status)
+	_ = json.NewEncoder(w).Encode(status)
 }
 
 func (gr *GeoRouter) countHealthyRegions() int {
