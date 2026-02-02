@@ -1,16 +1,16 @@
 # Shortener Service - Local Development Environment
 
 server:
-  grpc_port: 9092
+  grpc_port: 50051
   http_port: 8080
   host: "0.0.0.0"
 
 database:
   host: "localhost"
   port: 3306
-  user: "shortener_service"
+  user: "shortener_user"
   password: "shortener_password"
-  database: "url_shortener"
+  database: "shortener"
   max_open_conns: 10
   max_idle_conns: 5
 

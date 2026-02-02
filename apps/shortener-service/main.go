@@ -51,19 +51,18 @@ func main() {
 		"version", getEnv("SERVICE_VERSION", "1.0.0"),
 	)
 
-	// Initialize health checker
-	hc := health.NewHealthChecker(health.Config{
-		ServiceName:      getEnv("SERVICE_NAME", "shortener-service"),
-		CheckInterval:    5 * time.Second,
-		DefaultTimeout:   100 * time.Millisecond,
-		FailureThreshold: 3,
-	}, obs)
+	// Initialize health checker with default config
+	healthConfig := health.DefaultConfig(getEnv("SERVICE_NAME", "shortener-service"))
+	healthConfig.CheckInterval = 5 * time.Second
+	healthConfig.DefaultTimeout = 100 * time.Millisecond
+	healthConfig.FailureThreshold = 3
+	hc := health.NewHealthChecker(healthConfig, obs)
 	obs.Logger().Info(ctx, "Initialized health checker")
 
 	// Get gRPC port from environment variable or use default
 	grpcPort := os.Getenv("PORT")
 	if grpcPort == "" {
-		grpcPort = "9092"
+		grpcPort = "50051" // Changed from 9092 to avoid Kafka port conflict
 	}
 
 	// Get HTTP port from environment variable or use default
@@ -185,16 +184,16 @@ func main() {
 
 	// Create main HTTP mux to handle both health endpoints and application routes
 	mainMux := http.NewServeMux()
-	
+
 	// Register health check endpoints (without readiness middleware)
 	mainMux.HandleFunc("/healthz", health.HealthzHandler(hc))
 	mainMux.HandleFunc("/readyz", health.ReadyzHandler(hc))
 	mainMux.HandleFunc("/health", health.HealthHandler(hc))
 	obs.Logger().Info(ctx, "Registered health check endpoints")
-	
+
 	// Wrap redirect handler with readiness middleware
 	readinessWrappedHandler := health.ReadinessMiddleware(hc)(httpRouter)
-	
+
 	// Mount the redirect handler at root (it will handle all other routes)
 	mainMux.Handle("/", readinessWrappedHandler)
 

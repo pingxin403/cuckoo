@@ -320,17 +320,6 @@ func startHTTPServer(obs observability.Observability, hc *health.HealthChecker, 
 	mux.HandleFunc("/readyz", health.ReadyzHandler(hc))
 	mux.HandleFunc("/health", health.HealthHandler(hc))
 
-	// Readiness check endpoint (legacy - kept for backward compatibility)
-	mux.HandleFunc("/ready", metricsMiddleware("/ready", func(rw http.ResponseWriter, r *http.Request) {
-		if hc.IsReady() {
-			rw.WriteHeader(http.StatusOK)
-			_, _ = rw.Write([]byte("READY"))
-		} else {
-			rw.WriteHeader(http.StatusServiceUnavailable)
-			_, _ = rw.Write([]byte("NOT READY"))
-		}
-	}))
-
 	// Stats endpoint
 	mux.HandleFunc("/stats", metricsMiddleware("/stats", func(rw http.ResponseWriter, r *http.Request) {
 		if w == nil {
