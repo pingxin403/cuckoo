@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"os"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -53,18 +52,22 @@ type MySQLStore struct {
 	db *sql.DB
 }
 
-// NewMySQLStore creates a new MySQL store with connection pooling
-func NewMySQLStore() (*MySQLStore, error) {
-	// Read configuration from environment variables
-	host := getEnv("MYSQL_HOST", "localhost")
-	port := getEnv("MYSQL_PORT", "3306")
-	database := getEnv("MYSQL_DATABASE", "shortener")
-	user := getEnv("MYSQL_USER", "root")
-	password := getEnv("MYSQL_PASSWORD", "")
+// MySQLConfig holds MySQL connection configuration
+type MySQLConfig struct {
+	Host         string
+	Port         int
+	User         string
+	Password     string
+	Database     string
+	MaxOpenConns int
+	MaxIdleConns int
+}
 
+// NewMySQLStore creates a new MySQL store with connection pooling
+func NewMySQLStore(cfg MySQLConfig) (*MySQLStore, error) {
 	// Build DSN (Data Source Name)
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true&charset=utf8mb4",
-		user, password, host, port, database)
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=true&charset=utf8mb4",
+		cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.Database)
 
 	// Open database connection
 	db, err := sql.Open("mysql", dsn)
@@ -73,8 +76,17 @@ func NewMySQLStore() (*MySQLStore, error) {
 	}
 
 	// Configure connection pool
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(5)
+	maxOpenConns := cfg.MaxOpenConns
+	if maxOpenConns == 0 {
+		maxOpenConns = 25
+	}
+	maxIdleConns := cfg.MaxIdleConns
+	if maxIdleConns == 0 {
+		maxIdleConns = 5
+	}
+
+	db.SetMaxOpenConns(maxOpenConns)
+	db.SetMaxIdleConns(maxIdleConns)
 	db.SetConnMaxLifetime(5 * time.Minute)
 	db.SetConnMaxIdleTime(1 * time.Minute)
 
@@ -259,12 +271,4 @@ func (s *MySQLStore) Close() error {
 // DB returns the underlying database connection for health checks
 func (s *MySQLStore) DB() *sql.DB {
 	return s.db
-}
-
-// getEnv retrieves an environment variable or returns a default value
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
 }

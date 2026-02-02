@@ -54,18 +54,6 @@ func TestStorage_Interface(t *testing.T) {
 	var _ Storage = (*MySQLStore)(nil)
 }
 
-// TestGetEnv verifies the environment variable helper function
-func TestGetEnv(t *testing.T) {
-	// Test with non-existent env var (should return default)
-	result := getEnv("NONEXISTENT_VAR_12345", "default_value")
-	assert.Equal(t, "default_value", result)
-
-	// Test with existing env var
-	t.Setenv("TEST_VAR", "test_value")
-	result = getEnv("TEST_VAR", "default_value")
-	assert.Equal(t, "test_value", result)
-}
-
 // TestMySQLStore_NilMapping verifies that Create rejects nil mappings
 func TestMySQLStore_NilMapping(t *testing.T) {
 	store := &MySQLStore{db: nil} // db is nil but we're only testing validation
