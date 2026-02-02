@@ -6,7 +6,9 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/pingxin403/cuckoo/api/gen/go v0.0.0-00010101000000-000000000000
 	github.com/pingxin403/cuckoo/libs/config v0.0.0-00010101000000-000000000000
+	github.com/pingxin403/cuckoo/libs/health v0.0.0-00010101000000-000000000000
 	github.com/pingxin403/cuckoo/libs/observability v0.0.0-00010101000000-000000000000
+	github.com/stretchr/testify v1.10.0
 	google.golang.org/grpc v1.78.0
 	google.golang.org/protobuf v1.36.11
 	pgregory.net/rapid v1.2.0
@@ -26,6 +28,7 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.5 // indirect
+	github.com/klauspost/compress v1.18.1 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
@@ -62,10 +65,12 @@ require (
 	golang.org/x/text v0.33.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260122232226-8e98ce8d340d // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260122232226-8e98ce8d340d // indirect
+	google.golang.org/protobuf v1.36.11 // indirect
 )
 
 replace (
 	github.com/pingxin403/cuckoo/api/gen/go => ../../api/gen/go
 	github.com/pingxin403/cuckoo/libs/config => ../../libs/config
+	github.com/pingxin403/cuckoo/libs/health => ../../libs/health
 	github.com/pingxin403/cuckoo/libs/observability => ../../libs/observability
 )

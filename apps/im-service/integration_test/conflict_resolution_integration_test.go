@@ -7,6 +7,7 @@ import (
 
 	"github.com/pingxin403/cuckoo/apps/im-service/storage"
 	"github.com/pingxin403/cuckoo/apps/im-service/sync"
+	"github.com/pingxin403/cuckoo/libs/hlc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -33,7 +34,7 @@ func TestConflictResolutionIntegration(t *testing.T) {
 		t.Skipf("Skipping test: database not available: %v", err)
 		return
 	}
-	defer store.Close()
+	defer func() { _ = store.Close() }()
 
 	ctx := context.Background()
 
@@ -160,14 +161,14 @@ func TestConflictResolverDirectly(t *testing.T) {
 
 	t.Run("resolve conflict with different timestamps", func(t *testing.T) {
 		localVersion := sync.MessageVersion{
-			GlobalID:  "test-1000-1",
+			GlobalID:  hlc.GlobalID{RegionID: "test", HLC: "1000", Sequence: 1},
 			Content:   "Local version",
 			Timestamp: 1000,
 			RegionID:  "region-a",
 		}
 
 		remoteVersion := sync.MessageVersion{
-			GlobalID:  "test-2000-1",
+			GlobalID:  hlc.GlobalID{RegionID: "test", HLC: "2000", Sequence: 1},
 			Content:   "Remote version (newer)",
 			Timestamp: 2000,
 			RegionID:  "region-b",
@@ -178,19 +179,19 @@ func TestConflictResolverDirectly(t *testing.T) {
 
 		// Remote should win (later timestamp)
 		assert.Equal(t, "remote_wins", resolution.Resolution)
-		assert.Equal(t, "Remote version (newer)", resolution.WinningVersion.Content)
+		assert.Equal(t, "Remote version (newer)", resolution.Winner.Content)
 	})
 
 	t.Run("resolve conflict with same timestamp different regions", func(t *testing.T) {
 		localVersion := sync.MessageVersion{
-			GlobalID:  "test-1000-1",
+			GlobalID:  hlc.GlobalID{RegionID: "test", HLC: "1000", Sequence: 1},
 			Content:   "Local version",
 			Timestamp: 1000,
 			RegionID:  "region-a",
 		}
 
 		remoteVersion := sync.MessageVersion{
-			GlobalID:  "test-1000-2",
+			GlobalID:  hlc.GlobalID{RegionID: "test", HLC: "1000", Sequence: 2},
 			Content:   "Remote version",
 			Timestamp: 1000, // Same timestamp
 			RegionID:  "region-b",
@@ -201,12 +202,12 @@ func TestConflictResolverDirectly(t *testing.T) {
 
 		// Should use region ID as tiebreaker
 		assert.NotEmpty(t, resolution.Resolution)
-		assert.NotEmpty(t, resolution.WinningVersion.Content)
+		assert.NotEmpty(t, resolution.Winner.Content)
 	})
 
 	t.Run("no conflict when IDs are identical", func(t *testing.T) {
 		version := sync.MessageVersion{
-			GlobalID:  "test-1000-1",
+			GlobalID:  hlc.GlobalID{RegionID: "test", HLC: "1000", Sequence: 1},
 			Content:   "Same version",
 			Timestamp: 1000,
 			RegionID:  "region-a",
@@ -230,14 +231,14 @@ func TestConflictMetrics(t *testing.T) {
 	// Resolve multiple conflicts
 	for i := 0; i < 5; i++ {
 		localVersion := sync.MessageVersion{
-			GlobalID:  "test-1000-1",
+			GlobalID:  hlc.GlobalID{RegionID: "test", HLC: "1000", Sequence: 1},
 			Content:   "Local",
 			Timestamp: 1000,
 			RegionID:  "region-a",
 		}
 
 		remoteVersion := sync.MessageVersion{
-			GlobalID:  "test-2000-1",
+			GlobalID:  hlc.GlobalID{RegionID: "test", HLC: "2000", Sequence: 1},
 			Content:   "Remote",
 			Timestamp: 2000,
 			RegionID:  "region-b",

@@ -4,11 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"sync"
 	"sync/atomic"
 	"time"
 
-	"github.com/cuckoo-org/cuckoo/apps/im-service/hlc"
+	"github.com/pingxin403/cuckoo/libs/hlc"
 )
 
 // ConflictResolver handles conflict detection and resolution using LWW strategy
@@ -26,9 +25,6 @@ type ConflictResolver struct {
 
 	// Configuration
 	config ConflictResolverConfig
-
-	// State management
-	mu sync.RWMutex
 }
 
 // ConflictResolverConfig holds configuration for the conflict resolver

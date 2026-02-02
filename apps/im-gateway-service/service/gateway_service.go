@@ -708,3 +708,29 @@ func (c *Connection) Close() {
 		}
 	})
 }
+
+// ConnectionStats represents WebSocket connection statistics
+type ConnectionStats struct {
+	TotalConnections int64
+	ActiveDevices    int64
+	ErrorCount       int64
+}
+
+// GetConnectionStats returns current connection statistics
+func (g *GatewayService) GetConnectionStats() ConnectionStats {
+	var totalConnections int64
+	var activeDevices int64
+	
+	// Count connections
+	g.connections.Range(func(key, value any) bool {
+		totalConnections++
+		activeDevices++
+		return true
+	})
+	
+	return ConnectionStats{
+		TotalConnections: totalConnections,
+		ActiveDevices:    activeDevices,
+		ErrorCount:       0, // TODO: Track error count if needed
+	}
+}

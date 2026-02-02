@@ -21,6 +21,7 @@ import (
 	"github.com/pingxin403/cuckoo/apps/im-service/service"
 	"github.com/pingxin403/cuckoo/apps/im-service/storage"
 	"github.com/pingxin403/cuckoo/apps/im-service/worker"
+	"github.com/pingxin403/cuckoo/libs/health"
 	"github.com/pingxin403/cuckoo/libs/observability"
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
@@ -63,6 +64,15 @@ func main() {
 		"grpc_port", cfg.Server.GRPCPort,
 		"http_port", cfg.Server.HTTPPort,
 	)
+
+	// Initialize health checker
+	obs.Logger().Info(ctx, "Initializing health checker")
+	hc := health.NewHealthChecker(health.Config{
+		ServiceName:      cfg.Observability.ServiceName,
+		CheckInterval:    5 * time.Second,
+		DefaultTimeout:   100 * time.Millisecond,
+		FailureThreshold: 3,
+	}, obs)
 
 	// Initialize shared dependencies
 	obs.Logger().Info(ctx, "Initializing shared dependencies")
@@ -206,8 +216,44 @@ func main() {
 	readReceiptHandler := readreceipt.NewHTTPHandler(readReceiptService)
 	obs.Logger().Info(ctx, "Read receipt HTTP handler initialized")
 
+	// Register health checks for all dependencies
+	obs.Logger().Info(ctx, "Registering health checks")
+
+	// 1. Database health check (MySQL) - critical
+	hc.RegisterCheck(health.NewDatabaseCheck("database", store.GetDB()))
+	obs.Logger().Info(ctx, "Registered database health check")
+
+	// 2. Redis health check - critical
+	hc.RegisterCheck(health.NewRedisCheck("redis", dedupService.GetClient()))
+	obs.Logger().Info(ctx, "Registered Redis health check")
+
+	// 3. Kafka health check - non-critical (only if worker is enabled)
+	if cfg.OfflineWorker.Enabled {
+		hc.RegisterCheck(health.NewKafkaCheck("kafka", cfg.Kafka.Brokers))
+		obs.Logger().Info(ctx, "Registered Kafka health check")
+	}
+
+	// 4. Etcd health check - critical for service discovery
+	hc.RegisterCheck(NewEtcdHealthCheck("etcd", registryClient))
+	obs.Logger().Info(ctx, "Registered etcd health check")
+
+	// 5. Offline worker health check - non-critical (only if worker is enabled)
+	if offlineWorker != nil {
+		hc.RegisterCheck(NewOfflineWorkerHealthCheck("offline-worker", offlineWorker))
+		obs.Logger().Info(ctx, "Registered offline worker health check")
+	}
+
+	obs.Logger().Info(ctx, "All health checks registered")
+
 	// Start HTTP server for health checks, metrics, and read receipts
-	go startHTTPServer(obs, offlineWorker, readReceiptHandler, cfg.Server.HTTPPort)
+	go startHTTPServer(obs, hc, offlineWorker, readReceiptHandler, cfg.Server.HTTPPort)
+
+	// Start health checker after all dependencies are initialized
+	obs.Logger().Info(ctx, "Starting health checker")
+	if err := hc.Start(); err != nil {
+		obs.Logger().Error(ctx, "Failed to start health checker", "error", err)
+		os.Exit(1)
+	}
 
 	obs.Logger().Info(ctx, "IM Service started successfully",
 		"grpc_port", cfg.Server.GRPCPort,
@@ -223,6 +269,9 @@ func main() {
 	obs.Logger().Info(ctx, "Shutting down IM Service")
 
 	// Graceful shutdown
+	obs.Logger().Info(ctx, "Stopping health checker")
+	hc.Stop()
+
 	if offlineWorker != nil {
 		obs.Logger().Info(ctx, "Stopping offline worker")
 		if err := offlineWorker.Stop(); err != nil {
@@ -237,7 +286,7 @@ func main() {
 }
 
 // startHTTPServer starts HTTP server for health checks, metrics, and read receipts
-func startHTTPServer(obs observability.Observability, w *worker.OfflineWorker, readReceiptHandler *readreceipt.HTTPHandler, port int) {
+func startHTTPServer(obs observability.Observability, hc *health.HealthChecker, w *worker.OfflineWorker, readReceiptHandler *readreceipt.HTTPHandler, port int) {
 	ctx := context.Background()
 	mux := http.NewServeMux()
 
@@ -266,25 +315,20 @@ func startHTTPServer(obs observability.Observability, w *worker.OfflineWorker, r
 		}
 	}
 
-	// Health check endpoint
-	mux.HandleFunc("/health", metricsMiddleware("/health", func(rw http.ResponseWriter, r *http.Request) {
-		rw.WriteHeader(http.StatusOK)
-		_, _ = rw.Write([]byte("OK"))
-	}))
+	// Health check endpoints (using health library)
+	mux.HandleFunc("/healthz", health.HealthzHandler(hc))
+	mux.HandleFunc("/readyz", health.ReadyzHandler(hc))
+	mux.HandleFunc("/health", health.HealthHandler(hc))
 
-	// Readiness check endpoint
+	// Readiness check endpoint (legacy - kept for backward compatibility)
 	mux.HandleFunc("/ready", metricsMiddleware("/ready", func(rw http.ResponseWriter, r *http.Request) {
-		// Check if worker is processing messages (if enabled)
-		if w != nil {
-			stats := w.GetStats()
-			if stats.Errors > 0 && stats.MessagesProcessed == 0 {
-				rw.WriteHeader(http.StatusServiceUnavailable)
-				_, _ = rw.Write([]byte("NOT READY"))
-				return
-			}
+		if hc.IsReady() {
+			rw.WriteHeader(http.StatusOK)
+			_, _ = rw.Write([]byte("READY"))
+		} else {
+			rw.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = rw.Write([]byte("NOT READY"))
 		}
-		rw.WriteHeader(http.StatusOK)
-		_, _ = rw.Write([]byte("READY"))
 	}))
 
 	// Stats endpoint
@@ -339,12 +383,13 @@ func startHTTPServer(obs observability.Observability, w *worker.OfflineWorker, r
 		_, _ = rw.Write([]byte("# Worker metrics have been recorded and will be exported via the observability library\n"))
 	}))
 
-	// Read Receipt API endpoints
-	mux.HandleFunc("/api/v1/messages/read", metricsMiddleware("/api/v1/messages/read", readReceiptHandler.HandleMarkAsRead))
-	mux.HandleFunc("/api/v1/messages/unread/count", metricsMiddleware("/api/v1/messages/unread/count", readReceiptHandler.HandleGetUnreadCount))
-	mux.HandleFunc("/api/v1/messages/unread", metricsMiddleware("/api/v1/messages/unread", readReceiptHandler.HandleGetUnreadMessages))
-	mux.HandleFunc("/api/v1/messages/receipts", metricsMiddleware("/api/v1/messages/receipts", readReceiptHandler.HandleGetReadReceipts))
-	mux.HandleFunc("/api/v1/conversations/read", metricsMiddleware("/api/v1/conversations/read", readReceiptHandler.HandleMarkConversationAsRead))
+	// Read Receipt API endpoints (with readiness middleware)
+	readinessMiddleware := health.ReadinessMiddleware(hc)
+	mux.Handle("/api/v1/messages/read", readinessMiddleware(metricsMiddleware("/api/v1/messages/read", readReceiptHandler.HandleMarkAsRead)))
+	mux.Handle("/api/v1/messages/unread/count", readinessMiddleware(metricsMiddleware("/api/v1/messages/unread/count", readReceiptHandler.HandleGetUnreadCount)))
+	mux.Handle("/api/v1/messages/unread", readinessMiddleware(metricsMiddleware("/api/v1/messages/unread", readReceiptHandler.HandleGetUnreadMessages)))
+	mux.Handle("/api/v1/messages/receipts", readinessMiddleware(metricsMiddleware("/api/v1/messages/receipts", readReceiptHandler.HandleGetReadReceipts)))
+	mux.Handle("/api/v1/conversations/read", readinessMiddleware(metricsMiddleware("/api/v1/conversations/read", readReceiptHandler.HandleMarkConversationAsRead)))
 
 	addr := fmt.Sprintf(":%d", port)
 	obs.Logger().Info(ctx, "HTTP server listening", "address", addr)

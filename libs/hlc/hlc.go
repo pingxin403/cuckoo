@@ -230,6 +230,39 @@ func (g GlobalID) String() string {
 	return fmt.Sprintf("%s-%s-%d", g.RegionID, g.HLC, g.Sequence)
 }
 
+// ParseGlobalID parses a string representation of GlobalID back into a GlobalID struct
+// Format: "regionID-hlc-sequence" (e.g., "region-a-1234567890-5-42")
+func ParseGlobalID(s string) (GlobalID, error) {
+	if s == "" {
+		return GlobalID{}, fmt.Errorf("empty global ID string")
+	}
+
+	// Split by last two dashes to get regionID, HLC, and sequence
+	// Format: regionID-physical-logical-sequence
+	parts := strings.Split(s, "-")
+	if len(parts) < 4 {
+		return GlobalID{}, fmt.Errorf("invalid global ID format: %s (expected at least 4 parts)", s)
+	}
+
+	// Last part is sequence
+	sequence, err := strconv.ParseInt(parts[len(parts)-1], 10, 64)
+	if err != nil {
+		return GlobalID{}, fmt.Errorf("invalid sequence in global ID: %w", err)
+	}
+
+	// Second to last and third to last are logical and physical time
+	hlc := strings.Join(parts[len(parts)-3:len(parts)-1], "-")
+	
+	// Everything before that is regionID
+	regionID := strings.Join(parts[:len(parts)-3], "-")
+
+	return GlobalID{
+		RegionID: regionID,
+		HLC:      hlc,
+		Sequence: sequence,
+	}, nil
+}
+
 // String returns a string representation of the HLC
 func (h *HLC) String() string {
 	h.mu.RLock()

@@ -13,6 +13,7 @@ import (
 	"github.com/pingxin403/cuckoo/apps/im-gateway-service/config"
 	"github.com/pingxin403/cuckoo/apps/im-gateway-service/metrics"
 	"github.com/pingxin403/cuckoo/apps/im-gateway-service/service"
+	"github.com/pingxin403/cuckoo/libs/health"
 	"github.com/pingxin403/cuckoo/libs/observability"
 	"github.com/redis/go-redis/v9"
 )
@@ -80,6 +81,14 @@ func main() {
 		"otel_metrics", true,
 	)
 
+	// Initialize health checker
+	healthChecker := health.NewHealthChecker(health.Config{
+		ServiceName:      cfg.Observability.ServiceName,
+		CheckInterval:    5 * time.Second,
+		DefaultTimeout:   100 * time.Millisecond,
+		FailureThreshold: 3,
+	}, obs)
+
 	// Create metrics instance with observability
 	gatewayMetrics := metrics.NewMetrics(obs)
 
@@ -93,6 +102,28 @@ func main() {
 		gatewayConfig,
 	)
 
+	// Register health checks
+	// 1. Redis health check (critical)
+	healthChecker.RegisterCheck(health.NewRedisCheck("redis", redisClient))
+
+	// 2. Downstream im-service health check (critical)
+	// Get im-service address from config
+	imServiceHealthURL := fmt.Sprintf("http://%s/healthz", cfg.ServiceDiscovery.IMServiceAddr)
+	healthChecker.RegisterCheck(health.NewHTTPCheck("im-service", imServiceHealthURL, true))
+
+	// 3. WebSocket connection health check (non-critical)
+	healthChecker.RegisterCheck(NewWebSocketHealthCheck(gateway))
+
+	// Start health checker
+	if err := healthChecker.Start(); err != nil {
+		log.Fatalf("Failed to start health checker: %v", err)
+	}
+	defer healthChecker.Stop()
+
+	obs.Logger().Info(ctx, "Health checker started",
+		"checks", []string{"redis", "im-service", "websocket-connections"},
+	)
+
 	// TODO: Integrate metrics with gateway service
 	// gateway.SetMetrics(gatewayMetrics)
 
@@ -104,10 +135,15 @@ func main() {
 
 	// Setup HTTP server with timeouts
 	mux := http.NewServeMux()
-	mux.HandleFunc("/ws", gateway.HandleWebSocket)
-	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte("OK"))
-	})
+	
+	// Health endpoints (no middleware - always accessible)
+	mux.HandleFunc("/healthz", health.HealthzHandler(healthChecker))
+	mux.HandleFunc("/readyz", health.ReadyzHandler(healthChecker))
+	mux.HandleFunc("/health", health.HealthHandler(healthChecker))
+	
+	// WebSocket endpoint with readiness middleware
+	wsHandler := health.ReadinessMiddleware(healthChecker)(http.HandlerFunc(gateway.HandleWebSocket))
+	mux.Handle("/ws", wsHandler)
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.Server.HTTPPort),
@@ -126,7 +162,7 @@ func main() {
 		obs.Logger().Info(ctx, "Starting HTTP server",
 			"port", cfg.Server.HTTPPort,
 			"websocket_endpoint", "/ws",
-			"health_endpoint", "/health",
+			"health_endpoints", []string{"/healthz", "/readyz", "/health"},
 		)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			obs.Logger().Error(ctx, "HTTP server error", "error", err)

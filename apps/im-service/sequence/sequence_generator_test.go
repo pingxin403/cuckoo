@@ -90,7 +90,10 @@ func TestGenerateGroupChatSequence_MonotonicIncrement(t *testing.T) {
 // Test key format for private chat
 func TestGeneratePrivateChatSequence_KeyFormat(t *testing.T) {
 	mockRedis := NewMockRedisClient()
-	sg := &SequenceGenerator{redis: mockRedis}
+	sg := &SequenceGenerator{
+		redis:    mockRedis,
+		regionID: "", // Empty region ID for test
+	}
 
 	ctx := context.Background()
 	userID1 := "user001"
@@ -99,15 +102,18 @@ func TestGeneratePrivateChatSequence_KeyFormat(t *testing.T) {
 	_, err := sg.GeneratePrivateChatSequence(ctx, userID1, userID2)
 	require.NoError(t, err)
 
-	// Verify the key format: seq:private:user001:user002 (sorted)
-	expectedKey := "seq:private:user001:user002"
+	// Verify the key format: seq::private:user001:user002 (with empty region)
+	expectedKey := "seq::private:user001:user002"
 	assert.Contains(t, mockRedis.data, expectedKey)
 }
 
 // Test key format for group chat
 func TestGenerateGroupChatSequence_KeyFormat(t *testing.T) {
 	mockRedis := NewMockRedisClient()
-	sg := &SequenceGenerator{redis: mockRedis}
+	sg := &SequenceGenerator{
+		redis:    mockRedis,
+		regionID: "", // Empty region ID for test
+	}
 
 	ctx := context.Background()
 	groupID := "group001"
@@ -115,8 +121,8 @@ func TestGenerateGroupChatSequence_KeyFormat(t *testing.T) {
 	_, err := sg.GenerateGroupChatSequence(ctx, groupID)
 	require.NoError(t, err)
 
-	// Verify the key format: seq:group:group001
-	expectedKey := "seq:group:group001"
+	// Verify the key format: seq::group:group001 (with empty region)
+	expectedKey := "seq::group:group001"
 	assert.Contains(t, mockRedis.data, expectedKey)
 }
 

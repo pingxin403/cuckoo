@@ -230,23 +230,6 @@ func TestCompareGlobalID_HLCOrdering(t *testing.T) {
 	}
 }
 
-// Helper function to check if string contains substring
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr ||
-		(len(s) > len(substr) && (s[:len(substr)] == substr ||
-			s[len(s)-len(substr):] == substr ||
-			containsInMiddle(s, substr))))
-}
-
-func containsInMiddle(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
-}
-
 // Benchmark tests
 func BenchmarkGenerateID(b *testing.B) {
 	hlc := NewHLC("region-a", "node-1")
@@ -273,6 +256,6 @@ func BenchmarkUpdateFromRemote(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		hlc.UpdateFromRemote(remoteHLC)
+		_ = hlc.UpdateFromRemote(remoteHLC)
 	}
 }

@@ -111,20 +111,35 @@ spec:
             memory: "512Mi"
             cpu: "500m"
         
+        # Liveness probe - checks if process is alive
+        # Uses /healthz endpoint from health library
         livenessProbe:
           httpGet:
-            path: /health
+            path: /healthz
             port: 8080
-          initialDelaySeconds: 30
-          periodSeconds: 10
+          initialDelaySeconds: 10
+          periodSeconds: 15
           timeoutSeconds: 5
           failureThreshold: 3
         
+        # Readiness probe - checks if ready to serve traffic
+        # Uses /readyz endpoint from health library
         readinessProbe:
           httpGet:
-            path: /ready
+            path: /readyz
             port: 8080
-          initialDelaySeconds: 10
+          initialDelaySeconds: 5
           periodSeconds: 5
-          timeoutSeconds: 3
-          failureThreshold: 3
+          timeoutSeconds: 1
+          failureThreshold: 1
+        
+        # Startup probe - for slow-starting container
+        # Gives service up to 60 seconds to start (30 * 2s)
+        startupProbe:
+          httpGet:
+            path: /readyz
+            port: 8080
+          initialDelaySeconds: 0
+          periodSeconds: 2
+          timeoutSeconds: 1
+          failureThreshold: 30

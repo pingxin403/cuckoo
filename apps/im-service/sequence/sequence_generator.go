@@ -71,14 +71,14 @@ func (sg *SequenceGenerator) GenerateSequence(ctx context.Context, conversationT
 }
 
 // GenerateGlobalID generates a globally unique ID using HLC
-// Returns the global ID string in format: {region_id}-{hlc_timestamp}-{logical_counter}
+// Returns the global ID string in format: {region_id}-{hlc_timestamp}-{sequence}
 func (sg *SequenceGenerator) GenerateGlobalID() (string, error) {
 	if sg.hlc == nil {
 		return "", fmt.Errorf("HLC not initialized, use NewSequenceGeneratorWithRegion")
 	}
 
 	globalID := sg.hlc.GenerateID()
-	return fmt.Sprintf("%s-%d-%d", globalID.RegionID, globalID.PhysicalTime, globalID.LogicalTime), nil
+	return globalID.String(), nil
 }
 
 // GenerateSequenceWithGlobalID generates both a local sequence number and a global ID
@@ -145,14 +145,13 @@ func (sg *SequenceGenerator) GetCurrentSequence(ctx context.Context, conversatio
 
 // UpdateHLCFromRemote updates the HLC clock from a remote timestamp
 // This is used when receiving messages from other regions to maintain causal ordering
-func (sg *SequenceGenerator) UpdateHLCFromRemote(remotePhysicalTime, remoteLogicalTime int64) error {
+// remoteHLC should be in format "physical-logical" (e.g., "1234567890-5")
+func (sg *SequenceGenerator) UpdateHLCFromRemote(remoteHLC string) error {
 	if sg.hlc == nil {
 		return fmt.Errorf("HLC not initialized")
 	}
 
-	remoteHLC := &hlc.HLC{}
-	// Note: This is a simplified update. In production, you'd need proper HLC update logic
-	return sg.hlc.UpdateFromRemote(remotePhysicalTime, remoteLogicalTime)
+	return sg.hlc.UpdateFromRemote(remoteHLC)
 }
 
 // sortAndJoinUserIDs sorts two user IDs and joins them with a separator

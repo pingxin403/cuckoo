@@ -235,6 +235,11 @@ func (c *L2Cache) Close() error {
 	return c.client.Close()
 }
 
+// Client returns the underlying Redis client for health checks
+func (c *L2Cache) Client() redis.UniversalClient {
+	return c.client
+}
+
 // Stats returns Redis statistics
 func (c *L2Cache) Stats() *redis.PoolStats {
 	return c.client.PoolStats()

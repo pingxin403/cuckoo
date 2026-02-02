@@ -25,11 +25,30 @@ spec:
         - name: grpc
           containerPort: 9091
           protocol: TCP
+        - name: http
+          containerPort: 8080
+          protocol: TCP
         env:
         - name: PORT
           value: "9091"
+        - name: HTTP_PORT
+          value: "8080"
         - name: HELLO_SERVICE_ADDR
           value: "hello-service:9090"
+        - name: SERVICE_NAME
+          value: "todo-service"
+        - name: SERVICE_VERSION
+          value: "1.0.0"
+        - name: DEPLOYMENT_ENVIRONMENT
+          value: "production"
+        - name: ENABLE_METRICS
+          value: "true"
+        - name: METRICS_PORT
+          value: "9090"
+        - name: LOG_LEVEL
+          value: "info"
+        - name: LOG_FORMAT
+          value: "json"
         resources:
           requests:
             memory: "128Mi"
@@ -37,13 +56,32 @@ spec:
           limits:
             memory: "256Mi"
             cpu: "200m"
+        # Liveness probe - checks if process is alive
+        # Uses /healthz endpoint which only checks internal process health
         livenessProbe:
-          grpc:
-            port: 9091
-          initialDelaySeconds: 15
-          periodSeconds: 10
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 3
+        # Readiness probe - checks if ready to serve traffic
+        # Uses /readyz endpoint which checks all critical dependencies
         readinessProbe:
-          grpc:
-            port: 9091
+          httpGet:
+            path: /readyz
+            port: 8080
           initialDelaySeconds: 5
           periodSeconds: 5
+          timeoutSeconds: 1
+          failureThreshold: 1
+        # Startup probe - for initial startup (allows up to 60 seconds)
+        startupProbe:
+          httpGet:
+            path: /readyz
+            port: 8080
+          initialDelaySeconds: 0
+          periodSeconds: 2
+          timeoutSeconds: 1
+          failureThreshold: 30

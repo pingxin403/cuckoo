@@ -1,8 +1,6 @@
 package service
 
 import (
-	"context"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -43,9 +41,15 @@ func (h *RedirectHandler) SetupRouter() *chi.Mux {
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.Timeout(5 * time.Second))
 
-	// Health check endpoints
-	r.Get("/health", h.HealthCheck)
-	r.Get("/ready", h.ReadinessCheck)
+	// Health check endpoints (must be registered before catch-all)
+	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("OK"))
+	})
+	r.Get("/ready", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("Ready"))
+	})
 
 	// Redirect handler - catch-all route for short codes
 	r.Get("/{code}", h.HandleRedirect)
@@ -131,26 +135,4 @@ func extractIPFromRequest(r *http.Request) string {
 
 	// Fall back to RemoteAddr
 	return r.RemoteAddr
-}
-
-// HealthCheck handles liveness probe
-func (h *RedirectHandler) HealthCheck(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	_, _ = fmt.Fprint(w, "OK")
-}
-
-// ReadinessCheck handles readiness probe
-func (h *RedirectHandler) ReadinessCheck(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-
-	// Check storage connectivity
-	_, err := h.storage.Get(ctx, "health-check")
-	if err != nil && err != storage.ErrNotFound {
-		http.Error(w, "Storage unavailable", http.StatusServiceUnavailable)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	_, _ = fmt.Fprint(w, "Ready")
 }

@@ -10,9 +10,12 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/pingxin403/cuckoo/api/gen/go v0.0.0-00010101000000-000000000000
 	github.com/pingxin403/cuckoo/libs/config v0.0.0-00010101000000-000000000000
+	github.com/pingxin403/cuckoo/libs/health v0.0.0-00010101000000-000000000000
+	github.com/pingxin403/cuckoo/libs/hlc v0.0.0-00010101000000-000000000000
 	github.com/pingxin403/cuckoo/libs/observability v0.0.0-00010101000000-000000000000
 	github.com/redis/go-redis/v9 v9.17.3
 	github.com/segmentio/kafka-go v0.4.50
+	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	go.etcd.io/etcd/client/v3 v3.6.7
 	golang.org/x/text v0.33.0
@@ -24,6 +27,8 @@ require (
 replace (
 	github.com/pingxin403/cuckoo/api/gen/go => ../../api/gen/go
 	github.com/pingxin403/cuckoo/libs/config => ../../libs/config
+	github.com/pingxin403/cuckoo/libs/health => ../../libs/health
+	github.com/pingxin403/cuckoo/libs/hlc => ../../libs/hlc
 	github.com/pingxin403/cuckoo/libs/observability => ../../libs/observability
 )
 
@@ -73,7 +78,6 @@ require (
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
-	github.com/spf13/cobra v1.10.2 // indirect
 	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/spf13/viper v1.21.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect

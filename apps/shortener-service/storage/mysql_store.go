@@ -256,6 +256,11 @@ func (s *MySQLStore) Close() error {
 	return nil
 }
 
+// DB returns the underlying database connection for health checks
+func (s *MySQLStore) DB() *sql.DB {
+	return s.db
+}
+
 // getEnv retrieves an environment variable or returns a default value
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
