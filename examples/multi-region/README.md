@@ -14,10 +14,19 @@ These are **example implementations** for demonstration, testing, and learning p
 
 - **arbiter/** - Distributed coordination and split-brain prevention
 - **failover/** - Automatic failover management
-- **health/** - Multi-dimensional health checking
+- **~~health/~~** - ⚠️ **DEPRECATED** - Moved to `libs/health` (standardized library)
 - **routing/** - Geographic routing with health-aware failover
 - **sync/** - Cross-region message synchronization
 - **monitoring/** - Web-based monitoring dashboard
+
+## Deprecation Notice
+
+The **health/** example has been deprecated and archived to `docs/archive/examples/health/`. 
+
+All services now use the standardized health check library at `libs/health`. See:
+- Library documentation: `libs/health/README.md`
+- Service integration guides: `apps/*/HEALTH_CHECK_INTEGRATION.md`
+- Operational runbook: `docs/operations/health-check-runbook.md`
 
 ## Usage
 
@@ -32,9 +41,6 @@ go run examples/multi-region/monitoring/cmd/dashboard/main.go
 
 # Run sync example
 go run examples/multi-region/sync/cmd/example/main.go
-
-# Run health check example
-go run examples/multi-region/health/cmd/example/main.go
 
 # Run arbiter example
 go run examples/multi-region/arbiter/cmd/example/main.go

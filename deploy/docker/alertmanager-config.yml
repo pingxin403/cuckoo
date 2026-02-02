@@ -34,6 +34,16 @@ route:
   
   # Child routes for specific alert types
   routes:
+    # Health check critical alerts (liveness failures, service not ready)
+    - match:
+        category: health
+        severity: critical
+      receiver: 'health-critical-alerts'
+      group_wait: 10s
+      group_interval: 2m
+      repeat_interval: 30m
+      continue: true  # Also send to default receiver
+    
     # Critical alerts (P1, circuit breaker)
     - match_re:
         severity: ^(critical|P1)$
@@ -42,6 +52,15 @@ route:
       group_interval: 2m
       repeat_interval: 30m
       continue: true  # Also send to default receiver
+    
+    # Health check warnings (component degraded, slow checks)
+    - match:
+        category: health
+        severity: warning
+      receiver: 'health-warning-alerts'
+      group_wait: 1m
+      group_interval: 10m
+      repeat_interval: 4h
     
     # P2 alerts
     - match:
@@ -96,6 +115,58 @@ receivers:
   - name: 'default-receiver'
     webhook_configs:
       - url: 'http://localhost:5001/webhook'
+        send_resolved: true
+  
+  # Health check critical alerts receiver (liveness failures, service not ready)
+  - name: 'health-critical-alerts'
+    # Slack configuration (uncomment and configure when ready)
+    # slack_configs:
+    #   - channel: '#alerts-health-critical'
+    #     title: '🚨 HEALTH CRITICAL: {{ .GroupLabels.alertname }}'
+    #     text: |
+    #       *Service:* {{ .GroupLabels.service }}
+    #       *Alert:* {{ .GroupLabels.alertname }}
+    #       {{ range .Alerts }}
+    #       *Description:* {{ .Annotations.description }}
+    #       *Action:* {{ .Annotations.action }}
+    #       *Runbook:* {{ .Annotations.runbook }}
+    #       {{ end }}
+    #     send_resolved: true
+    #     color: 'danger'
+    
+    # PagerDuty configuration (uncomment and configure when ready)
+    # pagerduty_configs:
+    #   - service_key: 'YOUR_PAGERDUTY_HEALTH_SERVICE_KEY'
+    #     description: 'HEALTH CRITICAL: {{ .GroupLabels.alertname }} - {{ .GroupLabels.service }}'
+    #     severity: 'critical'
+    #     details:
+    #       service: '{{ .GroupLabels.service }}'
+    #       component: '{{ .GroupLabels.component }}'
+    #       description: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+    #       action: '{{ range .Alerts }}{{ .Annotations.action }}{{ end }}'
+    #       runbook: '{{ range .Alerts }}{{ .Annotations.runbook }}{{ end }}'
+    
+    webhook_configs:
+      - url: 'http://localhost:5001/webhook/health-critical'
+        send_resolved: true
+  
+  # Health check warning alerts receiver
+  - name: 'health-warning-alerts'
+    # Slack configuration (uncomment and configure when ready)
+    # slack_configs:
+    #   - channel: '#alerts-health'
+    #     title: '⚠️ Health Warning: {{ .GroupLabels.alertname }}'
+    #     text: |
+    #       *Service:* {{ .GroupLabels.service }}
+    #       {{ range .Alerts }}
+    #       *Description:* {{ .Annotations.description }}
+    #       *Action:* {{ .Annotations.action }}
+    #       {{ end }}
+    #     send_resolved: true
+    #     color: 'warning'
+    
+    webhook_configs:
+      - url: 'http://localhost:5001/webhook/health-warning'
         send_resolved: true
   
   # Critical alerts receiver

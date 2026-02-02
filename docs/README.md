@@ -31,6 +31,13 @@ Welcome to the Monorepo documentation! This index helps you find the information
 - [App Management](development/APP_MANAGEMENT.md) - Managing applications in the monorepo
 - [Makefile Guide](development/MAKEFILE_GUIDE.md) - Using the Makefile for builds and tasks
 
+## 📚 Libraries
+
+- [Configuration Library](../libs/config/README.md) - Configuration management
+- [Health Check Library](../libs/health/README.md) - Standardized health checks
+- [Observability Library](../libs/observability/README.md) - Metrics, logging, and tracing
+- [HLC Library](../libs/hlc/README.md) - Hybrid Logical Clocks
+
 ## 🚢 Deployment
 
 - [Deployment Guide](deployment/DEPLOYMENT_GUIDE.md) - Complete deployment guide
@@ -40,7 +47,8 @@ Welcome to the Monorepo documentation! This index helps you find the information
 ## 🔧 Operations
 
 - [Operational Runbooks](operations/OPERATIONAL_RUNBOOKS.md) - Incident response and operational procedures
-- [Alerting Guide](operations/ALERTING_GUIDE.md) - Alert configuration and response
+- [Health Check Runbook](operations/health-check-runbook.md) - Health check troubleshooting and operations
+- [Monitoring & Alerting Guide](operations/MONITORING_ALERTING_GUIDE.md) - Alert configuration and response
 - [Centralized Logging](operations/CENTRALIZED_LOGGING.md) - Log aggregation and analysis
 - [SLO Tracking](operations/SLO_TRACKING.md) - Service level objectives and monitoring
 
@@ -98,9 +106,10 @@ Historical documents and migration guides are archived in the [archive](archive/
 
 ### For SRE/Operations
 1. [Operational Runbooks](operations/OPERATIONAL_RUNBOOKS.md)
-2. [Alerting Guide](operations/ALERTING_GUIDE.md)
-3. [SLO Tracking](operations/SLO_TRACKING.md)
-4. [Centralized Logging](operations/CENTRALIZED_LOGGING.md)
+2. [Health Check Runbook](operations/health-check-runbook.md)
+3. [Monitoring & Alerting Guide](operations/MONITORING_ALERTING_GUIDE.md)
+4. [SLO Tracking](operations/SLO_TRACKING.md)
+5. [Centralized Logging](operations/CENTRALIZED_LOGGING.md)
 
 ### For Security
 1. [Security Overview](security/README.md)
