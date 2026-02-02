@@ -57,9 +57,11 @@
 				
 				<option value="file0">github.com/pingxin403/cuckoo/apps/todo-service/client/hello_client.go (0.0%)</option>
 				
-				<option value="file1">github.com/pingxin403/cuckoo/apps/todo-service/service/todo_service.go (88.6%)</option>
+				<option value="file1">github.com/pingxin403/cuckoo/apps/todo-service/config/config.go (89.5%)</option>
 				
-				<option value="file2">github.com/pingxin403/cuckoo/apps/todo-service/storage/memory_store.go (100.0%)</option>
+				<option value="file2">github.com/pingxin403/cuckoo/apps/todo-service/service/todo_service.go (88.6%)</option>
+				
+				<option value="file3">github.com/pingxin403/cuckoo/apps/todo-service/storage/memory_store.go (100.0%)</option>
 				
 				</select>
 			</div>
@@ -164,7 +166,76 @@ func (c *HelloClient) Close() error <span class="cov0" title="0">{
 }
 </pre>
 		
-		<pre class="file" id="file1" style="display: none">package service
+		<pre class="file" id="file1" style="display: none">package config
+
+import (
+        "fmt"
+
+        "github.com/pingxin403/cuckoo/libs/config"
+)
+
+// Config holds all configuration for todo-service
+type Config struct {
+        // Server configuration
+        Server ServerConfig `mapstructure:"server"`
+
+        // Observability configuration
+        Observability config.ObservabilityConfig `mapstructure:"observability"`
+}
+
+// ServerConfig holds server-specific configuration
+type ServerConfig struct {
+        // GRPCPort is the port for gRPC server
+        GRPCPort int `mapstructure:"grpc_port" validate:"required,min=1,max=65535"`
+        // HTTPPort is the port for HTTP server
+        HTTPPort int `mapstructure:"http_port" validate:"required,min=1,max=65535"`
+        // Host is the host to bind to
+        Host string `mapstructure:"host"`
+}
+
+// Load loads configuration from environment variables and config files
+func Load() (*Config, error) <span class="cov10" title="4">{
+        loader, err := config.Load(config.Options{
+                ServiceName: "", // Empty to use default "config" filename
+                ConfigType:  "yaml",
+                ConfigPaths: []string{".", "./config"},
+        })
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create config loader: %w", err)
+        }</span>
+
+        // Set defaults
+        <span class="cov10" title="4">config.SetCommonDefaults(loader)
+        setTodoServiceDefaults(loader)
+
+        // Load configuration
+        cfg := &amp;Config{}
+        if err := loader.LoadInto(cfg); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to load config: %w", err)
+        }</span>
+
+        <span class="cov10" title="4">return cfg, nil</span>
+}
+
+// setTodoServiceDefaults sets todo-service specific defaults
+func setTodoServiceDefaults(loader *config.Loader) <span class="cov10" title="4">{
+        // Server defaults
+        loader.SetDefault("server.grpc_port", 9091)
+        loader.SetDefault("server.http_port", 8080)
+        loader.SetDefault("server.host", "0.0.0.0")
+
+        // Observability defaults
+        loader.SetDefault("observability.service_name", "todo-service")
+        loader.SetDefault("observability.service_version", "1.0.0")
+        loader.SetDefault("observability.environment", "development")
+        loader.SetDefault("observability.enable_metrics", true)
+        loader.SetDefault("observability.metrics_port", 9090)
+        loader.SetDefault("observability.log_level", "info")
+        loader.SetDefault("observability.log_format", "json")
+}</span>
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package service
 
 import (
         "context"
@@ -355,7 +426,7 @@ func (s *TodoServiceServer) DeleteTodo(ctx context.Context, req *todopb.DeleteTo
 }
 </pre>
 		
-		<pre class="file" id="file2" style="display: none">package storage
+		<pre class="file" id="file3" style="display: none">package storage
 
 import (
         "fmt"

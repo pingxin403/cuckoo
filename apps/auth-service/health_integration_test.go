@@ -24,7 +24,7 @@ func TestHealthEndpoints(t *testing.T) {
 		LogLevel:       "error",
 	})
 	require.NoError(t, err)
-	defer obs.Shutdown(context.Background())
+	defer func() { _ = obs.Shutdown(context.Background()) }()
 
 	// Initialize health checker
 	hc := health.NewHealthChecker(health.Config{
@@ -91,7 +91,7 @@ func TestHealthCheckerIntegration(t *testing.T) {
 		LogLevel:       "error",
 	})
 	require.NoError(t, err)
-	defer obs.Shutdown(context.Background())
+	defer func() { _ = obs.Shutdown(context.Background()) }()
 
 	// Initialize health checker
 	hc := health.NewHealthChecker(health.Config{
@@ -131,10 +131,10 @@ type mockCheck struct {
 	checkFn  func(ctx context.Context) error
 }
 
-func (m *mockCheck) Name() string                     { return m.name }
-func (m *mockCheck) Critical() bool                   { return m.critical }
-func (m *mockCheck) Timeout() time.Duration           { return 100 * time.Millisecond }
-func (m *mockCheck) Interval() time.Duration          { return 5 * time.Second }
+func (m *mockCheck) Name() string            { return m.name }
+func (m *mockCheck) Critical() bool          { return m.critical }
+func (m *mockCheck) Timeout() time.Duration  { return 100 * time.Millisecond }
+func (m *mockCheck) Interval() time.Duration { return 5 * time.Second }
 func (m *mockCheck) Check(ctx context.Context) error {
 	if m.checkFn != nil {
 		return m.checkFn(ctx)
@@ -153,7 +153,7 @@ func TestHealthCheckerWithMockCheck(t *testing.T) {
 		LogLevel:       "error",
 	})
 	require.NoError(t, err)
-	defer obs.Shutdown(context.Background())
+	defer func() { _ = obs.Shutdown(context.Background()) }()
 
 	// Initialize health checker
 	hc := health.NewHealthChecker(health.Config{

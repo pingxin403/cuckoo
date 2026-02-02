@@ -169,6 +169,7 @@ func main() {
 	var offlineWorker *worker.OfflineWorker
 	if cfg.OfflineWorker.Enabled {
 		obs.Logger().Info(ctx, "Starting offline worker component")
+		obs.Logger().Info(ctx, "Kafka configuration", "brokers", cfg.Kafka.Brokers, "consumer_group", cfg.Kafka.ConsumerGroup, "topic", cfg.Kafka.Topic)
 		offlineWorker, err = worker.NewOfflineWorker(
 			worker.WorkerConfig{
 				KafkaBrokers:  cfg.Kafka.Brokers,

@@ -25,7 +25,7 @@ func TestHealthEndpoints(t *testing.T) {
 		LogLevel:       "error",
 	})
 	require.NoError(t, err)
-	defer obs.Shutdown(context.Background())
+	defer func() { _ = obs.Shutdown(context.Background()) }()
 
 	// Initialize health checker
 	hc := health.NewHealthChecker(health.Config{
@@ -97,7 +97,7 @@ func TestHealthChecksWithDatabase(t *testing.T) {
 		LogLevel:       "error",
 	})
 	require.NoError(t, err)
-	defer obs.Shutdown(context.Background())
+	defer func() { _ = obs.Shutdown(context.Background()) }()
 
 	// Initialize health checker
 	hc := health.NewHealthChecker(health.Config{
@@ -115,7 +115,7 @@ func TestHealthChecksWithDatabase(t *testing.T) {
 	if err != nil {
 		t.Skipf("Skipping test: cannot connect to database: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Test database connection
 	if err := db.Ping(); err != nil {
@@ -156,7 +156,7 @@ func TestStorageDBMethod(t *testing.T) {
 	if err != nil {
 		t.Skipf("Skipping test: cannot connect to database: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	// Test database connection
 	if err := db.Ping(); err != nil {
@@ -197,7 +197,7 @@ func TestHealthCheckerWithMockCheck(t *testing.T) {
 		LogLevel:       "error",
 	})
 	require.NoError(t, err)
-	defer obs.Shutdown(context.Background())
+	defer func() { _ = obs.Shutdown(context.Background()) }()
 
 	// Initialize health checker
 	hc := health.NewHealthChecker(health.Config{

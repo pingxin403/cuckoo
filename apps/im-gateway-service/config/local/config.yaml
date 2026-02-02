@@ -1,7 +1,7 @@
 # IM Gateway Service - Local Development Environment
 
 server:
-  http_port: 8080
+  http_port: 8081
   grpc_port: 9097
   host: "0.0.0.0"
 
@@ -12,7 +12,7 @@ redis:
 
 kafka:
   brokers:
-    - "localhost:9092"
+    - "localhost:9093"
   consumer_group: "im-gateway-local"
 
 etcd:
@@ -27,7 +27,7 @@ observability:
 
 service_discovery:
   auth_service_addr: "localhost:9095"
-  im_service_addr: "localhost:9094"
+  im_service_addr: "localhost:8080"
   user_service_addr: "localhost:9096"
 
 connection:
