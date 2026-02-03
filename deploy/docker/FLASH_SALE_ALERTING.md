@@ -768,5 +768,3 @@ When updating alert rules:
 - [Prometheus Alerting Documentation](https://prometheus.io/docs/alerting/latest/overview/)
 - [AlertManager Configuration](https://prometheus.io/docs/alerting/latest/configuration/)
 - [Flash Sale Metrics Documentation](../../apps/flash-sale-service/METRICS.md)
-- [Flash Sale Design Document](../../.kiro/specs/flash-sale-system/design.md)
-- [Flash Sale Requirements](../../.kiro/specs/flash-sale-system/requirements.md)

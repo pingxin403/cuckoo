@@ -310,7 +310,6 @@ docker stats --no-stream | grep -E "im-service|im-gateway"
 
 - [架构文档](../../architecture/MULTI_REGION_ACTIVE_ACTIVE.md)
 - [部署指南](../../deployment/MULTI_REGION_DEPLOYMENT.md)
-- [Spec 文档](../../../.kiro/specs/multi-region-active-active/README.md)
 
 ### 外部资源
 

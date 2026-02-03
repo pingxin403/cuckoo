@@ -14,7 +14,6 @@ import com.pingxin403.cuckoo.flashsale.model.OrderMessage;
  *   <li>Failures are handled gracefully with appropriate error reporting
  * </ul>
  *
- * <p>Requirements: 2.1, 2.2
  */
 public interface OrderMessageProducer {
 

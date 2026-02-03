@@ -9,7 +9,6 @@ import (
 )
 
 // L1Cache represents the in-memory cache layer using Ristretto
-// Requirements: 4.1, 12.4
 type L1Cache struct {
 	cache *ristretto.Cache
 }
@@ -26,7 +25,6 @@ type URLMapping struct {
 // - MaxCost: 1GB (1 << 30 bytes)
 // - NumCounters: 10M (10 * MaxCost)
 // - BufferItems: 64 (default)
-// Requirements: 4.1, 12.4
 func NewL1Cache() (*L1Cache, error) {
 	cache, err := ristretto.NewCache(&ristretto.Config{
 		NumCounters: 10_000_000, // 10M counters (10 * MaxCost recommended)
@@ -42,7 +40,6 @@ func NewL1Cache() (*L1Cache, error) {
 
 // Get retrieves a URL mapping from the cache
 // Returns nil if the key is not found
-// Requirements: 4.1
 func (c *L1Cache) Get(shortCode string) *URLMapping {
 	value, found := c.cache.Get(shortCode)
 	if !found {
@@ -60,7 +57,6 @@ func (c *L1Cache) Get(shortCode string) *URLMapping {
 // Set stores a URL mapping in the cache with TTL jitter
 // TTL: 1 hour ±10% (54-66 minutes) to prevent thundering herd
 // Cost: estimated size of the mapping in bytes
-// Requirements: 4.1, 12.4
 func (c *L1Cache) Set(shortCode string, longURL string, createdAt time.Time) bool {
 	mapping := &URLMapping{
 		ShortCode: shortCode,
@@ -87,7 +83,6 @@ func (c *L1Cache) Set(shortCode string, longURL string, createdAt time.Time) boo
 }
 
 // Delete removes a URL mapping from the cache
-// Requirements: 4.1
 func (c *L1Cache) Delete(shortCode string) {
 	c.cache.Del(shortCode)
 }

@@ -364,8 +364,6 @@ Region-B:
 
 ## 📚 Further Reading
 
-- [Design Document](../../.kiro/specs/multi-region-active-active/design.md)
-- [Architecture Decision Records](../../.kiro/specs/multi-region-active-active/adr/)
 - [Implementation Guide](../../apps/MULTI_REGION_INTEGRATION_COMPLETE.md)
 - [HLC Implementation](./blog-hlc-implementation.md)
 - [Conflict Resolution Strategy](./blog-conflict-resolution.md)

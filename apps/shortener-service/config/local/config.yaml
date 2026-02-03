@@ -35,7 +35,7 @@ observability:
   metrics_port: 9090
 
 rate_limiter:
-  requests_per_minute: 100
+  requests_per_minute: 600000  # 10K QPS per IP for load testing
 
 cache:
   l1_max_cost: 10485760  # 10MB

@@ -14,7 +14,6 @@ import com.pingxin403.cuckoo.flashsale.model.DlqMessage;
  *   <li>Failures are logged but don't block the consumer
  * </ul>
  *
- * <p>Requirements: 2.5
  */
 public interface DlqMessageProducer {
 

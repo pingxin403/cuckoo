@@ -641,7 +641,6 @@ checker.RegisterCheck("my-check", &MyCustomCheck{})
 
 - [Health Check Library README](../../../libs/health/README.md)
 - [Operational Runbook](../../operations/health-check-runbook.md)
-- [Design Document](../../../.kiro/specs/health-check-standardization/design.md)
 - [Service Integration Examples](../../../apps/*/HEALTH_CHECK_INTEGRATION.md)
 - [Grafana Dashboard](../../../deploy/docker/grafana/dashboards/health-checks.json)
 - [Prometheus Alerts](../../../deploy/docker/prometheus-health-alerts.yml)

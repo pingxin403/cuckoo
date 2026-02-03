@@ -30,7 +30,6 @@ import com.pingxin403.cuckoo.flashsale.model.DlqMessage;
  *   <li>Manual reprocessing workflows
  * </ul>
  *
- * <p>Requirements: 2.5
  */
 @Component
 public class DlqMessageConsumer {

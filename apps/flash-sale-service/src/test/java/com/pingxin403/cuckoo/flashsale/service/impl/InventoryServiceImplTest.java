@@ -27,7 +27,6 @@ import com.pingxin403.cuckoo.flashsale.service.dto.WarmupResult;
  *
  * <p>Tests the business logic and error handling without requiring a real Redis instance.
  *
- * <p>Validates Requirements: 1.1, 1.2, 1.3, 1.4, 1.5
  */
 @ExtendWith(MockitoExtension.class)
 class InventoryServiceImplTest {

@@ -229,7 +229,6 @@ make deps-node         # 只处理 Node.js 依赖
 - ✅ 完整性验证：确保依赖一致性
 - 📊 状态查看：快速了解项目依赖
 
-详细说明请参考 [统一依赖管理文档](.kiro/specs/im-chat-system/UNIFIED_DEPS_IMPLEMENTATION.md)
 
 ### 🔧 手动设置（如果需要）
 
@@ -495,7 +494,7 @@ make im-up
 
 ### 📊 系统状态
 
-✅ **已完成 (Tasks 1-12)**:
+✅ **已完成**:
 - 基础设施：etcd, MySQL, Redis, Kafka
 - 核心服务：Auth, User, IM, Gateway
 - 功能：消息路由、序列号生成、去重、敏感词过滤、加密、离线消息持久化
@@ -575,8 +574,6 @@ make im-up
 
 - [IM Service 文档](apps/im-service/README.md) - 核心消息路由和离线持久化
 - [IM Gateway 文档](apps/im-gateway-service/README.md) - WebSocket 网关
-- [设计文档](.kiro/specs/im-chat-system/design.md) - 系统设计
-- [任务列表](.kiro/specs/im-chat-system/tasks.md) - 实现进度
 
 ### 🎯 下一步
 

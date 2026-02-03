@@ -30,7 +30,6 @@ func (m *MockStorageWithCollisions) Reset() {
 }
 
 // TestGenerate_RetryOnCollision tests that the generator retries when collisions occur
-// Requirements: 1.3
 func TestGenerate_RetryOnCollision(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -97,7 +96,6 @@ func TestGenerate_RetryOnCollision(t *testing.T) {
 }
 
 // TestGenerate_MaxRetriesExceeded tests that the generator returns error after max retries
-// Requirements: 1.3
 func TestGenerate_MaxRetriesExceeded(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -156,7 +154,6 @@ func TestGenerate_MaxRetriesExceeded(t *testing.T) {
 }
 
 // TestGenerate_StorageError tests that storage errors are propagated
-// Requirements: 1.3
 func TestGenerate_StorageError(t *testing.T) {
 	// Arrange
 	expectedErr := errors.New("storage connection failed")
@@ -221,7 +218,6 @@ func (m *MockStorageWithCode) Exists(ctx context.Context, shortCode string) (boo
 }
 
 // TestValidateCustomCode_LengthLimits tests custom code length validation
-// Requirements: 8.1, 8.3
 func TestValidateCustomCode_LengthLimits(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -297,7 +293,6 @@ func TestValidateCustomCode_LengthLimits(t *testing.T) {
 }
 
 // TestValidateCustomCode_CharacterSet tests custom code character validation
-// Requirements: 8.2, 8.5
 func TestValidateCustomCode_CharacterSet(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -421,7 +416,6 @@ func TestValidateCustomCode_CharacterSet(t *testing.T) {
 }
 
 // TestValidateCustomCode_ReservedKeywords tests reserved keyword rejection
-// Requirements: 8.2, 8.3
 func TestValidateCustomCode_ReservedKeywords(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -567,7 +561,6 @@ func TestValidateCustomCode_ReservedKeywords(t *testing.T) {
 }
 
 // TestValidateCustomCode_Availability tests code availability checking
-// Requirements: 8.4, 8.5
 func TestValidateCustomCode_Availability(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -637,7 +630,6 @@ func TestValidateCustomCode_Availability(t *testing.T) {
 }
 
 // TestValidateCustomCode_StorageError tests storage error handling
-// Requirements: 8.5
 func TestValidateCustomCode_StorageError(t *testing.T) {
 	// Arrange
 	expectedErr := errors.New("database connection failed")
@@ -659,7 +651,6 @@ func TestValidateCustomCode_StorageError(t *testing.T) {
 }
 
 // TestValidateCustomCode_CombinedValidation tests multiple validation rules together
-// Requirements: 8.1, 8.2, 8.3, 8.5
 func TestValidateCustomCode_CombinedValidation(t *testing.T) {
 	tests := []struct {
 		name          string

@@ -368,6 +368,3 @@ go test -tags=property ./service
 
 ## References
 
-- [Requirements Document](../../.kiro/specs/im-chat-system/requirements.md)
-- [Design Document](../../.kiro/specs/im-chat-system/design.md)
-- [Task List](../../.kiro/specs/im-chat-system/tasks.md)

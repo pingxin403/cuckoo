@@ -129,6 +129,3 @@
 
 ## 相关 Spec 目录
 
-- `.kiro/specs/multi-region-active-active/` - 两地双活架构（待创建）
-- `.kiro/specs/saga-orchestrator/` - Saga 编排器（待创建）
-- `.kiro/specs/im-operator/` - IM Operator（待创建）

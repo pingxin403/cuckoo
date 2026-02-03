@@ -22,7 +22,6 @@ import com.pingxin403.cuckoo.flashsale.service.dto.ActivityUpdateRequest;
 /**
  * 活动服务实现 Implementation of ActivityService for managing flash sale activities.
  *
- * <p>Validates Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6
  */
 @Service
 public class ActivityServiceImpl implements ActivityService {

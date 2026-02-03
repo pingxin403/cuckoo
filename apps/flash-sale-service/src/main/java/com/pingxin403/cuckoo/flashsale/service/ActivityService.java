@@ -12,7 +12,6 @@ import com.pingxin403.cuckoo.flashsale.service.dto.ActivityUpdateRequest;
  *
  * <p>Provides CRUD operations and lifecycle management for flash sale activities.
  *
- * <p>Validates Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6
  */
 public interface ActivityService {
 

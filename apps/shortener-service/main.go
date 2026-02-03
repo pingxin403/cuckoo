@@ -111,19 +111,54 @@ func main() {
 	}
 	obs.Logger().Info(ctx, "Initialized L1 cache")
 
-	// Initialize L2 cache (Redis) - optional, can be nil
+	// Initialize L2 cache (Redis) with optimized client and metrics - optional, can be nil
 	var l2Cache *cache.L2Cache
+	var redisClientWithMetrics *cache.RedisClientWithMetrics
 	if cfg.Redis != nil && cfg.Redis.Addr != "" {
-		l2Config := cache.L2CacheConfig{
-			Addrs:    []string{cfg.Redis.Addr},
-			PoolSize: cfg.Redis.PoolSize,
+		// Convert config to optimized RedisConfig
+		// Load configuration from environment variables
+		redisConfig := cache.RedisConfig{
+			Addrs:           []string{cfg.Redis.Addr},
+			Password:        cfg.Redis.Password,
+			DB:              cfg.Redis.DB,
+			ClusterMode:     false, // Default to standalone mode
+			PoolSize:        cfg.Redis.PoolSize,
+			MinIdleConns:    cfg.Redis.MinIdleConns,
+			ConnMaxLifetime: 30 * time.Minute, // Default from design
+			DialTimeout:     5 * time.Second,  // Default from design
+			ReadTimeout:     3 * time.Second,  // Default from design
+			WriteTimeout:    3 * time.Second,  // Default from design
+			MaxRedirects:    3,                // Default for cluster mode
 		}
-		l2Cache, err = cache.NewL2Cache(l2Config)
-		if err != nil {
-			obs.Logger().Warn(ctx, "Failed to initialize L2 cache (Redis), continuing without Redis", "error", err)
-			l2Cache = nil
+
+		// Apply defaults if not set
+		redisConfig.ApplyDefaults()
+
+		// Validate configuration
+		if err := redisConfig.Validate(); err != nil {
+			obs.Logger().Warn(ctx, "Invalid Redis configuration, continuing without Redis", "error", err)
 		} else {
-			obs.Logger().Info(ctx, "Initialized L2 cache (Redis)")
+			// Create Redis client with metrics
+			redisClientWithMetrics = cache.NewRedisClientWithMetrics(redisConfig, obs)
+			obs.Logger().Info(ctx, "Initialized optimized Redis client with metrics", "config", redisConfig.String())
+
+			// Create L2 cache using the optimized client
+			l2Config := cache.L2CacheConfig{
+				Addrs:    []string{cfg.Redis.Addr},
+				PoolSize: cfg.Redis.PoolSize,
+			}
+			l2Cache, err = cache.NewL2Cache(l2Config, obs)
+			if err != nil {
+				obs.Logger().Warn(ctx, "Failed to initialize L2 cache (Redis), continuing without Redis", "error", err)
+				l2Cache = nil
+				// Stop metrics collection if L2 cache initialization failed
+				if redisClientWithMetrics != nil {
+					redisClientWithMetrics.Stop()
+					redisClientWithMetrics = nil
+				}
+			} else {
+				obs.Logger().Info(ctx, "Initialized L2 cache (Redis)")
+			}
 		}
 	} else {
 		obs.Logger().Info(ctx, "Redis not configured, running without L2 cache")
@@ -152,7 +187,6 @@ func main() {
 	obs.Logger().Info(ctx, "Started health checker")
 
 	// Initialize analytics writer (Kafka) - optional
-	// Requirements: 7.1, 7.2
 	var analyticsWriter *analytics.AnalyticsWriter
 	if cfg.Kafka != nil && len(cfg.Kafka.Brokers) > 0 {
 		analyticsConfig := analytics.Config{
@@ -171,7 +205,6 @@ func main() {
 	svc := service.NewShortenerServiceImpl(store, idGenerator, urlValidator, cacheManager, obs)
 
 	// Initialize rate limiter (100 requests per minute per IP)
-	// Requirements: 6.1, 6.2
 	rateLimiter := service.NewRateLimiter(cfg.RateLimiter.RequestsPerMinute)
 	obs.Logger().Info(ctx, "Initialized rate limiter", "requests_per_minute", cfg.RateLimiter.RequestsPerMinute)
 
@@ -200,11 +233,9 @@ func main() {
 	mainMux.Handle("/", readinessWrappedHandler)
 
 	// Wrap HTTP router with rate limiter middleware
-	// Requirements: 6.1, 6.2, 6.5
 	httpRouterWithRateLimit := rateLimiter.HTTPMiddleware(mainMux)
 
 	// Create gRPC server with rate limiter interceptor
-	// Requirements: 6.1, 6.2, 6.5
 	grpcServer := grpc.NewServer(
 		grpc.UnaryInterceptor(rateLimiter.UnaryServerInterceptor()),
 	)
@@ -283,6 +314,12 @@ func main() {
 		if err := analyticsWriter.Close(); err != nil {
 			obs.Logger().Error(ctx, "Analytics writer shutdown error", "error", err)
 		}
+	}
+
+	// Stop Redis metrics collection goroutine
+	if redisClientWithMetrics != nil {
+		redisClientWithMetrics.Stop()
+		obs.Logger().Info(ctx, "Redis metrics collection stopped")
 	}
 
 	// Stop health checker

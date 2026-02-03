@@ -4,7 +4,7 @@
 
 This guide provides detailed instructions for setting up cross-region data synchronization infrastructure for the multi-region active-active architecture. These are operational tasks that should be performed by DevOps/SRE teams.
 
-## Task 7: Cross-Region Data Synchronization
+## Cross-Region Data Synchronization
 
 ### 7.1 MySQL Cross-Region Replication
 
@@ -357,7 +357,7 @@ HLC has been successfully integrated into the sequence generator. See:
 
 ---
 
-## Task 8: Failover and Traffic Management
+## Failover and Traffic Management
 
 ### 8.1 Multi-Region Health Checks
 
@@ -630,7 +630,7 @@ func (gs *GatewayService) HandleWebSocket(w http.ResponseWriter, r *http.Request
 
 ---
 
-## Task 9: Multi-Region Observability
+## Multi-Region Observability
 
 ### 9.1 Observability Library Extension
 
@@ -818,19 +818,9 @@ data_reconciliation_sync_duration_seconds{region="region-a"} 12.5
 
 ### Completed Tasks
 
-✅ **Task 7.4**: HLC integration into sequence generator  
-✅ **Task 8.1**: Multi-region health checks (code implemented)  
-✅ **Task 8.2**: Traffic management CLI tool (implemented)  
-✅ **Task 8.3**: WebSocket failover support (implemented)  
-✅ **Task 9.1**: Observability library extension (implemented)  
-✅ **Task 9.2**: Grafana dashboards (documented)
 
 ### Infrastructure Tasks (Operational)
 
-📋 **Task 7.1**: MySQL replication (configuration guide provided)  
-📋 **Task 7.2**: Redis replication (configuration guide provided)  
-📋 **Task 7.3**: Kafka MirrorMaker (configuration guide provided)  
-📋 **Task 9.3**: Data reconciliation (implementation strategy provided)
 
 ### Next Steps
 
@@ -855,8 +845,6 @@ data_reconciliation_sync_duration_seconds{region="region-a"} 12.5
 
 ## References
 
-- [Multi-Region Design Document](../../.kiro/specs/multi-region-active-active/design.md)
-- [Multi-Region Requirements](../../.kiro/specs/multi-region-active-active/requirements.md)
 - [Docker Compose Multi-Region Setup](./README.multi-region.md)
 - [Traffic CLI Tool](../../apps/im-service/cmd/traffic-cli/README.md)
 - [Monitoring Dashboard](../../docs/multi-region-demo/monitoring-dashboard.md)

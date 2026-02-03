@@ -378,9 +378,7 @@ Use these metrics to:
 
 ## Related Documentation
 
-- [Multi-Region Architecture Design](../../.kiro/specs/multi-region-active-active/design.md)
 - [Traffic Switcher Implementation](../../traffic/traffic_switcher.go)
-- [Requirements](../../.kiro/specs/multi-region-active-active/requirements.md)
 
 ## Support
 

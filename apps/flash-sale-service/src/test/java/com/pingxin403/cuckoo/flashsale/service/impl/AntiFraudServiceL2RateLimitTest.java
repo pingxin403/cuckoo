@@ -24,7 +24,6 @@ import com.pingxin403.cuckoo.flashsale.service.dto.SeckillRequest;
 /**
  * Unit tests for L2 rate limiting with Redis token bucket in AntiFraudServiceImpl.
  *
- * <p>Validates Requirements: 3.2, 7.4
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("AntiFraudService L2 Rate Limiting Tests")

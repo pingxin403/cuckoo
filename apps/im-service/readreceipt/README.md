@@ -327,6 +327,3 @@ go test -run TestMarkAsRead ./readreceipt/...
 
 ## References
 
-- [Requirements Document](../../.kiro/specs/im-chat-system/requirements.md) - Requirement 5
-- [Design Document](../../.kiro/specs/im-chat-system/design.md) - Read Receipt Design
-- [Task List](../../.kiro/specs/im-chat-system/tasks.md) - Task 13

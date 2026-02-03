@@ -8,7 +8,6 @@ import (
 )
 
 // Error codes for the shortener service
-// Requirements: 9.5
 const (
 	// Client errors (4xx)
 	CodeInvalidURL            = "INVALID_URL"
@@ -31,7 +30,6 @@ const (
 )
 
 // ServiceError represents a structured error response
-// Requirements: 9.5
 type ServiceError struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
@@ -56,7 +54,6 @@ func NewServiceError(code, message, details string) *ServiceError {
 }
 
 // ToGRPCStatus converts a ServiceError to a gRPC status
-// Requirements: 9.5
 func (e *ServiceError) ToGRPCStatus() error {
 	grpcCode := mapErrorCodeToGRPC(e.Code)
 	return status.Errorf(grpcCode, "%s: %s", e.Code, e.Message)
@@ -91,7 +88,6 @@ func mapErrorCodeToGRPC(code string) codes.Code {
 }
 
 // Common error constructors
-// Requirements: 9.5
 
 // NewInvalidURLError creates an invalid URL error
 func NewInvalidURLError(details string) *ServiceError {

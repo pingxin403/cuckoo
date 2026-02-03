@@ -11,7 +11,6 @@ import (
 )
 
 // Test word detection and replacement
-// Requirements: 11.4
 func TestSensitiveWordFilter_BasicDetection(t *testing.T) {
 	cfg := Config{
 		Enabled:          true,
@@ -37,7 +36,6 @@ func TestSensitiveWordFilter_BasicDetection(t *testing.T) {
 }
 
 // Test multiple word detection
-// Requirements: 11.4
 func TestSensitiveWordFilter_MultipleWords(t *testing.T) {
 	cfg := Config{
 		Enabled:          true,
@@ -60,7 +58,6 @@ func TestSensitiveWordFilter_MultipleWords(t *testing.T) {
 }
 
 // Test overlapping words
-// Requirements: 11.4, 17.4
 func TestSensitiveWordFilter_OverlappingWords(t *testing.T) {
 	cfg := Config{
 		Enabled:          true,
@@ -84,7 +81,6 @@ func TestSensitiveWordFilter_OverlappingWords(t *testing.T) {
 }
 
 // Test Unicode normalization
-// Requirements: 11.4
 func TestSensitiveWordFilter_UnicodeNormalization(t *testing.T) {
 	cfg := Config{
 		Enabled:          true,
@@ -107,7 +103,6 @@ func TestSensitiveWordFilter_UnicodeNormalization(t *testing.T) {
 }
 
 // Test case sensitivity
-// Requirements: 11.4
 func TestSensitiveWordFilter_CaseSensitivity(t *testing.T) {
 	// Case insensitive
 	cfg := Config{
@@ -142,7 +137,6 @@ func TestSensitiveWordFilter_CaseSensitivity(t *testing.T) {
 }
 
 // Test block action
-// Requirements: 11.4, 11.8
 func TestSensitiveWordFilter_BlockAction(t *testing.T) {
 	cfg := Config{
 		Enabled:          true,
@@ -165,7 +159,6 @@ func TestSensitiveWordFilter_BlockAction(t *testing.T) {
 }
 
 // Test replace action
-// Requirements: 11.4, 11.8
 func TestSensitiveWordFilter_ReplaceAction(t *testing.T) {
 	cfg := Config{
 		Enabled:          true,
@@ -188,7 +181,6 @@ func TestSensitiveWordFilter_ReplaceAction(t *testing.T) {
 }
 
 // Test audit action
-// Requirements: 11.4
 func TestSensitiveWordFilter_AuditAction(t *testing.T) {
 	cfg := Config{
 		Enabled:          true,
@@ -212,7 +204,6 @@ func TestSensitiveWordFilter_AuditAction(t *testing.T) {
 }
 
 // Test disabled filter
-// Requirements: 11.4
 func TestSensitiveWordFilter_Disabled(t *testing.T) {
 	cfg := Config{
 		Enabled:          false,
@@ -235,7 +226,6 @@ func TestSensitiveWordFilter_Disabled(t *testing.T) {
 }
 
 // Test loading word list from file
-// Requirements: 11.4
 func TestSensitiveWordFilter_LoadFromFile(t *testing.T) {
 	// Create temporary word list file
 	tmpDir := t.TempDir()
@@ -271,7 +261,6 @@ illegal
 }
 
 // Test empty content
-// Requirements: 11.4
 func TestSensitiveWordFilter_EmptyContent(t *testing.T) {
 	cfg := Config{
 		Enabled:          true,
@@ -294,7 +283,6 @@ func TestSensitiveWordFilter_EmptyContent(t *testing.T) {
 }
 
 // Test no sensitive words
-// Requirements: 11.4
 func TestSensitiveWordFilter_NoSensitiveWords(t *testing.T) {
 	cfg := Config{
 		Enabled:          true,
@@ -317,7 +305,6 @@ func TestSensitiveWordFilter_NoSensitiveWords(t *testing.T) {
 }
 
 // Test performance (O(n) complexity)
-// Requirements: 17.4
 func TestSensitiveWordFilter_Performance(t *testing.T) {
 	cfg := Config{
 		Enabled:          true,
@@ -354,7 +341,6 @@ func TestSensitiveWordFilter_Performance(t *testing.T) {
 }
 
 // Test word boundaries
-// Requirements: 11.4
 func TestSensitiveWordFilter_WordBoundaries(t *testing.T) {
 	cfg := Config{
 		Enabled:          true,
@@ -377,7 +363,6 @@ func TestSensitiveWordFilter_WordBoundaries(t *testing.T) {
 }
 
 // Test multiple languages
-// Requirements: 11.4
 func TestSensitiveWordFilter_MultipleLanguages(t *testing.T) {
 	cfg := Config{
 		Enabled:       true,
@@ -403,7 +388,6 @@ func TestSensitiveWordFilter_MultipleLanguages(t *testing.T) {
 }
 
 // Test UpdateWordList
-// Requirements: 11.4
 func TestSensitiveWordFilter_UpdateWordList(t *testing.T) {
 	cfg := Config{
 		Enabled:          true,
@@ -457,7 +441,6 @@ func TestSensitiveWordFilter_GetConfig(t *testing.T) {
 }
 
 // Test whitespace preservation
-// Requirements: 11.4
 func TestSensitiveWordFilter_WhitespacePreservation(t *testing.T) {
 	cfg := Config{
 		Enabled:          true,

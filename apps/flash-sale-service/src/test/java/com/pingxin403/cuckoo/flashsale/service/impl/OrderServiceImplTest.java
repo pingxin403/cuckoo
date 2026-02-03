@@ -29,7 +29,6 @@ import com.pingxin403.cuckoo.flashsale.service.dto.RollbackResult;
 /**
  * Unit tests for OrderServiceImpl with Redis caching.
  *
- * <p>Validates Requirements: 4.3, 5.1, 5.2, 5.3, 5.4
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("OrderService Implementation Tests")

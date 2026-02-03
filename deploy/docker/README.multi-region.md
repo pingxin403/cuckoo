@@ -373,8 +373,6 @@ BATCH_TIMEOUT=3s
 ## References
 
 - [Detailed Deployment Guide](./MULTI_REGION_DEPLOYMENT.md)
-- [Multi-Region Architecture Design](../../.kiro/specs/multi-region-active-active/design.md)
-- [Requirements Document](../../.kiro/specs/multi-region-active-active/requirements.md)
 - [Integration Guide](../../apps/MULTI_REGION_INTEGRATION_COMPLETE.md)
 
 ## Support

@@ -27,7 +27,6 @@ func setupTestRedis(t *testing.T) (*miniredis.Miniredis, *DedupService) {
 }
 
 // Test duplicate detection
-// Requirements: 8.1, 8.3
 func TestDedupService_CheckDuplicate(t *testing.T) {
 	mr, service := setupTestRedis(t)
 	defer mr.Close()
@@ -51,7 +50,6 @@ func TestDedupService_CheckDuplicate(t *testing.T) {
 }
 
 // Test marking message as processed
-// Requirements: 8.2
 func TestDedupService_MarkProcessed(t *testing.T) {
 	mr, service := setupTestRedis(t)
 	defer mr.Close()
@@ -70,7 +68,6 @@ func TestDedupService_MarkProcessed(t *testing.T) {
 }
 
 // Test TTL expiration
-// Requirements: 8.2
 func TestDedupService_TTLExpiration(t *testing.T) {
 	mr, service := setupTestRedis(t)
 	defer mr.Close()
@@ -100,7 +97,6 @@ func TestDedupService_TTLExpiration(t *testing.T) {
 }
 
 // Test atomic check and mark
-// Requirements: 8.1, 8.2, 8.3
 func TestDedupService_CheckAndMark(t *testing.T) {
 	mr, service := setupTestRedis(t)
 	defer mr.Close()
@@ -125,7 +121,6 @@ func TestDedupService_CheckAndMark(t *testing.T) {
 }
 
 // Test concurrent access
-// Requirements: 8.3
 func TestDedupService_ConcurrentAccess(t *testing.T) {
 	mr, service := setupTestRedis(t)
 	defer mr.Close()
@@ -163,7 +158,6 @@ func TestDedupService_ConcurrentAccess(t *testing.T) {
 }
 
 // Test Redis connection failure handling
-// Requirements: 8.1
 func TestDedupService_RedisConnectionFailure(t *testing.T) {
 	mr, service := setupTestRedis(t)
 
@@ -205,7 +199,6 @@ func TestDedupService_Ping(t *testing.T) {
 }
 
 // Test default TTL configuration
-// Requirements: 8.2
 func TestDedupService_DefaultTTL(t *testing.T) {
 	mr := miniredis.RunT(t)
 	defer mr.Close()
@@ -222,7 +215,6 @@ func TestDedupService_DefaultTTL(t *testing.T) {
 }
 
 // Test custom TTL configuration
-// Requirements: 8.2
 func TestDedupService_CustomTTL(t *testing.T) {
 	mr := miniredis.RunT(t)
 	defer mr.Close()
@@ -259,7 +251,6 @@ func TestDedupService_DedupKeyFormat(t *testing.T) {
 }
 
 // Test multiple different messages
-// Requirements: 8.1, 8.3
 func TestDedupService_MultipleDifferentMessages(t *testing.T) {
 	mr, service := setupTestRedis(t)
 	defer mr.Close()

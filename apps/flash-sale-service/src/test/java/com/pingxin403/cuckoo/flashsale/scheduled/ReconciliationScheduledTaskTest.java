@@ -20,7 +20,6 @@ import com.pingxin403.cuckoo.flashsale.service.dto.ReconciliationResult;
 /**
  * Unit tests for ReconciliationScheduledTask.
  *
- * <p>Validates Requirements: 6.4, 6.5, 6.6
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ReconciliationScheduledTask Tests")

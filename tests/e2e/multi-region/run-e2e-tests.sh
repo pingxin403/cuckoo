@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # Multi-Region End-to-End Test Runner
-# Task 10.1: 端到端多地域功能验证
 
 set -e
 

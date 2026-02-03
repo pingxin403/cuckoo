@@ -196,6 +196,5 @@ type ClickEvent struct {
 
 ## 相关文档
 
-- 详细设计: `.kiro/specs/url-shortener-service/design.md`
 - API 定义: `api/v1/shortener.proto`
 - 服务代码: `apps/shortener-service/`

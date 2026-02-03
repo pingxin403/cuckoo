@@ -419,8 +419,6 @@ BATCH_TIMEOUT=3s
 
 ## References
 
-- [Multi-Region Architecture Design](../../.kiro/specs/multi-region-active-active/design.md)
-- [Requirements Document](../../.kiro/specs/multi-region-active-active/requirements.md)
 - [Integration Guide](../../apps/MULTI_REGION_INTEGRATION_COMPLETE.md)
 - [IM Service Configuration](../../apps/im-service/config/multi-region-example.yaml)
 - [Gateway Configuration](../../apps/im-gateway-service/config/multi-region-example.yaml)

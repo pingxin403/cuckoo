@@ -8,12 +8,25 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pingxin403/cuckoo/libs/observability"
 	"pgregory.net/rapid"
 )
 
+// createPropertyTestObservability creates a test observability instance for property tests
+func createPropertyTestObservability() observability.Observability {
+	obs, _ := observability.New(observability.Config{
+		ServiceName:    "shortener-service-property-test",
+		ServiceVersion: "test",
+		Environment:    "test",
+		EnableMetrics:  false, // Disable metrics for tests
+		EnableTracing:  false,
+		LogLevel:       "error",
+	})
+	return obs
+}
+
 // TestProperty_CacheInvalidationOnDeletion verifies cache invalidation
 // Property 8: Cache Invalidation on Deletion
-// Requirements: 4.6
 func TestProperty_CacheInvalidationOnDeletion(t *testing.T) {
 	// Check if Redis is available
 	// Test config for local Redis (no auth required)
@@ -23,7 +36,8 @@ func TestProperty_CacheInvalidationOnDeletion(t *testing.T) {
 		DB:       0,
 	}
 
-	cache, err := NewL2Cache(config)
+	obs := createPropertyTestObservability()
+	cache, err := NewL2Cache(config, obs)
 	if err != nil {
 		t.Skipf("Redis not available, skipping property test: %v", err)
 		return
@@ -90,7 +104,8 @@ func TestProperty_L2CacheConsistency(t *testing.T) {
 		DB:       0,
 	}
 
-	cache, err := NewL2Cache(config)
+	obs := createPropertyTestObservability()
+	cache, err := NewL2Cache(config, obs)
 	if err != nil {
 		t.Skipf("Redis not available, skipping property test: %v", err)
 		return
@@ -144,7 +159,8 @@ func TestProperty_BatchOperationsConsistency(t *testing.T) {
 		DB:       0,
 	}
 
-	cache, err := NewL2Cache(config)
+	obs := createPropertyTestObservability()
+	cache, err := NewL2Cache(config, obs)
 	if err != nil {
 		t.Skipf("Redis not available, skipping property test: %v", err)
 		return
@@ -232,7 +248,8 @@ func TestProperty_TTLJitter(t *testing.T) {
 		DB:       0,
 	}
 
-	cache, err := NewL2Cache(config)
+	obs := createPropertyTestObservability()
+	cache, err := NewL2Cache(config, obs)
 	if err != nil {
 		t.Skipf("Redis not available, skipping property test: %v", err)
 		return

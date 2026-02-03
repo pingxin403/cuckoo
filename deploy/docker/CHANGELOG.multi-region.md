@@ -237,8 +237,6 @@ ALTER TABLE user_sessions
 
 - [Multi-Region Deployment Guide](./MULTI_REGION_DEPLOYMENT.md)
 - [Quick Start Guide](./README.multi-region.md)
-- [Architecture Design](../../.kiro/specs/multi-region-active-active/design.md)
-- [Requirements](../../.kiro/specs/multi-region-active-active/requirements.md)
 - [Integration Guide](../../apps/MULTI_REGION_INTEGRATION_COMPLETE.md)
 
 ## Version History

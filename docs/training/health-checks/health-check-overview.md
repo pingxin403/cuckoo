@@ -447,7 +447,6 @@ curl http://service:8080/health | jq
 
 - **Library README**: `libs/health/README.md`
 - **Operational Runbook**: `docs/operations/health-check-runbook.md`
-- **Design Document**: `.kiro/specs/health-check-standardization/design.md`
 - **Service Integration Docs**: `apps/*/HEALTH_CHECK_INTEGRATION.md`
 
 ### Monitoring

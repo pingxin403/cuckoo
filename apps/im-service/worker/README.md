@@ -12,21 +12,18 @@ Kafka (offline_msg) → Offline Worker → Redis (dedup) → MySQL (offline_mess
 
 ## Features
 
-### 1. Kafka Consumer (Task 12.1)
 - **Consumer Group**: `offline-worker-group` for load balancing
 - **Topic**: `offline_msg` with 64 partitions
 - **Manual Offset Commit**: Only commits after successful database write
 - **Rebalancing**: Handles consumer group rebalancing gracefully
 - **Error Handling**: Retries on failure, Kafka redelivers on crash
 
-### 2. Deduplication (Task 12.2)
 - **Redis Check**: Checks `dedup:msg:{msg_id}` before database write
 - **Skip Duplicates**: Skips messages already in Redis dedup set
 - **Mark Processed**: Adds msg_id to Redis after successful write
 - **Race Condition**: Handles ACK-offline race condition (Requirement 3.10)
 - **TTL**: 7-day TTL on dedup records
 
-### 3. Batch Processing (Task 12.3)
 - **Batch Size**: 100 messages or 5 seconds (whichever comes first)
 - **Single Transaction**: All messages in batch inserted in one transaction
 - **Atomic Commit**: Kafka offset committed only after successful write

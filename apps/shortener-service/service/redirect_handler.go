@@ -13,7 +13,6 @@ import (
 )
 
 // RedirectHandler handles HTTP redirect requests
-// Requirements: 3.1, 3.5, 5.2, 14.4
 type RedirectHandler struct {
 	cacheManager    *cache.CacheManager
 	storage         storage.Storage
@@ -32,7 +31,6 @@ func NewRedirectHandler(cacheManager *cache.CacheManager, storage storage.Storag
 }
 
 // SetupRouter sets up the HTTP router with redirect handler
-// Requirements: 3.1, 3.5, 5.2, 14.4
 func (h *RedirectHandler) SetupRouter() *chi.Mux {
 	r := chi.NewRouter()
 
@@ -58,7 +56,6 @@ func (h *RedirectHandler) SetupRouter() *chi.Mux {
 }
 
 // HandleRedirect handles the redirect request for a short code
-// Requirements: 3.1, 3.5, 5.2, 14.4
 func (h *RedirectHandler) HandleRedirect(w http.ResponseWriter, r *http.Request) {
 	shortCode := chi.URLParam(r, "code")
 
@@ -73,7 +70,6 @@ func (h *RedirectHandler) HandleRedirect(w http.ResponseWriter, r *http.Request)
 	mapping, err := h.storage.Get(ctx, shortCode)
 	if err != nil {
 		if err == storage.ErrNotFound {
-			// Requirements: 3.5 - Return 404 for non-existent codes
 			h.obs.Metrics().IncrementCounter("shortener_errors_total", map[string]string{"type": "redirect_not_found"})
 			http.Error(w, "Short code not found", http.StatusNotFound)
 			return
@@ -85,7 +81,6 @@ func (h *RedirectHandler) HandleRedirect(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Check if expired
-	// Requirements: 5.2 - Return 410 for expired codes
 	isExpired := mapping.ExpiresAt != nil && time.Now().After(*mapping.ExpiresAt)
 	if isExpired {
 		h.obs.Metrics().IncrementCounter("shortener_errors_total", map[string]string{"type": "redirect_expired"})
@@ -94,7 +89,6 @@ func (h *RedirectHandler) HandleRedirect(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Log click event asynchronously
-	// Requirements: 7.1, 7.2 - Async click logging
 	if h.analyticsWriter != nil {
 		go func() {
 			event := analytics.ClickEvent{
@@ -109,14 +103,12 @@ func (h *RedirectHandler) HandleRedirect(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Set security headers
-	// Requirements: 14.4 - Set security headers
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("X-Frame-Options", "DENY")
 	w.Header().Set("X-XSS-Protection", "1; mode=block")
 	w.Header().Set("Referrer-Policy", "no-referrer")
 
 	// Perform redirect
-	// Requirements: 3.1 - Return HTTP 302 redirect
 	h.obs.Metrics().IncrementCounter("shortener_redirects_total", nil)
 	http.Redirect(w, r, mapping.LongURL, http.StatusFound)
 }
