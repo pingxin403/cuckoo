@@ -30,7 +30,6 @@ import com.pingxin403.cuckoo.flashsale.service.dto.ReconciliationResult;
  * <p>Performs periodic reconciliation between Redis stock data and MySQL order data to detect and
  * fix data inconsistencies.
  *
- * <p>Validates Requirements: 6.4, 6.5, 6.6, 6.7
  */
 @Service
 public class ReconciliationServiceImpl implements ReconciliationService {

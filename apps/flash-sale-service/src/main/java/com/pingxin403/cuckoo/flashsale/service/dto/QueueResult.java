@@ -13,7 +13,6 @@ package com.pingxin403.cuckoo.flashsale.service.dto;
  *   <li>410 - Sold out, activity ended
  * </ul>
  *
- * <p>Validates Requirements: 4.1, 4.2, 4.4, 4.6
  *
  * @param code the response code (200=acquired, 202=queuing, 410=sold out)
  * @param message the human-readable message

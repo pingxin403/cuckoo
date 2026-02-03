@@ -403,9 +403,6 @@ database:
 
 ## References
 
-- [Multi-Region Architecture Design](../../.kiro/specs/multi-region-active-active/design.md)
-- [Implementation Tasks](../../.kiro/specs/multi-region-active-active/tasks.md)
-- [Requirements Specification](../../.kiro/specs/multi-region-active-active/requirements.md)
 - [IM Chat System Base](../im-chat-system/spec.md)
 - Implementation: Extended services in `apps/im-service/`, `apps/im-gateway-service/`, etc.
 - Infrastructure: `deploy/docker/docker-compose.services.yml`, `deploy/k8s/`

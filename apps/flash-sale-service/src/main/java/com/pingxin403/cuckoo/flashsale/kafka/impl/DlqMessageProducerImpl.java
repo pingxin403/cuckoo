@@ -29,7 +29,6 @@ import com.pingxin403.cuckoo.flashsale.model.DlqMessage;
  *   <li>Uses the original order ID as the message key for traceability
  * </ul>
  *
- * <p>Requirements: 2.5
  */
 @Component
 public class DlqMessageProducerImpl implements DlqMessageProducer {

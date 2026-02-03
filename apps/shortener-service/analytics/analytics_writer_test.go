@@ -18,7 +18,6 @@ func createTestObservability() observability.Observability {
 }
 
 // Test event buffering
-// Requirements: 7.2
 func TestAnalyticsWriter_EventBuffering(t *testing.T) {
 	config := Config{
 		KafkaBrokers: []string{"localhost:9092"},
@@ -51,7 +50,6 @@ func TestAnalyticsWriter_EventBuffering(t *testing.T) {
 }
 
 // Test worker pool processing
-// Requirements: 7.2
 func TestAnalyticsWriter_WorkerPool(t *testing.T) {
 	config := Config{
 		KafkaBrokers: []string{"localhost:9092"},
@@ -70,7 +68,6 @@ func TestAnalyticsWriter_WorkerPool(t *testing.T) {
 }
 
 // Test Kafka failure handling
-// Requirements: 7.5
 func TestAnalyticsWriter_KafkaFailureHandling(t *testing.T) {
 	// Use invalid Kafka broker to simulate failure
 	config := Config{
@@ -98,7 +95,6 @@ func TestAnalyticsWriter_KafkaFailureHandling(t *testing.T) {
 }
 
 // Test buffer full scenario
-// Requirements: 7.5
 func TestAnalyticsWriter_BufferFull(t *testing.T) {
 	config := Config{
 		KafkaBrokers: []string{"localhost:9092"},
@@ -132,7 +128,6 @@ func TestAnalyticsWriter_BufferFull(t *testing.T) {
 }
 
 // Test graceful shutdown
-// Requirements: 7.2
 func TestAnalyticsWriter_GracefulShutdown(t *testing.T) {
 	config := Config{
 		KafkaBrokers: []string{"localhost:9092"},
@@ -171,7 +166,6 @@ func TestAnalyticsWriter_GracefulShutdown(t *testing.T) {
 }
 
 // Test stats reporting
-// Requirements: 7.2
 func TestAnalyticsWriter_Stats(t *testing.T) {
 	config := Config{
 		KafkaBrokers: []string{"localhost:9092"},
@@ -200,7 +194,6 @@ func TestAnalyticsWriter_Stats(t *testing.T) {
 }
 
 // Test default configuration values
-// Requirements: 7.2
 func TestAnalyticsWriter_DefaultConfig(t *testing.T) {
 	config := Config{
 		KafkaBrokers: []string{"localhost:9092"},
@@ -221,7 +214,6 @@ func TestAnalyticsWriter_DefaultConfig(t *testing.T) {
 }
 
 // Test click event structure
-// Requirements: 7.3
 func TestClickEvent_Structure(t *testing.T) {
 	event := ClickEvent{
 		ShortCode: "abc1234",
@@ -247,7 +239,6 @@ func TestClickEvent_Structure(t *testing.T) {
 }
 
 // Test concurrent logging
-// Requirements: 7.2
 func TestAnalyticsWriter_ConcurrentLogging(t *testing.T) {
 	config := Config{
 		KafkaBrokers: []string{"localhost:9092"},

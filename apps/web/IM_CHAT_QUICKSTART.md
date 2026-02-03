@@ -130,23 +130,18 @@ VITE_DEBUG=false
 - `apps/im-gateway-service/API.md` - WebSocket 协议文档
 
 ### 完成报告
-- `.kiro/specs/im-chat-system/TASK_22.2_COMPLETION.md` - 详细实现报告
-- `.kiro/specs/im-chat-system/PHASE_7_STATUS.md` - Phase 7 状态
 
 ## 🎯 下一步
 
 ### 可选功能（未实现）
 
-1. **离线消息同步** (Task 22.3)
    - 连接时自动获取离线消息
    - 显示离线消息数量
 
-2. **可复用 UI 组件** (Task 22.1)
    - 独立的消息列表组件
    - 独立的输入框组件
    - 用户/群组列表组件
 
-3. **前端测试** (Task 22.4)
    - SDK 单元测试
    - 组件测试
    - 集成测试

@@ -21,7 +21,6 @@ import com.pingxin403.cuckoo.flashsale.service.dto.QueueResult;
 /**
  * Unit tests for QueueServiceImpl token bucket control.
  *
- * <p>Validates Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6
  */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("QueueService Token Bucket Control Tests")

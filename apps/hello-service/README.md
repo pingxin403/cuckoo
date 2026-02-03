@@ -282,8 +282,6 @@ K8s configuration includes the following probes:
 ## Resources
 
 - [API Definition](../../api/v1/hello.proto)
-- [Design Document](../../.kiro/specs/monorepo-hello-todo/design.md)
-- [Requirements Document](../../.kiro/specs/monorepo-hello-todo/requirements.md)
 - [Monorepo Documentation](../../docs/README.md)
 - [gRPC Documentation](https://grpc.io/docs/)
 - [Spring Boot gRPC Starter](https://github.com/grpc-ecosystem/grpc-spring)

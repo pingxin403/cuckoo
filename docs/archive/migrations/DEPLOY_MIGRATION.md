@@ -37,9 +37,6 @@ deploy/
 │   │   ├── etcd-statefulset.yaml
 │   │   ├── etcd-README.md
 │   │   └── kustomization.yaml
-│   ├── mysql/                      # TODO: Task 1.2
-│   ├── redis/                      # TODO: Task 1.3
-│   └── kafka/                      # TODO: Task 1.4
 ├── services/                       # Application services
 │   ├── hello-service/
 │   │   ├── hello-service-configmap.yaml
@@ -304,7 +301,6 @@ kubectl apply -k deploy/services/hello-service -n development
 For questions or issues:
 1. Check the [deploy/README.md](../deploy/README.md)
 2. Review the [IM Chat System README](../apps/im-chat-system/README.md)
-3. Consult the [task list](../.kiro/specs/im-chat-system/tasks.md)
 
 ## Related Documentation
 

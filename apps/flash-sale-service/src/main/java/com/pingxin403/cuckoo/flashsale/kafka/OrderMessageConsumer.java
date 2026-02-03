@@ -32,7 +32,6 @@ import com.pingxin403.cuckoo.flashsale.service.dto.BatchCreateResult;
  *   <li>Dead letter queue: sends messages to DLQ after 3 failed retries
  * </ul>
  *
- * <p>Requirements: 2.3, 2.4, 2.5
  */
 @Component
 public class OrderMessageConsumer {

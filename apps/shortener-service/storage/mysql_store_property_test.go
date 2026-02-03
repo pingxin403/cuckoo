@@ -91,7 +91,6 @@ func (s *InMemoryStorage) Close() error {
 // Feature: url-shortener-service, Property 3: Create-Then-Retrieve Consistency
 // For any successfully created URL mapping, immediately retrieving it by short code
 // SHALL return the same long URL
-// Requirements: 2.1, 13.2
 func TestProperty_CreateRetrieveConsistency(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		storage := NewInMemoryStorage()
@@ -136,7 +135,6 @@ func TestProperty_CreateRetrieveConsistency(t *testing.T) {
 // Feature: url-shortener-service, Property 4: Required Fields Completeness
 // For any created URL mapping, it SHALL have all required fields populated:
 // short_code, long_url, created_at, and creator_ip
-// Requirements: 2.3
 func TestProperty_RequiredFieldsCompleteness(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		storage := NewInMemoryStorage()
@@ -183,7 +181,6 @@ func TestProperty_RequiredFieldsCompleteness(t *testing.T) {
 
 // TestProperty_CreateRetrieveWithExpiration tests create-retrieve consistency with expiration
 // This extends Property 3 to include mappings with expiration times
-// Requirements: 2.1, 5.1
 func TestProperty_CreateRetrieveWithExpiration(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		storage := NewInMemoryStorage()
@@ -225,7 +222,6 @@ func TestProperty_CreateRetrieveWithExpiration(t *testing.T) {
 
 // TestProperty_MultipleCreateRetrieve tests consistency across multiple mappings
 // This verifies that creating multiple mappings doesn't interfere with each other
-// Requirements: 2.1, 2.2
 func TestProperty_MultipleCreateRetrieve(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		storage := NewInMemoryStorage()
@@ -281,7 +277,6 @@ func TestProperty_MultipleCreateRetrieve(t *testing.T) {
 }
 
 // TestProperty_SoftDeletePreservesData tests that soft delete doesn't lose data
-// Requirements: 4.6
 func TestProperty_SoftDeletePreservesData(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		storage := NewInMemoryStorage()

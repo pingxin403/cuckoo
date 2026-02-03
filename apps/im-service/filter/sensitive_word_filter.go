@@ -55,7 +55,6 @@ type ACNode struct {
 }
 
 // SensitiveWordFilter provides O(n) sensitive word filtering using Aho-Corasick automaton
-// Requirements: 11.4, 17.4, 17.5
 type SensitiveWordFilter struct {
 	root             *ACNode
 	config           Config
@@ -65,7 +64,6 @@ type SensitiveWordFilter struct {
 }
 
 // NewSensitiveWordFilter creates a new sensitive word filter
-// Requirements: 11.4
 func NewSensitiveWordFilter(cfg Config) (*SensitiveWordFilter, error) {
 	filter := &SensitiveWordFilter{
 		root:             &ACNode{children: make(map[rune]*ACNode)},
@@ -88,7 +86,6 @@ func NewSensitiveWordFilter(cfg Config) (*SensitiveWordFilter, error) {
 }
 
 // LoadWordList loads sensitive words from a file
-// Requirements: 11.4
 func (f *SensitiveWordFilter) LoadWordList(filePath string, lang string) error {
 	// #nosec G304 - filePath is from trusted configuration
 	file, err := os.Open(filePath)
@@ -153,7 +150,6 @@ func (f *SensitiveWordFilter) addWord(word string) {
 }
 
 // buildFailureLinks builds failure links for the AC automaton using BFS
-// Requirements: 17.4
 func (f *SensitiveWordFilter) buildFailureLinks() {
 	queue := []*ACNode{}
 
@@ -203,7 +199,6 @@ func (f *SensitiveWordFilter) buildFailureLinks() {
 
 // Filter filters the content for sensitive words
 // Returns FilterResult with detected matches and filtered content
-// Requirements: 11.4, 17.4, 17.5 - O(n) complexity using AC automaton
 func (f *SensitiveWordFilter) Filter(content string, action FilterAction) FilterResult {
 	if !f.config.Enabled {
 		return FilterResult{
@@ -256,7 +251,6 @@ func (f *SensitiveWordFilter) Filter(content string, action FilterAction) Filter
 
 // findMatches finds all sensitive word matches using AC automaton
 // O(n) complexity where n is the length of the text
-// Requirements: 17.4
 func (f *SensitiveWordFilter) findMatches(runes []rune) []Match {
 	matches := []Match{}
 	node := f.root
@@ -290,7 +284,6 @@ func (f *SensitiveWordFilter) findMatches(runes []rune) []Match {
 }
 
 // replaceMatches replaces sensitive words with asterisks
-// Requirements: 11.4
 func (f *SensitiveWordFilter) replaceMatches(content string, matches []Match) string {
 	if len(matches) == 0 {
 		return content
@@ -322,7 +315,6 @@ func (f *SensitiveWordFilter) replaceMatches(content string, matches []Match) st
 }
 
 // UpdateWordList updates the word list at runtime
-// Requirements: 11.4
 func (f *SensitiveWordFilter) UpdateWordList(words []string) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()

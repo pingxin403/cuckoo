@@ -1,0 +1,18 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'loadtest'
+    environment: 'test'
+
+scrape_configs:
+  - job_name: 'shortener-service'
+    static_configs:
+      - targets: ['shortener-service:9091']
+        labels:
+          service: 'shortener'
+          instance: 'loadtest'
+    
+    # Scrape metrics every 5 seconds during load test
+    scrape_interval: 5s
+    scrape_timeout: 3s

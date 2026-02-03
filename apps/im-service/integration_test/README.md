@@ -214,8 +214,6 @@ When adding new integration tests:
 
 ## References
 
-- [IM Chat System Requirements](../../../.kiro/specs/im-chat-system/requirements.md)
-- [IM Chat System Design](../../../.kiro/specs/im-chat-system/design.md)
 - [Unit Testing Guide](../TESTING.md)
 
 

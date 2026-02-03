@@ -31,7 +31,6 @@ This directory contains training materials for the standardized health check sys
 
 - [Health Check Library](../../../libs/health/README.md)
 - [Operational Runbook](../../operations/health-check-runbook.md)
-- [Design Document](../../../.kiro/specs/health-check-standardization/design.md)
 - [Grafana Dashboard](../../../deploy/docker/grafana/dashboards/health-checks.json)
 
 ## Feedback

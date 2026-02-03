@@ -425,4 +425,3 @@ kubectl logs etcd-0 -n <namespace>
 
 - [Docker Compose Setup](../docker-compose.yml) - Local development
 - [IM Service README](../apps/im-service/README.md) - Infrastructure details
-- [Task List](../.kiro/specs/im-chat-system/tasks.md) - Implementation tasks

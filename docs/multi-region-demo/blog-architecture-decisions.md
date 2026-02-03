@@ -78,7 +78,6 @@ type GlobalID struct {
 }
 ```
 
-**参考**: [ADR-001: HLC vs Vector Clock](../../.kiro/specs/multi-region-active-active/adr/ADR-001-hlc-vs-vector-clock.md)
 
 ---
 
@@ -160,7 +159,6 @@ func (s *IMService) SendMessage(msg *Message) error {
 }
 ```
 
-**参考**: [ADR-002: RPO 分层策略](../../.kiro/specs/multi-region-active-active/adr/ADR-002-rpo-tiered-strategy.md)
 
 ---
 
@@ -256,7 +254,6 @@ func (s *IMService) HandleNetworkPartition() {
 }
 ```
 
-**参考**: [ADR-003: 仲裁架构](../../.kiro/specs/multi-region-active-active/adr/ADR-003-arbitration-architecture.md)
 
 ---
 
@@ -341,7 +338,6 @@ conflict_rate:
   alert: > 1%
 ```
 
-**参考**: [ADR-004: 性能 vs 一致性](../../.kiro/specs/multi-region-active-active/adr/ADR-004-performance-vs-consistency.md)
 
 ---
 
@@ -467,10 +463,6 @@ conflict_rate:
 
 ### ADR 列表
 
-1. [ADR-001: HLC vs Vector Clock](../../.kiro/specs/multi-region-active-active/adr/ADR-001-hlc-vs-vector-clock.md)
-2. [ADR-002: RPO 分层策略](../../.kiro/specs/multi-region-active-active/adr/ADR-002-rpo-tiered-strategy.md)
-3. [ADR-003: 仲裁架构](../../.kiro/specs/multi-region-active-active/adr/ADR-003-arbitration-architecture.md)
-4. [ADR-004: 性能 vs 一致性](../../.kiro/specs/multi-region-active-active/adr/ADR-004-performance-vs-consistency.md)
 
 ### 代码仓库
 

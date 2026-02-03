@@ -36,7 +36,6 @@ import com.pingxin403.cuckoo.flashsale.service.dto.QueueResult;
  *   <li>order_status:{orderId} -> String (order status)
  * </ul>
  *
- * <p>Validates Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6
  */
 @Service
 public class QueueServiceImpl implements QueueService {
@@ -87,7 +86,6 @@ public class QueueServiceImpl implements QueueService {
   /**
    * {@inheritDoc}
    *
-   * <p>Validates Requirements: 4.1, 4.4
    *
    * <p>Implementation:
    *

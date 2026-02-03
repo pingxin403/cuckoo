@@ -441,4 +441,3 @@ The system SHALL maintain comprehensive test coverage for confident development.
 
 - [Monorepo Architecture](./monorepo-architecture.md)
 - [App Management System](./app-management-system.md)
-- Implementation: `.kiro/specs/url-shortener-service/`

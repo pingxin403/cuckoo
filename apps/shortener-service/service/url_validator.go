@@ -55,7 +55,6 @@ func NewURLValidator() *URLValidator {
 }
 
 // Validate checks if a URL is valid and safe
-// Requirements: 1.4, 14.1, 14.2, 14.3
 func (v *URLValidator) Validate(rawURL string) error {
 	// Check length first (before parsing)
 	if len(rawURL) > v.maxLength {

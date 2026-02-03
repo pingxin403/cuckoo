@@ -2,7 +2,6 @@
 
 ## Problem Statement
 
-Currently, we are implementing Task 16.1 (Prometheus metrics) for the IM Gateway Service. However, we have 4-5 Go services in the monorepo that all need similar observability capabilities:
 
 - im-gateway-service
 - im-service
@@ -227,14 +226,12 @@ Delete custom metrics implementations
 4. Industry best practice (similar to how Uber, Google do it)
 5. Minimal migration effort
 
-### Should we pause Task 16.1?
 **Recommendation**: ✅ **YES, temporarily**
 
 **Reasons**:
 1. Avoid implementing metrics twice
 2. Current metrics package will be replaced
 3. Better to implement once in shared library
-4. Can resume Task 16.1 after Phase 1 complete
 
 ### Timeline
 - **Phase 1**: 3-5 days (core library)
@@ -245,10 +242,8 @@ Delete custom metrics implementations
 ## Next Steps
 
 1. **Get approval** for unified library approach
-2. **Pause Task 16.1** temporarily
 3. **Complete Phase 1** (core library implementation)
 4. **Migrate im-gateway-service** as proof of concept
-5. **Resume Task 16.1** using unified library
 6. **Roll out** to remaining services
 
 ## Success Criteria

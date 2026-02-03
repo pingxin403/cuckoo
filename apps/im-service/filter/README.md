@@ -227,5 +227,3 @@ zhFilter, _ := filter.NewSensitiveWordFilterFromFile("sensitive_words_zh.txt", c
 ## References
 
 - [Aho-Corasick Algorithm](https://en.wikipedia.org/wiki/Aho%E2%80%93Corasick_algorithm)
-- [IM Chat System Design Document](.kiro/specs/im-chat-system/design.md)
-- [Requirements Document](.kiro/specs/im-chat-system/requirements.md)

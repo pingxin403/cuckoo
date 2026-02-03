@@ -597,7 +597,6 @@ When investigating health check issues, work through this checklist:
 
 - **Library Documentation**: `libs/health/README.md`
 - **Service Integration Docs**: `apps/<service>/HEALTH_CHECK_INTEGRATION.md`
-- **Design Document**: `.kiro/specs/health-check-standardization/design.md`
 - **Architecture Docs**: `docs/architecture/OBSERVABILITY_SYSTEM.md`
 - **Monitoring Guide**: `docs/operations/MONITORING_ALERTING_GUIDE.md`
 

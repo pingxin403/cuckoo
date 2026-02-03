@@ -2,11 +2,9 @@
 
 ## Overview
 
-This directory contains comprehensive end-to-end verification tests for the multi-region active-active architecture (Task 10.1). These tests validate all P1 requirements working together in a realistic multi-region deployment.
 
 ## Test Coverage
 
-### Task 10.1: 端到端多地域功能验证
 
 The test suite validates:
 
@@ -434,14 +432,11 @@ e2e-multi-region:
 
 ## Next Steps
 
-After completing Task 10.1, proceed to:
 
-1. **Task 10.2**: Performance and consistency verification
    - Load testing with cross-region traffic
    - Latency measurement under load
    - Consistency verification with concurrent writes
 
-2. **Task 10.3**: Integration testing and documentation
    - Update deployment documentation
    - Create operational runbooks
    - Document troubleshooting procedures
@@ -454,9 +449,6 @@ After completing Task 10.1, proceed to:
 
 ## References
 
-- [Multi-Region Architecture Design](../../../.kiro/specs/multi-region-active-active/design.md)
-- [Requirements Document](../../../.kiro/specs/multi-region-active-active/requirements.md)
-- [Task List](../../../.kiro/specs/multi-region-active-active/tasks.md)
 - [Docker Deployment Guide](../../../deploy/docker/MULTI_REGION_DEPLOYMENT.md)
 - [Integration Guide](../../../apps/MULTI_REGION_INTEGRATION_COMPLETE.md)
 

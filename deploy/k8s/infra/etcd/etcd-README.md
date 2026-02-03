@@ -448,7 +448,6 @@ kubectl delete pvc -l app=etcd
 - [etcd Documentation](https://etcd.io/docs/v3.5/)
 - [etcd Operator Guide](https://etcd.io/docs/v3.5/op-guide/)
 - [Kubernetes StatefulSets](https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/)
-- [IM Chat System Design](../../.kiro/specs/im-chat-system/design.md)
 
 ## Support
 

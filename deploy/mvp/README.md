@@ -329,7 +329,3 @@ To evolve this MVP toward production:
 
 ## 📚 References
 
-- [Multi-Region Active-Active Design Document](../../.kiro/specs/multi-region-active-active/design.md)
-- [Requirements Specification](../../.kiro/specs/multi-region-active-active/requirements.md)
-- [MVP Setup Guide](../../.kiro/specs/multi-region-active-active/mvp-setup.md)
-- [Implementation Tasks](../../.kiro/specs/multi-region-active-active/tasks.md)

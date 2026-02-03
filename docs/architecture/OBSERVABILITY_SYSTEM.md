@@ -264,6 +264,4 @@ go tool pprof http://localhost:9090/debug/pprof/goroutine
 ## 相关文档
 
 - 可观测性库: `libs/observability/`
-- OTel 增强设计: `.kiro/specs/observability-otel-enhancement/design.md`
-- 集成设计: `.kiro/specs/observability-integration/design.md`
 - 监控告警指南: `docs/operations/MONITORING_ALERTING_GUIDE.md`

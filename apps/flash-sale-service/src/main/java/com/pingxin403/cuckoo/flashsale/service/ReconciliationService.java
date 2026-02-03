@@ -19,7 +19,6 @@ import com.pingxin403.cuckoo.flashsale.service.dto.ReconciliationResult;
  *   <li>Generate reconciliation reports for monitoring
  * </ul>
  *
- * <p>Validates Requirements: 6.4, 6.5, 6.6, 6.7
  *
  * @see ReconciliationResult
  * @see ReconciliationReport

@@ -92,7 +92,6 @@ That's it! The script will:
 ## More Information
 
 - [Full README](./README.md) - Complete documentation
-- [Task Summary](./TASK_10.1_SUMMARY.md) - Implementation details
 - [Deployment Guide](../../../deploy/docker/MULTI_REGION_DEPLOYMENT.md) - Infrastructure setup
 
 ## Support

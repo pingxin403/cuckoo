@@ -141,9 +141,6 @@ Learn about:
 
 ## 🔗 Related Resources
 
-- [Requirements Document](../../.kiro/specs/multi-region-active-active/requirements.md)
-- [Design Document](../../.kiro/specs/multi-region-active-active/design.md)
-- [Architecture Decision Records](../../.kiro/specs/multi-region-active-active/adr/)
 - [Implementation Guide](../../apps/MULTI_REGION_INTEGRATION_COMPLETE.md)
 - [E2E Tests](../../tests/e2e/multi-region/)
 

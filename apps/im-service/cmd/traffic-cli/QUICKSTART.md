@@ -259,7 +259,6 @@ redis-cli DEL traffic:lock
 
 - Read the full [README](README.md) for detailed documentation
 - Run the [integration tests](integration_test.sh)
-- Check the [multi-region architecture design](../../../.kiro/specs/multi-region-active-active/design.md)
 
 ## Getting Help
 

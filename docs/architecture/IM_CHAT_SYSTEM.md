@@ -249,6 +249,4 @@ stateDiagram-v2
 
 ## 相关文档
 
-- 详细设计: `.kiro/specs/im-chat-system/design.md`
-- 架构决策记录: `.kiro/specs/im-chat-system/ARCHITECTURE_DECISIONS.md`
 - API 定义: `api/v1/im.proto`, `api/v1/im-gateway.proto`

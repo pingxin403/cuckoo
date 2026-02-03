@@ -35,7 +35,6 @@
 - ⚠️ Docker 构建优化需要时间
 
 ### 相关文档
-- 实现规范: `.kiro/specs/monorepo-hello-todo/`
 - 架构文档: `docs/openspec-monorepo-architecture.md`
 - OpenSpec 规范: `openspec/specs/hello-todo-services/spec.md`
 
@@ -344,7 +343,6 @@ Cannot remap path '/opt'
 - ✅ 服务模板已更新
 
 ### 相关文档
-- 实现规范: `.kiro/specs/observability-integration/`
 - OpenSpec 规范: `openspec/specs/observability-integration/spec.md`
 - 库文档: `libs/observability/README.md`
 - 迁移指南: `libs/observability/MIGRATION_GUIDE.md`
@@ -382,9 +380,6 @@ Cannot remap path '/opt'
 ## 参考资源
 
 ### 实现规范
-- `.kiro/specs/monorepo-hello-todo/` - Hello/TODO 服务规范
-- `.kiro/specs/url-shortener-service/` - URL 短链服务规范
-- `.kiro/specs/observability-integration/` - 可观测性集成规范
 
 ### OpenSpec 规范
 - `openspec/specs/hello-todo-services/spec.md` - Hello/TODO 服务规范

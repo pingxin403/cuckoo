@@ -239,5 +239,3 @@ Access Envoy admin interface at `http://localhost:9901` to monitor:
 - [Envoy Local Rate Limit Filter](https://www.envoyproxy.io/docs/envoy/latest/configuration/http/http_filters/local_rate_limit_filter)
 - [Envoy Rate Limiting](https://www.envoyproxy.io/docs/envoy/latest/intro/arch_overview/other_features/global_rate_limiting)
 - [Token Bucket Algorithm](https://en.wikipedia.org/wiki/Token_bucket)
-- Flash Sale System Design Document: `.kiro/specs/flash-sale-system/design.md`
-- Flash Sale System Requirements: `.kiro/specs/flash-sale-system/requirements.md`

@@ -2,7 +2,6 @@
 
 # Database Migration Runner Script
 # This script applies database migrations to MySQL using environment variables
-# Requirements: 2.2
 
 set -e
 

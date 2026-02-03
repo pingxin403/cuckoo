@@ -251,4 +251,3 @@ The system SHALL establish clear extension and governance mechanisms for healthy
 
 - [Monorepo Architecture](./monorepo-architecture.md)
 - [App Management System](./app-management-system.md)
-- Implementation: `.kiro/specs/monorepo-hello-todo/`

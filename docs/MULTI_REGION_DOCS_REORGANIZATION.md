@@ -28,7 +28,6 @@ docs/
 ├── deployment/
 │   └── MULTI_REGION_DEPLOYMENT.md              # 部署指南（整合 demo-scenarios.md）
 │
-.kiro/specs/multi-region-active-active/
 ├── requirements.md                             # 需求文档（保持不变）
 ├── design.md                                   # 设计文档（保持不变）
 ├── tasks.md                                    # 任务列表（保持不变）
@@ -75,15 +74,11 @@ docs/
 
 | 原文件 | 新位置 | 操作 |
 |--------|--------|------|
-| `docs/multi-region-demo/blog-hlc-implementation.md` | `.kiro/specs/multi-region-active-active/blog/hlc-implementation.md` | 移动 |
-| `docs/multi-region-demo/blog-conflict-resolution.md` | `.kiro/specs/multi-region-active-active/blog/conflict-resolution.md` | 移动 |
-| `docs/multi-region-demo/blog-architecture-decisions.md` | `.kiro/specs/multi-region-active-active/blog/architecture-decisions.md` | 移动 |
 
 ### 5. 元文档
 
 | 原文件 | 新位置 | 操作 |
 |--------|--------|------|
-| `docs/multi-region-demo/README.md` | `.kiro/specs/multi-region-active-active/README.md` | 移动 + 更新 |
 | `docs/multi-region-demo/DEMO_PACKAGE_SUMMARY.md` | 删除（内容整合到 README.md） | 删除 |
 
 ## 执行步骤
@@ -95,7 +90,6 @@ docs/
 mkdir -p docs/operations/multi-region
 
 # 创建博客目录
-mkdir -p .kiro/specs/multi-region-active-active/blog
 ```
 
 ### 步骤 2: 移动架构文档
@@ -125,13 +119,10 @@ mv docs/multi-region-demo/operations/PERFORMANCE_TUNING_GUIDE.md \
 ```bash
 # 移动博客文章
 mv docs/multi-region-demo/blog-hlc-implementation.md \
-   .kiro/specs/multi-region-active-active/blog/hlc-implementation.md
 
 mv docs/multi-region-demo/blog-conflict-resolution.md \
-   .kiro/specs/multi-region-active-active/blog/conflict-resolution.md
 
 mv docs/multi-region-demo/blog-architecture-decisions.md \
-   .kiro/specs/multi-region-active-active/blog/architecture-decisions.md
 ```
 
 ### 步骤 5: 整合部署文档
@@ -147,8 +138,6 @@ mv docs/multi-region-demo/demo-scenarios.md \
 需要创建以下新文档：
 - `docs/operations/multi-region/README.md` - 运维总览
 - `docs/operations/multi-region/MONITORING_ALERTING.md` - 监控告警（整合 monitoring-dashboard.md）
-- `.kiro/specs/multi-region-active-active/README.md` - Spec 总览
-- `.kiro/specs/multi-region-active-active/blog/README.md` - 博客索引
 
 ### 步骤 7: 更新文档引用
 
@@ -156,8 +145,6 @@ mv docs/multi-region-demo/demo-scenarios.md \
 - `docs/README.md` - 添加多地域架构链接
 - `docs/architecture/ARCHITECTURE.md` - 添加多地域架构引用
 - `docs/operations/README.md` - 添加多地域运维链接
-- `.kiro/specs/multi-region-active-active/design.md` - 更新文档链接
-- `.kiro/specs/multi-region-active-active/tasks.md` - 更新文档链接
 
 ### 步骤 8: 清理旧目录
 
@@ -214,7 +201,6 @@ rm -rf docs/multi-region-demo
 
 ### 5. 创建 Spec 总览
 
-**新文件**: `.kiro/specs/multi-region-active-active/README.md`
 
 内容包括：
 - Spec 概述
@@ -225,7 +211,6 @@ rm -rf docs/multi-region-demo
 
 ### 6. 创建博客索引
 
-**新文件**: `.kiro/specs/multi-region-active-active/blog/README.md`
 
 内容包括：
 - 博客文章列表
@@ -244,8 +229,6 @@ rm -rf docs/multi-region-demo
    - [ ] `docs/deployment/DEPLOYMENT_GUIDE.md` - 添加多地域部署引用
 
 2. **Spec 文档**
-   - [ ] `.kiro/specs/multi-region-active-active/design.md` - 更新所有文档链接
-   - [ ] `.kiro/specs/multi-region-active-active/tasks.md` - 更新文档引用
 
 3. **部署文档**
    - [ ] `deploy/docker/README.md` - 更新文档链接

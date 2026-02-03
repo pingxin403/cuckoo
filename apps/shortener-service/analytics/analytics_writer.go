@@ -11,7 +11,6 @@ import (
 )
 
 // ClickEvent represents a click event for analytics
-// Requirements: 7.3
 type ClickEvent struct {
 	ShortCode string    `json:"short_code"`
 	Timestamp time.Time `json:"timestamp"`
@@ -21,7 +20,6 @@ type ClickEvent struct {
 }
 
 // AnalyticsWriter handles async click event logging to Kafka
-// Requirements: 7.1, 7.2, 7.5
 type AnalyticsWriter struct {
 	writer       *kafka.Writer
 	eventChannel chan ClickEvent
@@ -43,7 +41,6 @@ type Config struct {
 }
 
 // NewAnalyticsWriter creates a new AnalyticsWriter
-// Requirements: 7.1, 7.2, 7.5
 func NewAnalyticsWriter(config Config, obs observability.Observability) *AnalyticsWriter {
 	// Set defaults
 	if config.NumWorkers == 0 {
@@ -80,7 +77,6 @@ func NewAnalyticsWriter(config Config, obs observability.Observability) *Analyti
 	}
 
 	// Start worker goroutines
-	// Requirements: 7.2 - Background workers for async processing
 	for i := 0; i < config.NumWorkers; i++ {
 		aw.wg.Add(1)
 		go aw.worker(i)
@@ -97,14 +93,12 @@ func NewAnalyticsWriter(config Config, obs observability.Observability) *Analyti
 }
 
 // LogClick logs a click event asynchronously
-// Requirements: 7.1, 7.2
 func (aw *AnalyticsWriter) LogClick(event ClickEvent) {
 	select {
 	case aw.eventChannel <- event:
 		// Event queued successfully
 	default:
 		// Buffer full, drop event and increment metric
-		// Requirements: 7.5 - Handle Kafka failures gracefully
 		aw.obs.Metrics().IncrementCounter("shortener_errors_total", map[string]string{"type": "analytics_buffer_full"})
 		aw.obs.Logger().Warn(context.Background(), "Analytics buffer full, dropping event",
 			"short_code", event.ShortCode,
@@ -113,7 +107,6 @@ func (aw *AnalyticsWriter) LogClick(event ClickEvent) {
 }
 
 // worker processes events from the channel and writes to Kafka
-// Requirements: 7.2, 7.5
 func (aw *AnalyticsWriter) worker(id int) {
 	defer aw.wg.Done()
 
@@ -135,7 +128,6 @@ func (aw *AnalyticsWriter) worker(id int) {
 			}
 
 			// Write to Kafka
-			// Requirements: 7.5 - Handle Kafka failures gracefully
 			msg := kafka.Message{
 				Key:   []byte(event.ShortCode),
 				Value: data,
@@ -148,7 +140,6 @@ func (aw *AnalyticsWriter) worker(id int) {
 			cancel()
 
 			if err != nil {
-				// Requirements: 7.5 - Drop events on Kafka failure, increment metric
 				aw.obs.Metrics().IncrementCounter("shortener_errors_total", map[string]string{"type": "analytics_kafka_write_error"})
 				aw.obs.Logger().Warn(ctx, "Failed to write click event to Kafka",
 					"error", err,

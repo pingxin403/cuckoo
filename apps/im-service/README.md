@@ -620,4 +620,3 @@ If you previously deployed offline-worker as a separate service:
 4. Verify worker is running via logs or `/stats` endpoint
 5. Remove obsolete offline-worker deployment files
 
-See [.kiro/specs/im-chat-system/ARCHITECTURE_CLARIFICATION.md](../../.kiro/specs/im-chat-system/ARCHITECTURE_CLARIFICATION.md) for detailed architecture explanation.
