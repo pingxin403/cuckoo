@@ -2,12 +2,12 @@ package cache
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/pingxin403/cuckoo/apps/shortener-service/storage"
 	"github.com/pingxin403/cuckoo/libs/observability"
 	"github.com/redis/go-redis/v9"
 )
@@ -68,7 +68,7 @@ func (m *MockStorage) Get(ctx context.Context, shortCode string) (*StorageMappin
 
 	mapping, ok := m.data[shortCode]
 	if !ok {
-		return nil, fmt.Errorf("mapping not found")
+		return nil, storage.ErrNotFound
 	}
 	return mapping, nil
 }

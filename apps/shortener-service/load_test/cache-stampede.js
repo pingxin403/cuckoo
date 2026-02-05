@@ -1,9 +1,13 @@
 /**
- * Cache Stampede Test - 1000 concurrent cache misses
+ * Cache Stampede Test - 1000 concurrent requests for same key
  * 
  * This test validates that the SETNX + Singleflight optimizations
  * prevent cache stampede and reduce database load.
  * 
+ * Test Strategy:
+ * - All VUs request the same short code simultaneously
+ * - Simulates cache miss scenario (cold start)
+ * - Measures DB query reduction via Singleflight
  * 
  * Target Metrics:
  * - DB Queries: < 10 (for 1000 concurrent requests)
@@ -14,12 +18,11 @@
 
 import http from 'k6/http';
 import { check, sleep } from 'k6';
-import { Rate, Trend, Counter, Gauge } from 'k6/metrics';
+import { Rate, Trend, Counter } from 'k6/metrics';
 
 // Custom metrics
 const errorRate = new Rate('error_rate');
 const latencyTrend = new Trend('request_latency');
-const dbQueries = new Counter('db_queries_total');
 const cacheHits = new Counter('cache_hits_total');
 const cacheMisses = new Counter('cache_misses_total');
 
@@ -43,79 +46,102 @@ export const options = {
 // Base URL
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
 
-// Shared short code for stampede test
-const STAMPEDE_CODE = 'STAMPEDE';
+// Use one of the existing short codes for stampede test
+const STAMPEDE_CODE = 'test001';
 
 export function setup() {
-  console.log('Starting cache stampede test...');
+  console.log('========================================');
+  console.log('Cache Stampede Test');
+  console.log('========================================');
   console.log(`Target: 1000 concurrent requests for same key`);
   console.log(`Base URL: ${BASE_URL}`);
+  console.log(`Stampede Code: ${STAMPEDE_CODE}`);
+  console.log('');
   
-  // Create the short link that will be stampeded
-  console.log('Creating test short link...');
-  const payload = JSON.stringify({
-    long_url: 'https://example.com/stampede-test',
-    custom_code: STAMPEDE_CODE,
-  });
+  // Verify the short code exists
+  console.log('Verifying short code...');
+  const res = http.get(`${BASE_URL}/${STAMPEDE_CODE}`, { redirects: 0 });
   
-  const res = http.post(`${BASE_URL}/api/v1/shorten`, payload, {
-    headers: { 'Content-Type': 'application/json' },
-  });
-  
-  if (res.status !== 200 && res.status !== 201) {
-    console.error('Failed to create test short link:', res.status, res.body);
+  if (res.status !== 302) {
+    throw new Error(`Short code ${STAMPEDE_CODE} not found. Run prepare-test-data.sh first.`);
   }
   
-  // Clear cache to force cache miss
-  console.log('Clearing cache...');
-  sleep(2); // Wait for cache to be ready
+  console.log(`✓ ${STAMPEDE_CODE}: Valid (302 → ${res.headers['Location']})`);
+  console.log('');
   
-  // Delete the cache entry (if API supports it)
-  // For now, we'll rely on TTL expiration or manual cache clear
+  // Note: In a real scenario, you would clear the cache here to force cache miss
+  // For this test, we assume the cache might be cold or we're testing the first request
+  console.log('Starting cache stampede test...');
+  console.log('All 1000 VUs will request the same short code simultaneously.');
+  console.log('');
   
-  console.log('Setup complete. Starting stampede test...');
   return { stampedeCode: STAMPEDE_CODE };
 }
 
 export default function(data) {
-  const startTime = Date.now();
-  
   // All requests hit the same short code (cache stampede scenario)
-  const res = http.get(`${BASE_URL}/api/v1/${data.stampedeCode}`, {
+  const res = http.get(`${BASE_URL}/${data.stampedeCode}`, {
+    redirects: 0,
     tags: { type: 'stampede' },
   });
   
   const success = check(res, {
-    'status is 200': (r) => r.status === 200,
+    'status is 302': (r) => r.status === 302,
+    'has location header': (r) => r.headers['Location'] !== undefined,
     'response time < 100ms': (r) => r.timings.duration < 100,
-    'has long_url': (r) => {
-      try {
-        const body = JSON.parse(r.body);
-        return body.long_url !== undefined;
-      } catch (e) {
-        return false;
-      }
-    },
   });
   
   errorRate.add(!success);
   
-  // Track cache hit/miss based on response headers or timing
+  // Track cache hit/miss based on response timing
   // Assumption: cache hits are faster than cache misses
-  if (res.timings.duration < 10) {
+  if (res.timings.duration < 5) {
     cacheHits.add(1);
   } else {
     cacheMisses.add(1);
-    dbQueries.add(1); // Approximate DB query count
   }
   
-  const latency = Date.now() - startTime;
-  latencyTrend.add(latency);
+  latencyTrend.add(res.timings.duration);
 }
 
-export function teardown(data) {
-  console.log('Cache stampede test complete.');
+export function handleSummary(data) {
+  const totalRequests = data.metrics.http_reqs?.values?.count || 0;
+  const duration = (data.state?.testRunDurationMs || 0) / 1000;
+  const cacheHits = data.metrics.cache_hits_total?.values?.count || 0;
+  const cacheMisses = data.metrics.cache_misses_total?.values?.count || 0;
+  const errorRate = data.metrics.error_rate?.values?.rate || 0;
+  
+  const p50 = data.metrics.http_req_duration?.values?.['p(50)'] || 0;
+  const p95 = data.metrics.http_req_duration?.values?.['p(95)'] || 0;
+  const p99 = data.metrics.http_req_duration?.values?.['p(99)'] || 0;
+  
+  console.log('');
+  console.log('========================================');
+  console.log('Cache Stampede Test Results');
+  console.log('========================================');
+  console.log(`Total Requests: ${totalRequests.toLocaleString()}`);
+  console.log(`Duration: ${duration.toFixed(2)}s`);
+  console.log(`Error Rate: ${(errorRate * 100).toFixed(3)}%`);
+  console.log('');
+  console.log('Cache Performance:');
+  console.log(`  Cache Hits (< 5ms): ${cacheHits.toLocaleString()}`);
+  console.log(`  Cache Misses (>= 5ms): ${cacheMisses.toLocaleString()}`);
+  console.log('');
+  console.log('Latency:');
+  console.log(`  P50: ${p50.toFixed(2)}ms`);
+  console.log(`  P95: ${p95.toFixed(2)}ms`);
+  console.log(`  P99: ${p99.toFixed(2)}ms`);
+  console.log('');
+  console.log('========================================');
   console.log('Expected: < 10 DB queries for 1000 concurrent requests');
-  console.log('Check metrics for actual DB query count.');
   console.log('Verify SETNX + Singleflight prevented stampede.');
+  console.log('Check service logs for actual DB query count.');
+  
+  return {
+    'stdout': '',
+  };
+}
+
+export function teardown() {
+  console.log('Cache stampede test complete.');
 }

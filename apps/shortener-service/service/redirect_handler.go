@@ -65,9 +65,38 @@ func (h *RedirectHandler) HandleRedirect(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Get mapping from cache/storage
+	// Get mapping from cache/storage with multi-tier fallback
 	ctx := r.Context()
-	mapping, err := h.storage.Get(ctx, shortCode)
+
+	// Try cache first (if available), then fallback to storage
+	var mapping *storage.URLMapping
+	var err error
+
+	if h.cacheManager != nil {
+		// Use cache manager for multi-tier cache lookup (L1 → L2 → DB with backfill)
+		cacheMapping, cacheErr := h.cacheManager.Get(ctx, shortCode)
+		if cacheErr != nil {
+			// Cache error, fallback to direct storage query
+			h.obs.Logger().Warn(ctx, "Cache lookup failed, falling back to storage",
+				"short_code", shortCode,
+				"error", cacheErr)
+			mapping, err = h.storage.Get(ctx, shortCode)
+		} else if cacheMapping == nil {
+			// Not found in cache or storage
+			err = storage.ErrNotFound
+		} else {
+			// Cache hit - convert cache mapping to storage mapping
+			mapping = &storage.URLMapping{
+				ShortCode: cacheMapping.ShortCode,
+				LongURL:   cacheMapping.LongURL,
+				CreatedAt: cacheMapping.CreatedAt,
+			}
+		}
+	} else {
+		// No cache manager, query storage directly
+		mapping, err = h.storage.Get(ctx, shortCode)
+	}
+
 	if err != nil {
 		if err == storage.ErrNotFound {
 			h.obs.Metrics().IncrementCounter("shortener_errors_total", map[string]string{"type": "redirect_not_found"})

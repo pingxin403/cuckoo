@@ -105,11 +105,16 @@ func (c *L2Cache) Get(ctx context.Context, shortCode string) (*URLMapping, error
 
 		// Check for empty marker to prevent cache penetration
 		longURL := result["long_url"]
-		if longURL == "__EMPTY__" {
+		if longURL == "__EMPTY__" || longURL == "" {
 			c.obs.Metrics().IncrementCounter("redis_empty_cache_hits_total", nil)
 			c.obs.Logger().Debug(ctx, "Empty cache hit", "short_code", shortCode)
-			mapping = nil
-			return nil // Return nil to indicate not found
+			// Return a null entry mapping instead of nil
+			mapping = &URLMapping{
+				ShortCode: shortCode,
+				LongURL:   "", // Empty URL indicates null entry
+				CreatedAt: time.Now(),
+			}
+			return nil
 		}
 
 		// Parse the mapping
@@ -197,6 +202,34 @@ func (c *L2Cache) Delete(ctx context.Context, shortCode string) error {
 
 		if err := c.client.Del(ctx, key).Err(); err != nil {
 			return fmt.Errorf("failed to delete from Redis: %w", err)
+		}
+
+		return nil
+	})
+}
+
+// SetWithTTL stores a URL mapping in Redis with custom TTL
+// This is useful for caching null entries with short TTL to prevent cache penetration
+func (c *L2Cache) SetWithTTL(ctx context.Context, shortCode string, longURL string, createdAt time.Time, ttl time.Duration) error {
+	// Wrap Redis operation with circuit breaker
+	return c.circuitBreaker.Execute(ctx, func() error {
+		key := fmt.Sprintf("url:%s", shortCode)
+
+		// Prepare hash fields
+		fields := map[string]interface{}{
+			"short_code": shortCode,
+			"long_url":   longURL,
+			"created_at": createdAt.Format(time.RFC3339),
+		}
+
+		// Set the hash
+		if err := c.client.HSet(ctx, key, fields).Err(); err != nil {
+			return fmt.Errorf("failed to set in Redis: %w", err)
+		}
+
+		// Set custom TTL
+		if err := c.client.Expire(ctx, key, ttl).Err(); err != nil {
+			return fmt.Errorf("failed to set TTL in Redis: %w", err)
 		}
 
 		return nil

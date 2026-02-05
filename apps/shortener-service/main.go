@@ -164,9 +164,36 @@ func main() {
 		obs.Logger().Info(ctx, "Redis not configured, running without L2 cache")
 	}
 
-	// Initialize cache manager
-	cacheManager := cache.NewCacheManager(l1Cache, l2Cache, &cacheStorageAdapter{store: store}, obs)
-	obs.Logger().Info(ctx, "Initialized cache manager")
+	// Initialize cache manager with CacheLoader for better cache stampede prevention
+	var cacheManager *cache.CacheManager
+	if l2Cache != nil {
+		// Create CacheLoader to prevent cache stampede using SETNX
+		loader := cache.NewCacheLoader(
+			l2Cache.Client(),
+			&cacheStorageAdapter{store: store},
+			l2Cache,
+			obs,
+		)
+
+		// Use CacheManagerWithLoader for enhanced cache management
+		cacheManager = cache.NewCacheManagerWithLoader(
+			l1Cache,
+			l2Cache,
+			&cacheStorageAdapter{store: store},
+			loader,
+			obs,
+		)
+		obs.Logger().Info(ctx, "Initialized cache manager with CacheLoader (SETNX-based)")
+	} else {
+		// Fallback to basic cache manager when Redis is not available
+		cacheManager = cache.NewCacheManager(
+			l1Cache,
+			l2Cache,
+			&cacheStorageAdapter{store: store},
+			obs,
+		)
+		obs.Logger().Info(ctx, "Initialized cache manager without CacheLoader (Redis not available)")
+	}
 
 	// Register health checks
 	// Database health check (MySQL) - critical
