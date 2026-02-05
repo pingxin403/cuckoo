@@ -38,7 +38,7 @@ print_warning() {
 cleanup() {
     print_info "Stopping shortener-service..."
     cd "$PROJECT_DIR"
-    docker compose stop shortener-service 2>/dev/null || true
+    docker compose -f deploy/docker/docker-compose.infra.yml -f deploy/docker/docker-compose.services.yml stop shortener-service 2>/dev/null || true
     print_info "Cleanup complete"
 }
 
@@ -60,21 +60,24 @@ if ! docker compose version &> /dev/null; then
     exit 1
 fi
 
+# Docker compose files
+COMPOSE_FILES="-f deploy/docker/docker-compose.infra.yml -f deploy/docker/docker-compose.services.yml"
+
 # Step 1: Build the service
 print_info "Building shortener-service..."
-docker compose build shortener-service
+docker compose $COMPOSE_FILES build shortener-service
 echo ""
 
 # Step 2: Start dependencies
 print_info "Starting MySQL and Redis..."
-docker compose up -d mysql redis
+docker compose $COMPOSE_FILES up -d mysql redis
 
 # Wait for MySQL to be healthy
 print_warning "Waiting for MySQL to be ready..."
 MAX_WAIT=60
 WAIT_COUNT=0
 while [ $WAIT_COUNT -lt $MAX_WAIT ]; do
-    if docker compose exec mysql mysqladmin ping -h localhost -uroot -proot_password --silent 2>/dev/null; then
+    if docker compose $COMPOSE_FILES exec mysql mysqladmin ping -h localhost -uroot -proot_password --silent 2>/dev/null; then
         print_info "MySQL is ready"
         break
     fi
@@ -84,7 +87,7 @@ done
 
 if [ $WAIT_COUNT -eq $MAX_WAIT ]; then
     print_error "MySQL failed to start"
-    docker compose logs mysql
+    docker compose $COMPOSE_FILES logs mysql
     exit 1
 fi
 
@@ -92,7 +95,7 @@ fi
 print_warning "Waiting for Redis to be ready..."
 WAIT_COUNT=0
 while [ $WAIT_COUNT -lt 30 ]; do
-    if docker compose exec redis redis-cli ping 2>/dev/null | grep -q PONG; then
+    if docker compose $COMPOSE_FILES exec redis redis-cli ping 2>/dev/null | grep -q PONG; then
         print_info "Redis is ready"
         break
     fi
@@ -102,7 +105,7 @@ done
 
 if [ $WAIT_COUNT -eq 30 ]; then
     print_error "Redis failed to start"
-    docker compose logs redis
+    docker compose $COMPOSE_FILES logs redis
     exit 1
 fi
 
@@ -110,7 +113,7 @@ echo ""
 
 # Step 3: Start shortener service
 print_info "Starting shortener-service..."
-docker compose up -d shortener-service
+docker compose $COMPOSE_FILES up -d shortener-service
 
 # Wait for service to be healthy
 print_warning "Waiting for shortener-service to be ready..."
@@ -134,7 +137,7 @@ echo ""
 
 # Step 4: Show service status
 print_info "Service status:"
-docker compose ps mysql redis shortener-service
+docker compose $COMPOSE_FILES ps mysql redis shortener-service
 echo ""
 
 # Step 5: Run integration tests
@@ -156,7 +159,7 @@ if [ $TEST_EXIT_CODE -ne 0 ]; then
     echo ""
     print_error "Integration tests failed!"
     print_info "Showing service logs:"
-    docker compose logs shortener-service
+    docker compose $COMPOSE_FILES logs shortener-service
     exit $TEST_EXIT_CODE
 fi
 

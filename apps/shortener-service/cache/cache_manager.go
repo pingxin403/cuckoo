@@ -23,6 +23,26 @@ type StorageMapping struct {
 	CreatorIP string
 }
 
+// NullCacheEntry represents a cached "not found" entry to prevent cache penetration
+type NullCacheEntry struct {
+	ShortCode string
+	CachedAt  time.Time
+}
+
+// IsNullEntry checks if a URL mapping represents a null cache entry
+func IsNullEntry(mapping *URLMapping) bool {
+	return mapping != nil && mapping.LongURL == "" && mapping.ShortCode != ""
+}
+
+// CreateNullEntry creates a null cache entry for a non-existent key
+func CreateNullEntry(shortCode string) *URLMapping {
+	return &URLMapping{
+		ShortCode: shortCode,
+		LongURL:   "", // Empty URL indicates null entry
+		CreatedAt: time.Now(),
+	}
+}
+
 // CacheManager manages multi-tier caching with enhanced singleflight
 type CacheManager struct {
 	l1       *L1Cache
@@ -50,7 +70,7 @@ func NewCacheManager(l1 *L1Cache, l2 *L2Cache, storage Storage, obs observabilit
 func NewCacheManagerWithLoader(l1 *L1Cache, l2 *L2Cache, storage Storage, loader *CacheLoader, obs observability.Observability) *CacheManager {
 	var pipeline *PipelineHelper
 	if l2 != nil {
-		pipeline = NewPipelineHelper(l2.Client(), obs)
+		pipeline = NewPipelineHelper(l2.client, obs)
 	}
 
 	return &CacheManager{
@@ -89,6 +109,13 @@ func (cm *CacheManager) getWithFallback(ctx context.Context, shortCode string) (
 	if mapping := cm.l1.Get(shortCode); mapping != nil {
 		cm.obs.Metrics().IncrementCounter("shortener_cache_hits_total", map[string]string{"layer": "L1"})
 		cm.obs.Metrics().IncrementCounter("shortener_cache_operations_total", map[string]string{"operation": "hit", "layer": "l1"})
+
+		// Check if it's a null entry (cached 404)
+		if IsNullEntry(mapping) {
+			cm.obs.Metrics().IncrementCounter("shortener_cache_null_hits_total", map[string]string{"layer": "L1"})
+			return nil, fmt.Errorf("mapping not found")
+		}
+
 		return mapping, nil
 	}
 	cm.obs.Metrics().IncrementCounter("shortener_cache_misses_total", map[string]string{"layer": "L1"})
@@ -100,6 +127,15 @@ func (cm *CacheManager) getWithFallback(ctx context.Context, shortCode string) (
 		if err == nil && mapping != nil {
 			cm.obs.Metrics().IncrementCounter("shortener_cache_hits_total", map[string]string{"layer": "L2"})
 			cm.obs.Metrics().IncrementCounter("shortener_cache_operations_total", map[string]string{"operation": "hit", "layer": "l2"})
+
+			// Check if it's a null entry (cached 404)
+			if IsNullEntry(mapping) {
+				cm.obs.Metrics().IncrementCounter("shortener_cache_null_hits_total", map[string]string{"layer": "L2"})
+				// Backfill L1 cache with null entry
+				cm.l1.Set(mapping.ShortCode, "", mapping.CreatedAt)
+				return nil, fmt.Errorf("mapping not found")
+			}
+
 			// Backfill L1 cache
 			cm.l1.Set(mapping.ShortCode, mapping.LongURL, mapping.CreatedAt)
 			return mapping, nil
@@ -115,6 +151,14 @@ func (cm *CacheManager) getWithFallback(ctx context.Context, shortCode string) (
 		// This ensures only one goroutine loads from DB when cache misses occur
 		mapping, err := cm.loader.LoadWithLock(ctx, shortCode)
 		if err != nil {
+			// Check if it's a "not found" error
+			if isNotFoundError(err) {
+				// Cache null entry to prevent cache penetration
+				nullEntry := CreateNullEntry(shortCode)
+				cm.cacheNullEntry(ctx, nullEntry)
+				cm.obs.Metrics().IncrementCounter("shortener_cache_null_entries_created_total", map[string]string{"source": "loader"})
+				return nil, err
+			}
 			return nil, fmt.Errorf("failed to load with lock: %w", err)
 		}
 
@@ -127,6 +171,14 @@ func (cm *CacheManager) getWithFallback(ctx context.Context, shortCode string) (
 	// Fallback to direct database query (backward compatibility)
 	storageMapping, err := cm.storage.Get(ctx, shortCode)
 	if err != nil {
+		// Check if it's a "not found" error
+		if isNotFoundError(err) {
+			// Cache null entry to prevent cache penetration
+			nullEntry := CreateNullEntry(shortCode)
+			cm.cacheNullEntry(ctx, nullEntry)
+			cm.obs.Metrics().IncrementCounter("shortener_cache_null_entries_created_total", map[string]string{"source": "storage"})
+			return nil, err
+		}
 		return nil, fmt.Errorf("failed to get from storage: %w", err)
 	}
 
@@ -141,10 +193,45 @@ func (cm *CacheManager) getWithFallback(ctx context.Context, shortCode string) (
 	cm.l1.Set(mapping.ShortCode, mapping.LongURL, mapping.CreatedAt)
 	if cm.l2 != nil {
 		// Only backfill L2 if we didn't use LoadWithLock (which already populated it)
-		_ = cm.l2.Set(ctx, mapping.ShortCode, mapping.LongURL, mapping.CreatedAt)
+		if err := cm.l2.Set(ctx, mapping.ShortCode, mapping.LongURL, mapping.CreatedAt); err != nil {
+			// Log error but don't fail the request (graceful degradation)
+			cm.obs.Logger().Warn(ctx, "Failed to backfill L2 cache",
+				"short_code", mapping.ShortCode,
+				"error", err)
+			cm.obs.Metrics().IncrementCounter("shortener_cache_backfill_errors_total",
+				map[string]string{"layer": "L2"})
+		}
 	}
 
 	return mapping, nil
+}
+
+// cacheNullEntry caches a null entry with short TTL to prevent cache penetration
+func (cm *CacheManager) cacheNullEntry(ctx context.Context, nullEntry *URLMapping) {
+	// Cache in L1 with short TTL (handled by Ristretto's cost-based eviction)
+	cm.l1.Set(nullEntry.ShortCode, "", nullEntry.CreatedAt)
+
+	// Cache in L2 with explicit short TTL (1 minute)
+	if cm.l2 != nil {
+		// Use a special method for null entries with short TTL
+		if err := cm.l2.SetWithTTL(ctx, nullEntry.ShortCode, "", nullEntry.CreatedAt, 1*time.Minute); err != nil {
+			cm.obs.Logger().Warn(ctx, "Failed to cache null entry in L2",
+				"short_code", nullEntry.ShortCode,
+				"error", err)
+		}
+	}
+}
+
+// isNotFoundError checks if an error indicates a "not found" condition
+func isNotFoundError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := err.Error()
+	return errStr == "mapping not found" ||
+		errStr == "not found" ||
+		errStr == "record not found" ||
+		errStr == "sql: no rows in result set"
 }
 
 // Delete removes a URL mapping from all cache layers

@@ -1018,6 +1018,17 @@ With optimized Redis configuration:
 | High Traffic | 50K-100K | 30 | < 5ms | > 95% |
 | Very High Traffic (Cluster) | 100K-500K+ | 50 | < 5ms | > 95% |
 
+### Single Machine Performance Limits
+
+For detailed analysis of single machine performance limits and scaling strategies to reach 500K QPS, see:
+- [Single Machine Performance Analysis](./docs/SINGLE_MACHINE_PERFORMANCE_ANALYSIS.md) - Comprehensive performance analysis and scaling recommendations
+
+**Key Findings:**
+- **Pure Redirect (High Cache Hit)**: 150K-180K QPS
+- **Pure Create (Write Intensive)**: 8K-10K QPS
+- **Mixed Load (80% Read, 20% Write)**: 100K-120K QPS
+- **To Reach 500K QPS**: Requires 5 service instances + Redis Cluster + MySQL replication
+
 ### Optimization Tips
 
 1. **Enable Redis**: Significantly improves performance (see [Redis Configuration](#redis-configuration))
