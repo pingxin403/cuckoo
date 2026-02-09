@@ -17,10 +17,7 @@ import com.pingxin403.cuckoo.flashsale.service.ReconciliationService;
 import com.pingxin403.cuckoo.flashsale.service.dto.ReconciliationReport;
 import com.pingxin403.cuckoo.flashsale.service.dto.ReconciliationResult;
 
-/**
- * Unit tests for ReconciliationScheduledTask.
- *
- */
+/** Unit tests for ReconciliationScheduledTask. */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("ReconciliationScheduledTask Tests")
 class ReconciliationScheduledTaskTest {

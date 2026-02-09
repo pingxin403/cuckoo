@@ -13,15 +13,15 @@ func TestLoad(t *testing.T) {
 	originalEnv := os.Getenv("APP_ENV")
 	defer func() {
 		if originalEnv != "" {
-			os.Setenv("APP_ENV", originalEnv)
+			_ = os.Setenv("APP_ENV", originalEnv)
 		} else {
-			os.Unsetenv("APP_ENV")
+			_ = os.Unsetenv("APP_ENV")
 		}
 	}()
 
 	t.Run("Load default config", func(t *testing.T) {
 		// Set APP_ENV to local
-		os.Setenv("APP_ENV", "local")
+		_ = os.Setenv("APP_ENV", "local")
 
 		cfg, err := Load()
 		require.NoError(t, err)
@@ -36,8 +36,8 @@ func TestLoad(t *testing.T) {
 
 	t.Run("Load with environment variable override", func(t *testing.T) {
 		// Set environment variable
-		os.Setenv("SERVER_GRPC_PORT", "8888")
-		defer os.Unsetenv("SERVER_GRPC_PORT")
+		_ = os.Setenv("SERVER_GRPC_PORT", "8888")
+		defer func() { _ = os.Unsetenv("SERVER_GRPC_PORT") }()
 
 		cfg, err := Load()
 		require.NoError(t, err)

@@ -410,7 +410,8 @@ func TestCircuitBreaker_ContextPropagation(t *testing.T) {
 	config := DefaultCircuitBreakerConfig()
 	cb := NewCircuitBreaker(config, obs)
 
-	ctx := context.WithValue(context.Background(), "test-key", "test-value")
+	type contextKey string
+	ctx := context.WithValue(context.Background(), contextKey("test-key"), "test-value")
 
 	executed := false
 	err := cb.Execute(ctx, func() error {

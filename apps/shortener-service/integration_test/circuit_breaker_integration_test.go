@@ -160,7 +160,7 @@ func TestCircuitBreaker_WithRealRedis(t *testing.T) {
 	}
 	l2, err := cache.NewL2Cache(l2Config, obs)
 	require.NoError(t, err)
-	defer l2.Close()
+	defer func() { _ = l2.Close() }()
 
 	ctx := context.Background()
 
@@ -196,7 +196,7 @@ func TestCircuitBreaker_RedisDownScenario(t *testing.T) {
 	}
 	l2, err := cache.NewL2Cache(l2Config, obs)
 	require.NoError(t, err)
-	defer l2.Close()
+	defer func() { _ = l2.Close() }()
 
 	// Override circuit breaker with lower threshold
 	cbConfig := cache.CircuitBreakerConfig{
@@ -292,7 +292,7 @@ func TestCircuitBreaker_ConcurrentOperations(t *testing.T) {
 	}
 	l2, err := cache.NewL2Cache(l2Config, obs)
 	require.NoError(t, err)
-	defer l2.Close()
+	defer func() { _ = l2.Close() }()
 
 	ctx := context.Background()
 
@@ -381,7 +381,7 @@ func TestCircuitBreaker_RealWorldScenario(t *testing.T) {
 	}
 	l2, err := cache.NewL2Cache(l2Config, obs)
 	require.NoError(t, err)
-	defer l2.Close()
+	defer func() { _ = l2.Close() }()
 
 	ctx := context.Background()
 
@@ -427,7 +427,7 @@ func TestCircuitBreaker_RealWorldScenario(t *testing.T) {
 	l2Config.Addrs = []string{mr.Addr()}
 	l2New, err := cache.NewL2Cache(l2Config, obs)
 	require.NoError(t, err)
-	defer l2New.Close()
+	defer func() { _ = l2New.Close() }()
 
 	// Operations should work again
 	err = l2New.Set(ctx, "key", "https://example.com", time.Now())

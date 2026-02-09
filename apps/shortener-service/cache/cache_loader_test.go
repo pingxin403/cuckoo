@@ -78,7 +78,7 @@ func TestCacheLoader_LoadWithLock_LockAcquired(t *testing.T) {
 	client := redis.NewClient(&redis.Options{
 		Addr: "localhost:6379",
 	})
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 
@@ -131,7 +131,7 @@ func TestCacheLoader_LoadWithLock_NotFound(t *testing.T) {
 	client := redis.NewClient(&redis.Options{
 		Addr: "localhost:6379",
 	})
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 
@@ -173,7 +173,7 @@ func TestCacheLoader_LoadWithLock_Contention(t *testing.T) {
 	client := redis.NewClient(&redis.Options{
 		Addr: "localhost:6379",
 	})
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 
@@ -231,7 +231,7 @@ func TestCacheLoader_LoadWithLock_ExponentialBackoff(t *testing.T) {
 	client := redis.NewClient(&redis.Options{
 		Addr: "localhost:6379",
 	})
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 
@@ -281,7 +281,7 @@ func TestCacheLoader_LoadWithLock_LockRelease(t *testing.T) {
 	client := redis.NewClient(&redis.Options{
 		Addr: "localhost:6379",
 	})
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 
@@ -328,7 +328,7 @@ func TestCacheLoader_LoadWithLock_StorageError(t *testing.T) {
 	client := redis.NewClient(&redis.Options{
 		Addr: "localhost:6379",
 	})
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 
@@ -379,7 +379,7 @@ func TestCacheLoader_ShortCodeHandling(t *testing.T) {
 	client := redis.NewClient(&redis.Options{
 		Addr: "localhost:6379",
 	})
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 	testShortCode := "abc123"
@@ -436,7 +436,7 @@ func TestCacheLoader_NewCacheLoader(t *testing.T) {
 	client := redis.NewClient(&redis.Options{
 		Addr: "localhost:6379",
 	})
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	mockStorage := NewMockStorageForLoader()
 	obs := createTestObservabilityForLoader()

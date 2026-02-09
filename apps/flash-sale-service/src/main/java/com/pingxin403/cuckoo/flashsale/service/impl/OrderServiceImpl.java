@@ -32,7 +32,6 @@ import com.pingxin403.cuckoo.flashsale.service.dto.RollbackResult;
  *   <li>Timeout order handling
  *   <li>Redis cache for order status (TTL: 24 hours)
  * </ul>
- *
  */
 @Service
 public class OrderServiceImpl implements OrderService {

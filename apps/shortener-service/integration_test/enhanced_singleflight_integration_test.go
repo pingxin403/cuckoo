@@ -97,7 +97,7 @@ func TestEnhancedSingleflight_SlowDatabaseQuery(t *testing.T) {
 		MetricsPort:    0, // Disable metrics server
 	})
 	require.NoError(t, err)
-	defer obs.Shutdown(context.Background())
+	defer func() { _ = obs.Shutdown(context.Background()) }()
 
 	// Create storage with slow query simulation
 	store := NewMockStorageWithDelay()
@@ -180,7 +180,7 @@ func TestEnhancedSingleflight_ConcurrentRequestsWithTimeout(t *testing.T) {
 		MetricsPort:    0,
 	})
 	require.NoError(t, err)
-	defer obs.Shutdown(context.Background())
+	defer func() { _ = obs.Shutdown(context.Background()) }()
 
 	// Create storage with very slow query (longer than timeout)
 	store := NewMockStorageWithDelay()
@@ -247,7 +247,7 @@ func TestEnhancedSingleflight_MetricsAccuracy(t *testing.T) {
 		MetricsPort:    0,
 	})
 	require.NoError(t, err)
-	defer obs.Shutdown(context.Background())
+	defer func() { _ = obs.Shutdown(context.Background()) }()
 
 	// Create storage with moderate delay
 	store := NewMockStorageWithDelay()
@@ -313,7 +313,7 @@ func TestEnhancedSingleflight_ErrorPropagation(t *testing.T) {
 		MetricsPort:    0,
 	})
 	require.NoError(t, err)
-	defer obs.Shutdown(context.Background())
+	defer func() { _ = obs.Shutdown(context.Background()) }()
 
 	// Create storage that will return an error
 	store := NewMockStorageWithDelay()
@@ -375,7 +375,7 @@ func TestEnhancedSingleflight_MultipleKeys(t *testing.T) {
 		MetricsPort:    0,
 	})
 	require.NoError(t, err)
-	defer obs.Shutdown(context.Background())
+	defer func() { _ = obs.Shutdown(context.Background()) }()
 
 	// Create storage
 	store := NewMockStorageWithDelay()

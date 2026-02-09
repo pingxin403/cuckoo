@@ -40,9 +40,9 @@ func setupTestPipeline(t *testing.T) (*PipelineHelper, *miniredis.Miniredis, fun
 	pipeline := NewPipelineHelper(client, obs)
 
 	cleanup := func() {
-		client.Close()
+		_ = client.Close()
 		mr.Close()
-		obs.Shutdown(context.Background())
+		_ = obs.Shutdown(context.Background())
 	}
 
 	return pipeline, mr, cleanup

@@ -35,7 +35,6 @@ import com.pingxin403.cuckoo.flashsale.service.dto.QueueResult;
  *   <li>sold_out:{skuId} -> "1" (sold out flag)
  *   <li>order_status:{orderId} -> String (order status)
  * </ul>
- *
  */
 @Service
 public class QueueServiceImpl implements QueueService {
@@ -85,7 +84,6 @@ public class QueueServiceImpl implements QueueService {
 
   /**
    * {@inheritDoc}
-   *
    *
    * <p>Implementation:
    *

@@ -66,8 +66,6 @@ import com.pingxin403.cuckoo.flashsale.service.dto.StockInfo;
  *   <li>Data reconciliation
  *   <li>Purchase limit enforcement
  * </ul>
- *
-
  */
 @SpringBootTest
 @Testcontainers

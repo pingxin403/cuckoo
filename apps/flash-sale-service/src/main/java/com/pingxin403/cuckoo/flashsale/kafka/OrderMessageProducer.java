@@ -13,7 +13,6 @@ import com.pingxin403.cuckoo.flashsale.model.OrderMessage;
  *   <li>Partition routing is based on user_id hash for ordering guarantees
  *   <li>Failures are handled gracefully with appropriate error reporting
  * </ul>
- *
  */
 public interface OrderMessageProducer {
 

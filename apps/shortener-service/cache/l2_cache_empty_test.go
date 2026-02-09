@@ -33,7 +33,7 @@ func TestL2Cache_SetEmpty(t *testing.T) {
 	}
 	l2Cache, err := NewL2Cache(config, obs)
 	require.NoError(t, err)
-	defer l2Cache.Close()
+	defer func() { _ = l2Cache.Close() }()
 
 	ctx := context.Background()
 	shortCode := "empty001"
@@ -78,7 +78,7 @@ func TestL2Cache_GetEmpty(t *testing.T) {
 	}
 	l2Cache, err := NewL2Cache(config, obs)
 	require.NoError(t, err)
-	defer l2Cache.Close()
+	defer func() { _ = l2Cache.Close() }()
 
 	ctx := context.Background()
 	shortCode := "empty002"
@@ -115,7 +115,7 @@ func TestL2Cache_EmptyVsNormal(t *testing.T) {
 	}
 	l2Cache, err := NewL2Cache(config, obs)
 	require.NoError(t, err)
-	defer l2Cache.Close()
+	defer func() { _ = l2Cache.Close() }()
 
 	ctx := context.Background()
 
@@ -164,7 +164,7 @@ func TestL2Cache_EmptyExpiration(t *testing.T) {
 	}
 	l2Cache, err := NewL2Cache(config, obs)
 	require.NoError(t, err)
-	defer l2Cache.Close()
+	defer func() { _ = l2Cache.Close() }()
 
 	ctx := context.Background()
 	shortCode := "empty004"
@@ -210,7 +210,7 @@ func TestL2Cache_EmptyOverwrite(t *testing.T) {
 	}
 	l2Cache, err := NewL2Cache(config, obs)
 	require.NoError(t, err)
-	defer l2Cache.Close()
+	defer func() { _ = l2Cache.Close() }()
 
 	ctx := context.Background()
 	shortCode := "test005"

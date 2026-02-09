@@ -11,7 +11,6 @@ import com.pingxin403.cuckoo.flashsale.service.dto.ActivityUpdateRequest;
  * 活动服务接口 Activity service interface for managing flash sale activities.
  *
  * <p>Provides CRUD operations and lifecycle management for flash sale activities.
- *
  */
 public interface ActivityService {
 

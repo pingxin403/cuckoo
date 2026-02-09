@@ -1,0 +1,51 @@
+# 2026/02/06 11:29:13.804479 [TestProperty_ReconciliationConvergence] [rapid] draw numCommonMessages: 3
+# 2026/02/06 11:29:13.804483 [TestProperty_ReconciliationConvergence] [rapid] draw numLocalOnly: 1
+# 2026/02/06 11:29:13.804484 [TestProperty_ReconciliationConvergence] [rapid] draw numRemoteOnly: 0
+# 2026/02/06 11:29:13.804485 [TestProperty_ReconciliationConvergence] [rapid] draw content: ""
+# 2026/02/06 11:29:13.804487 [TestProperty_ReconciliationConvergence] [rapid] draw conversationID: "conv-0"
+# 2026/02/06 11:29:13.804488 [TestProperty_ReconciliationConvergence] [rapid] draw content: ""
+# 2026/02/06 11:29:13.804489 [TestProperty_ReconciliationConvergence] [rapid] draw conversationID: "conv-0"
+# 2026/02/06 11:29:13.804490 [TestProperty_ReconciliationConvergence] [rapid] draw content: ""
+# 2026/02/06 11:29:13.804491 [TestProperty_ReconciliationConvergence] [rapid] draw conversationID: "conv-0"
+# 2026/02/06 11:29:13.804492 [TestProperty_ReconciliationConvergence] [rapid] draw content: ""
+# 2026/02/06 11:29:13.804494 [TestProperty_ReconciliationConvergence] [rapid] draw conversationID: "conv-0"
+# 2026/02/06 11:29:13.804502 [TestProperty_ReconciliationConvergence] Convergence incomplete: expected at least 4 messages, got 3
+# 
+v0.4.8#14857384293727598775
+0x0
+0x0
+0x0
+0x0
+0x0
+0x1
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0

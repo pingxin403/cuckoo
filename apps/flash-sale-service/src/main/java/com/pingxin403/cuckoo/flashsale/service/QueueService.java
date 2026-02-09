@@ -28,7 +28,6 @@ import com.pingxin403.cuckoo.flashsale.service.dto.QueueResult;
  *   <li>sold_out:{skuId} -> "1" (sold out flag) -> TTL: activity end time
  * </ul>
  *
- *
  * @see QueueResult
  * @see OrderStatusResult
  */
@@ -54,7 +53,6 @@ public interface QueueService {
    *   <li>202 - No tokens available, user should queue and retry
    *   <li>410 - SKU sold out, activity ended
    * </ul>
-   *
    *
    * @param userId the user identifier
    * @param skuId the SKU identifier

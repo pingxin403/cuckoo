@@ -29,7 +29,6 @@ import com.pingxin403.cuckoo.flashsale.model.DlqMessage;
  *   <li>Monitoring dashboards (Grafana, etc.)
  *   <li>Manual reprocessing workflows
  * </ul>
- *
  */
 @Component
 public class DlqMessageConsumer {

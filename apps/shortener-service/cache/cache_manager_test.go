@@ -40,8 +40,8 @@ func createTestRedisClient(t *testing.T) (redis.UniversalClient, func()) {
 
 	cleanup := func() {
 		// Clean up test keys
-		client.FlushDB(ctx)
-		client.Close()
+		_ = client.FlushDB(ctx)
+		_ = client.Close()
 	}
 
 	return client, cleanup
@@ -316,7 +316,7 @@ func TestCacheManagerWithLoader(t *testing.T) {
 
 	// Second request: L1 hit → no DB query
 	storage.ResetCallCount()
-	mapping, err = cm.Get(ctx, "loader123")
+	_, err = cm.Get(ctx, "loader123")
 	if err != nil {
 		t.Fatalf("Second Get failed: %v", err)
 	}
@@ -327,7 +327,7 @@ func TestCacheManagerWithLoader(t *testing.T) {
 	// Clear L1, third request: L2 hit → no DB query
 	l1.Delete("loader123")
 	storage.ResetCallCount()
-	mapping, err = cm.Get(ctx, "loader123")
+	_, err = cm.Get(ctx, "loader123")
 	if err != nil {
 		t.Fatalf("Third Get failed: %v", err)
 	}
@@ -472,7 +472,7 @@ func TestCacheManagerBackwardCompatibility(t *testing.T) {
 
 	// Second request should hit L1 cache
 	storage.ResetCallCount()
-	mapping, err = cm.Get(ctx, "compat123")
+	_, err = cm.Get(ctx, "compat123")
 	if err != nil {
 		t.Fatalf("Second Get failed: %v", err)
 	}

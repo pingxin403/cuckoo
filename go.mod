@@ -13,6 +13,8 @@ require github.com/mattn/go-sqlite3 v1.14.18 // indirect
 
 replace github.com/cuckoo-org/cuckoo/examples/multi-region/health => ./examples/multi-region/health
 
+replace github.com/cuckoo-org/cuckoo/libs/connpool => ./libs/connpool
+
 replace github.com/cuckoo-org/cuckoo/libs/hlc => ./libs/hlc
 
 replace github.com/cuckoo-org/cuckoo/examples/mvp/storage => ./examples/mvp/storage

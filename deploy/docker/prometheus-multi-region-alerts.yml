@@ -1,0 +1,625 @@
+# Prometheus Alerting Rules for Multi-Region Active-Active Architecture
+# These rules define alerts for cross-region synchronization, conflict resolution, and failover events
+# Requirements: 5.1 (Sync Latency), 5.2 (Conflict Rate), 5.3 (Failover Events)
+
+groups:
+  # Cross-Region Sync Latency Alerts (Requirement 5.1)
+  - name: multi_region_sync_latency_alerts
+    interval: 30s
+    rules:
+      # P1 Alert: High Cross-Region Sync Latency (P99 > 500ms)
+      - alert: HighCrossRegionSyncLatency
+        expr: histogram_quantile(0.99, rate(cross_region_sync_latency_ms_bucket[5m])) > 500
+        for: 5m
+        labels:
+          severity: warning
+          service: multi-region
+          component: sync-latency
+          requirement: "5.1.3"
+        annotations:
+          summary: "Cross-region sync latency P99 exceeds threshold"
+          description: |
+            P99 cross-region sync latency is {{ $value | printf "%.2f" }}ms (threshold: 500ms)
+            Source Region: {{ $labels.source_region }}
+            Target Region: {{ $labels.target_region }}
+          runbook_url: "https://wiki.example.com/runbooks/multi-region/high-sync-latency"
+          dashboard_url: "http://grafana:3000/d/multi-region-sync-latency"
+          action: "Check network connectivity between regions and review sync queue backlog"
+
+      # Critical Alert: Very High Sync Latency (P99 > 1000ms)
+      - alert: CriticalCrossRegionSyncLatency
+        expr: histogram_quantile(0.99, rate(cross_region_sync_latency_ms_bucket[5m])) > 1000
+        for: 2m
+        labels:
+          severity: critical
+          service: multi-region
+          component: sync-latency
+          requirement: "5.1.3"
+        annotations:
+          summary: "Critical cross-region sync latency detected"
+          description: |
+            P99 cross-region sync latency is {{ $value | printf "%.2f" }}ms (critical threshold: 1000ms)
+            Source Region: {{ $labels.source_region }}
+            Target Region: {{ $labels.target_region }}
+          runbook_url: "https://wiki.example.com/runbooks/multi-region/critical-sync-latency"
+          dashboard_url: "http://grafana:3000/d/multi-region-sync-latency"
+          action: "Immediate investigation required - potential network partition or service degradation"
+
+      # Warning: High Message Sync Latency (P95 > 400ms)
+      - alert: HighMessageSyncLatency
+        expr: histogram_quantile(0.95, rate(message_sync_latency_ms_bucket[5m])) > 400
+        for: 5m
+        labels:
+          severity: warning
+          service: multi-region
+          component: message-sync
+          requirement: "5.1.1"
+        annotations:
+          summary: "High message sync latency P95 detected"
+          description: |
+            P95 message sync latency is {{ $value | printf "%.2f" }}ms (threshold: 400ms)
+            Source Region: {{ $labels.source_region }}
+            Target Region: {{ $labels.target_region }}
+          runbook_url: "https://wiki.example.com/runbooks/multi-region/message-sync-latency"
+          dashboard_url: "http://grafana:3000/d/multi-region-sync-latency"
+          action: "Review Kafka replication lag and message queue backlog"
+
+      # Warning: High Database Replication Latency (P95 > 800ms)
+      - alert: HighDatabaseReplicationLatency
+        expr: histogram_quantile(0.95, rate(database_replication_latency_ms_bucket[5m])) > 800
+        for: 5m
+        labels:
+          severity: warning
+          service: multi-region
+          component: database-replication
+          requirement: "5.1.2"
+        annotations:
+          summary: "High database replication latency P95 detected"
+          description: |
+            P95 database replication latency is {{ $value | printf "%.2f" }}ms (threshold: 800ms)
+            Source Region: {{ $labels.source_region }}
+            Target Region: {{ $labels.target_region }}
+          runbook_url: "https://wiki.example.com/runbooks/multi-region/db-replication-latency"
+          dashboard_url: "http://grafana:3000/d/multi-region-sync-latency"
+          action: "Check MySQL replication lag and binlog position"
+
+      # Alert: Sync Latency Threshold Exceeded
+      - alert: SyncLatencyThresholdExceeded
+        expr: rate(message_sync_latency_threshold_exceeded_total[5m]) > 0.01
+        for: 3m
+        labels:
+          severity: warning
+          service: multi-region
+          component: sync-latency
+          requirement: "5.1.3"
+        annotations:
+          summary: "Sync latency threshold exceeded frequently"
+          description: |
+            Sync latency threshold exceeded {{ $value | printf "%.2f" }} times/sec
+            Source Region: {{ $labels.source_region }}
+            Target Region: {{ $labels.target_region }}
+          runbook_url: "https://wiki.example.com/runbooks/multi-region/latency-threshold"
+          dashboard_url: "http://grafana:3000/d/multi-region-sync-latency"
+          action: "Review sync performance and consider optimizing batch sizes"
+
+  # Conflict Rate Alerts (Requirement 5.2)
+  - name: multi_region_conflict_alerts
+    interval: 30s
+    rules:
+      # Critical Alert: High Conflict Rate (> 0.1%)
+      - alert: HighConflictRate
+        expr: |
+          (
+            rate(cross_region_conflicts_total[5m]) * 60
+            /
+            rate(cross_region_sync_total[5m]) * 60
+          ) > 0.001
+        for: 2m
+        labels:
+          severity: critical
+          service: multi-region
+          component: conflict-resolution
+          requirement: "5.2.3"
+        annotations:
+          summary: "Cross-region conflict rate exceeds 0.1%"
+          description: |
+            Conflict rate is {{ $value | humanizePercentage }} (threshold: 0.1%)
+            Region: {{ $labels.region }}
+            Conflict Type: {{ $labels.conflict_type }}
+          runbook_url: "https://wiki.example.com/runbooks/multi-region/high-conflict-rate"
+          dashboard_url: "http://grafana:3000/d/multi-region-conflict-rate"
+          action: "Investigate conflict causes - possible clock skew or concurrent write patterns"
+
+      # Warning: Elevated Conflict Rate (> 0.05%)
+      - alert: ElevatedConflictRate
+        expr: |
+          (
+            rate(cross_region_conflicts_total[5m]) * 60
+            /
+            rate(cross_region_sync_total[5m]) * 60
+          ) > 0.0005
+        for: 5m
+        labels:
+          severity: warning
+          service: multi-region
+          component: conflict-resolution
+          requirement: "5.2.3"
+        annotations:
+          summary: "Elevated cross-region conflict rate detected"
+          description: |
+            Conflict rate is {{ $value | humanizePercentage }} (warning threshold: 0.05%)
+            Region: {{ $labels.region }}
+            Conflict Type: {{ $labels.conflict_type }}
+          runbook_url: "https://wiki.example.com/runbooks/multi-region/elevated-conflict-rate"
+          dashboard_url: "http://grafana:3000/d/multi-region-conflict-rate"
+          action: "Monitor conflict trends and review HLC clock synchronization"
+
+      # Alert: High Message Conflict Rate
+      - alert: HighMessageConflictRate
+        expr: rate(cross_region_conflicts_total{conflict_type="message_conflict"}[5m]) > 1
+        for: 5m
+        labels:
+          severity: warning
+          service: multi-region
+          component: conflict-resolution
+          requirement: "5.2.2"
+        annotations:
+          summary: "High message conflict rate detected"
+          description: |
+            Message conflict rate is {{ $value | printf "%.2f" }} conflicts/sec
+            Region: {{ $labels.region }}
+          runbook_url: "https://wiki.example.com/runbooks/multi-region/message-conflicts"
+          dashboard_url: "http://grafana:3000/d/multi-region-conflict-rate"
+          action: "Review message deduplication logic and HLC timestamp generation"
+
+      # Alert: High Session Conflict Rate
+      - alert: HighSessionConflictRate
+        expr: rate(cross_region_conflicts_total{conflict_type="session_conflict"}[5m]) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+          service: multi-region
+          component: conflict-resolution
+          requirement: "5.2.2"
+        annotations:
+          summary: "High session conflict rate detected"
+          description: |
+            Session conflict rate is {{ $value | printf "%.2f" }} conflicts/sec
+            Region: {{ $labels.region }}
+          runbook_url: "https://wiki.example.com/runbooks/multi-region/session-conflicts"
+          dashboard_url: "http://grafana:3000/d/multi-region-conflict-rate"
+          action: "Review session state synchronization and Redis replication"
+
+      # Alert: Slow Conflict Resolution
+      - alert: SlowConflictResolution
+        expr: histogram_quantile(0.95, rate(conflict_resolution_duration_ms_bucket[5m])) > 100
+        for: 5m
+        labels:
+          severity: warning
+          service: multi-region
+          component: conflict-resolution
+          requirement: "5.2"
+        annotations:
+          summary: "Slow conflict resolution detected"
+          description: |
+            P95 conflict resolution time is {{ $value | printf "%.2f" }}ms (threshold: 100ms)
+            Region: {{ $labels.region }}
+            Conflict Type: {{ $labels.conflict_type }}
+          runbook_url: "https://wiki.example.com/runbooks/multi-region/slow-conflict-resolution"
+          dashboard_url: "http://grafana:3000/d/multi-region-conflict-rate"
+          action: "Review conflict resolver performance and database query optimization"
+
+      # Alert: Conflict Resolution Failures
+      - alert: ConflictResolutionFailures
+        expr: |
+          rate(conflict_resolutions_total{resolution="error"}[5m]) > 0.1
+        for: 3m
+        labels:
+          severity: critical
+          service: multi-region
+          component: conflict-resolution
+          requirement: "5.2"
+        annotations:
+          summary: "Conflict resolution failures detected"
+          description: |
+            Conflict resolution failure rate is {{ $value | printf "%.2f" }} failures/sec
+            Region: {{ $labels.region }}
+            Conflict Type: {{ $labels.conflict_type }}
+          runbook_url: "https://wiki.example.com/runbooks/multi-region/resolution-failures"
+          dashboard_url: "http://grafana:3000/d/multi-region-conflict-rate"
+          action: "Check conflict resolver logs and database connectivity"
+
+  # Failover Event Alerts (Requirement 5.3)
+  - name: multi_region_failover_alerts
+    interval: 30s
+    rules:
+      # Critical Alert: Failover Event Detected
+      - alert: FailoverEventDetected
+        expr: increase(failover_events_total[1m]) > 0
+        labels:
+          severity: critical
+          service: multi-region
+          component: failover
+          requirement: "5.3.1"
+        annotations:
+          summary: "Multi-region failover event detected"
+          description: |
+            Failover event occurred
+            From Region: {{ $labels.from_region }}
+            To Region: {{ $labels.to_region }}
+            Reason: {{ $labels.reason }}
+          runbook_url: "https://wiki.example.com/runbooks/multi-region/failover-event"
+          dashboard_url: "http://grafana:3000/d/multi-region-failover-events"
+          action: "Verify failover completed successfully and monitor system health"
+
+      # Critical Alert: Slow Failover (> 30s)
+      - alert: SlowFailoverDetected
+        expr: histogram_quantile(0.95, rate(failover_duration_ms_bucket[5m])) > 30000
+        for: 1m
+        labels:
+          severity: critical
+          service: multi-region
+          component: failover
+          requirement: "5.3.2"
+        annotations:
+          summary: "Slow failover detected - RTO exceeded"
+          description: |
+            P95 failover duration is {{ $value | humanizeDuration }} (RTO target: 30s)
+            From Region: {{ $labels.from_region }}
+            To Region: {{ $labels.to_region }}
+          runbook_url: "https://wiki.example.com/runbooks/multi-region/slow-failover"
+          dashboard_url: "http://grafana:3000/d/multi-region-failover-events"
+          action: "Review failover process and optimize detection/switching time"
+
+      # Warning: Slow Failover Detection (> 15s)
+      - alert: SlowFailoverDetection
+        expr: histogram_quantile(0.95, rate(failover_detection_time_ms_bucket[5m])) > 15000
+        for: 2m
+        labels:
+          severity: warning
+          service: multi-region
+          component: failover
+          requirement: "5.3.1"
+        annotations:
+          summary: "Slow failover detection time"
+          description: |
+            P95 failover detection time is {{ $value | humanizeDuration }} (threshold: 15s)
+            Region: {{ $labels.region }}
+          runbook_url: "https://wiki.example.com/runbooks/multi-region/slow-detection"
+          dashboard_url: "http://grafana:3000/d/multi-region-failover-events"
+          action: "Review health check intervals and failure detection logic"
+
+      # Alert: Frequent Failover Events (Flapping)
+      - alert: FrequentFailoverEvents
+        expr: increase(failover_events_total[10m]) > 3
+        for: 5m
+        labels:
+          severity: critical
+          service: multi-region
+          component: failover
+          requirement: "5.3"
+        annotations:
+          summary: "Frequent failover events detected (possible flapping)"
+          description: |
+            {{ $value }} failover events in 10 minutes (threshold: 3)
+            From Region: {{ $labels.from_region }}
+            To Region: {{ $labels.to_region }}
+          runbook_url: "https://wiki.example.com/runbooks/multi-region/failover-flapping"
+          dashboard_url: "http://grafana:3000/d/multi-region-failover-events"
+          action: "Investigate root cause - possible network instability or health check issues"
+
+      # Alert: Failover Detection Threshold Exceeded
+      - alert: FailoverDetectionThresholdExceeded
+        expr: rate(failover_detection_time_threshold_exceeded_total[5m]) > 0.01
+        for: 3m
+        labels:
+          severity: warning
+          service: multi-region
+          component: failover
+          requirement: "5.3.1"
+        annotations:
+          summary: "Failover detection time frequently exceeds threshold"
+          description: |
+            Detection threshold exceeded {{ $value | printf "%.2f" }} times/sec
+            Region: {{ $labels.region }}
+          runbook_url: "https://wiki.example.com/runbooks/multi-region/detection-threshold"
+          dashboard_url: "http://grafana:3000/d/multi-region-failover-events"
+          action: "Optimize health check configuration and reduce detection latency"
+
+  # Health Check and Availability Alerts
+  - name: multi_region_health_alerts
+    interval: 30s
+    rules:
+      # Critical Alert: Region Unavailable
+      - alert: RegionUnavailable
+        expr: region_availability == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: multi-region
+          component: availability
+          requirement: "4.1"
+        annotations:
+          summary: "Region is unavailable"
+          description: |
+            Region {{ $labels.region }} is unavailable
+            This may trigger automatic failover
+          runbook_url: "https://wiki.example.com/runbooks/multi-region/region-unavailable"
+          dashboard_url: "http://grafana:3000/d/multi-region-health-overview"
+          action: "Verify region health and check for automatic failover initiation"
+
+      # Warning: High Health Check Latency
+      - alert: HighHealthCheckLatency
+        expr: histogram_quantile(0.95, rate(health_check_latency_ms_bucket[5m])) > 1000
+        for: 5m
+        labels:
+          severity: warning
+          service: multi-region
+          component: health-check
+          requirement: "4.1.1"
+        annotations:
+          summary: "High health check latency detected"
+          description: |
+            P95 health check latency is {{ $value | printf "%.2f" }}ms (threshold: 1000ms)
+            Source Region: {{ $labels.source_region }}
+            Target Region: {{ $labels.target_region }}
+          runbook_url: "https://wiki.example.com/runbooks/multi-region/health-check-latency"
+          dashboard_url: "http://grafana:3000/d/multi-region-health-overview"
+          action: "Check network connectivity and health check endpoint performance"
+
+      # Alert: Health Check Failures
+      - alert: HealthCheckFailures
+        expr: |
+          (
+            rate(health_checks_total{status="unhealthy"}[5m])
+            /
+            rate(health_checks_total[5m])
+          ) > 0.1
+        for: 3m
+        labels:
+          severity: warning
+          service: multi-region
+          component: health-check
+          requirement: "4.1"
+        annotations:
+          summary: "High health check failure rate"
+          description: |
+            Health check failure rate is {{ $value | humanizePercentage }} (threshold: 10%)
+            Source Region: {{ $labels.source_region }}
+            Target Region: {{ $labels.target_region }}
+          runbook_url: "https://wiki.example.com/runbooks/multi-region/health-check-failures"
+          dashboard_url: "http://grafana:3000/d/multi-region-health-overview"
+          action: "Investigate target region health and network connectivity"
+
+  # Data Synchronization Status Alerts
+  - name: multi_region_data_sync_alerts
+    interval: 30s
+    rules:
+      # Alert: High Data Sync Failure Rate
+      - alert: HighDataSyncFailureRate
+        expr: |
+          (
+            rate(data_sync_status_total{status="failure"}[5m])
+            /
+            rate(data_sync_status_total[5m])
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          service: multi-region
+          component: data-sync
+          requirement: "1.1"
+        annotations:
+          summary: "High data sync failure rate detected"
+          description: |
+            Data sync failure rate is {{ $value | humanizePercentage }} (threshold: 5%)
+            Source Region: {{ $labels.source_region }}
+            Target Region: {{ $labels.target_region }}
+          runbook_url: "https://wiki.example.com/runbooks/multi-region/data-sync-failures"
+          dashboard_url: "http://grafana:3000/d/multi-region-health-overview"
+          action: "Check database replication status and network connectivity"
+
+      # Critical Alert: Network Partition Detected
+      - alert: NetworkPartitionDetected
+        expr: increase(network_partition_events_total[1m]) > 0
+        labels:
+          severity: critical
+          service: multi-region
+          component: network
+          requirement: "4.3"
+        annotations:
+          summary: "Network partition detected between regions"
+          description: |
+            Network partition event detected
+            Region: {{ $labels.region }}
+            Affected Regions: {{ $labels.affected_regions }}
+          runbook_url: "https://wiki.example.com/runbooks/multi-region/network-partition"
+          dashboard_url: "http://grafana:3000/d/multi-region-health-overview"
+          action: "Verify split-brain prevention mechanisms and monitor data consistency"
+
+      # Warning: Long Network Partition
+      - alert: LongNetworkPartition
+        expr: histogram_quantile(0.95, rate(network_partition_duration_ms_bucket[5m])) > 60000
+        for: 2m
+        labels:
+          severity: critical
+          service: multi-region
+          component: network
+          requirement: "4.3"
+        annotations:
+          summary: "Long network partition detected"
+          description: |
+            P95 network partition duration is {{ $value | humanizeDuration }} (threshold: 60s)
+            Region: {{ $labels.region }}
+          runbook_url: "https://wiki.example.com/runbooks/multi-region/long-partition"
+          dashboard_url: "http://grafana:3000/d/multi-region-health-overview"
+          action: "Investigate network issues and verify data reconciliation after recovery"
+
+  # Data Reconciliation Alerts (Requirement 4.4)
+  - name: multi_region_reconciliation_alerts
+    interval: 30s
+    rules:
+      # Alert: Reconciliation Discrepancies Found
+      - alert: ReconciliationDiscrepanciesFound
+        expr: reconciliation_discrepancies > 100
+        for: 5m
+        labels:
+          severity: warning
+          service: multi-region
+          component: reconciliation
+          requirement: "4.4.1"
+        annotations:
+          summary: "Data reconciliation found discrepancies"
+          description: |
+            {{ $value }} discrepancies found during reconciliation
+            Source Region: {{ $labels.source_region }}
+            Target Region: {{ $labels.target_region }}
+          runbook_url: "https://wiki.example.com/runbooks/multi-region/reconciliation-discrepancies"
+          dashboard_url: "http://grafana:3000/d/multi-region-health-overview"
+          action: "Review reconciliation report and verify auto-repair completion"
+
+      # Critical Alert: High Reconciliation Discrepancies
+      - alert: HighReconciliationDiscrepancies
+        expr: reconciliation_discrepancies > 1000
+        for: 2m
+        labels:
+          severity: critical
+          service: multi-region
+          component: reconciliation
+          requirement: "4.4.1"
+        annotations:
+          summary: "High number of reconciliation discrepancies"
+          description: |
+            {{ $value }} discrepancies found during reconciliation (critical threshold: 1000)
+            Source Region: {{ $labels.source_region }}
+            Target Region: {{ $labels.target_region }}
+          runbook_url: "https://wiki.example.com/runbooks/multi-region/high-discrepancies"
+          dashboard_url: "http://grafana:3000/d/multi-region-health-overview"
+          action: "Immediate investigation required - possible data sync failure"
+
+      # Alert: Reconciliation Failures
+      - alert: ReconciliationFailures
+        expr: increase(reconciliation_events_total[1h]) == 0
+        for: 1h
+        labels:
+          severity: warning
+          service: multi-region
+          component: reconciliation
+          requirement: "4.4.1"
+        annotations:
+          summary: "Reconciliation task not running"
+          description: |
+            No reconciliation events in the last hour
+            Source Region: {{ $labels.source_region }}
+            Target Region: {{ $labels.target_region }}
+          runbook_url: "https://wiki.example.com/runbooks/multi-region/reconciliation-not-running"
+          dashboard_url: "http://grafana:3000/d/multi-region-health-overview"
+          action: "Check reconciliation scheduler and verify task execution"
+
+      # Alert: Slow Reconciliation
+      - alert: SlowReconciliation
+        expr: histogram_quantile(0.95, rate(reconciliation_duration_ms_bucket[1h])) > 300000
+        for: 10m
+        labels:
+          severity: warning
+          service: multi-region
+          component: reconciliation
+          requirement: "4.4"
+        annotations:
+          summary: "Slow reconciliation detected"
+          description: |
+            P95 reconciliation duration is {{ $value | humanizeDuration }} (threshold: 5 minutes)
+            Source Region: {{ $labels.source_region }}
+            Target Region: {{ $labels.target_region }}
+          runbook_url: "https://wiki.example.com/runbooks/multi-region/slow-reconciliation"
+          dashboard_url: "http://grafana:3000/d/multi-region-health-overview"
+          action: "Review reconciliation performance and optimize batch processing"
+
+      # Alert: Low Auto-Repair Success Rate
+      - alert: LowAutoRepairSuccessRate
+        expr: |
+          (
+            reconciliation_fixed_count
+            /
+            reconciliation_discrepancies
+          ) < 0.9
+        for: 10m
+        labels:
+          severity: warning
+          service: multi-region
+          component: reconciliation
+          requirement: "4.4.2"
+        annotations:
+          summary: "Low auto-repair success rate"
+          description: |
+            Auto-repair success rate is {{ $value | humanizePercentage }} (threshold: 90%)
+            Source Region: {{ $labels.source_region }}
+            Target Region: {{ $labels.target_region }}
+            Discrepancies: {{ $labels.reconciliation_discrepancies }}
+            Fixed: {{ $labels.reconciliation_fixed_count }}
+          runbook_url: "https://wiki.example.com/runbooks/multi-region/low-repair-rate"
+          dashboard_url: "http://grafana:3000/d/multi-region-health-overview"
+          action: "Review reconciliation logs and investigate repair failures"
+
+  # SLO and Performance Alerts
+  - name: multi_region_slo_alerts
+    interval: 30s
+    rules:
+      # Alert: Cross-Region RTO Violation
+      - alert: CrossRegionRTOViolation
+        expr: histogram_quantile(0.95, rate(failover_duration_ms_bucket[30d])) > 30000
+        for: 5m
+        labels:
+          severity: critical
+          service: multi-region
+          component: slo
+          requirement: "4.2.1"
+        annotations:
+          summary: "Cross-region RTO SLO violated"
+          description: |
+            30-day P95 failover duration is {{ $value | humanizeDuration }} (RTO target: 30s)
+            From Region: {{ $labels.from_region }}
+            To Region: {{ $labels.to_region }}
+          runbook_url: "https://wiki.example.com/runbooks/multi-region/rto-violation"
+          dashboard_url: "http://grafana:3000/d/multi-region-failover-events"
+          action: "Review failover process and implement optimizations to meet RTO target"
+
+      # Alert: Cross-Region RPO Violation
+      - alert: CrossRegionRPOViolation
+        expr: histogram_quantile(0.99, rate(message_sync_latency_ms_bucket[30d])) > 1000
+        for: 5m
+        labels:
+          severity: critical
+          service: multi-region
+          component: slo
+          requirement: "4.2.2"
+        annotations:
+          summary: "Cross-region RPO SLO violated"
+          description: |
+            30-day P99 message sync latency is {{ $value | humanizeDuration }} (RPO target: <1s)
+            Source Region: {{ $labels.source_region }}
+            Target Region: {{ $labels.target_region }}
+          runbook_url: "https://wiki.example.com/runbooks/multi-region/rpo-violation"
+          dashboard_url: "http://grafana:3000/d/multi-region-sync-latency"
+          action: "Review sync performance and optimize replication pipeline"
+
+      # Alert: Multi-Region Availability SLO Violation
+      - alert: MultiRegionAvailabilitySLOViolation
+        expr: |
+          (
+            avg_over_time(region_availability[30d])
+          ) < 0.9999
+        for: 5m
+        labels:
+          severity: critical
+          service: multi-region
+          component: slo
+          requirement: "Non-Functional"
+        annotations:
+          summary: "Multi-region availability SLO violated"
+          description: |
+            30-day availability is {{ $value | humanizePercentage }} (target: 99.99%)
+            Region: {{ $labels.region }}
+          runbook_url: "https://wiki.example.com/runbooks/multi-region/availability-slo"
+          dashboard_url: "http://grafana:3000/d/multi-region-health-overview"
+          action: "Review incidents and implement improvements to restore SLO compliance"

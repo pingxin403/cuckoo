@@ -26,10 +26,7 @@ import com.pingxin403.cuckoo.flashsale.service.InventoryService;
 import com.pingxin403.cuckoo.flashsale.service.dto.BatchCreateResult;
 import com.pingxin403.cuckoo.flashsale.service.dto.RollbackResult;
 
-/**
- * Unit tests for OrderServiceImpl with Redis caching.
- *
- */
+/** Unit tests for OrderServiceImpl with Redis caching. */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("OrderService Implementation Tests")
 class OrderServiceImplTest {
