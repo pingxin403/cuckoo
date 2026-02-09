@@ -13,7 +13,6 @@ package com.pingxin403.cuckoo.flashsale.service.dto;
  *   <li>410 - Sold out, activity ended
  * </ul>
  *
- *
  * @param code the response code (200=acquired, 202=queuing, 410=sold out)
  * @param message the human-readable message
  * @param estimatedWait the estimated wait time in seconds (0 if token acquired)

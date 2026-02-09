@@ -27,7 +27,6 @@ import com.pingxin403.cuckoo.flashsale.model.OrderMessage;
  *   <li>Handles failures gracefully with appropriate error reporting
  *   <li>Supports synchronous sending with configurable timeout
  * </ul>
- *
  */
 @Component
 public class OrderMessageProducerImpl implements OrderMessageProducer {

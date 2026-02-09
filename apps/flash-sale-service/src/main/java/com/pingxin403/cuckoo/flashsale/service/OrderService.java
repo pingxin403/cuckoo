@@ -20,7 +20,6 @@ import com.pingxin403.cuckoo.flashsale.service.dto.BatchCreateResult;
  *   <li>Querying orders
  *   <li>Handling timeout orders
  * </ul>
- *
  */
 public interface OrderService {
 
@@ -46,7 +45,6 @@ public interface OrderService {
    *   <li>Return detailed results about success/failure
    * </ul>
    *
-   *
    * @param messages list of order messages to process
    * @return BatchCreateResult containing success/failure counts
    */
@@ -57,7 +55,6 @@ public interface OrderService {
    *
    * <p>This method should be idempotent - calling it multiple times with the same status should
    * produce the same result.
-   *
    *
    * @param orderId the order ID to update
    * @param newStatus the new status to set
@@ -83,7 +80,6 @@ public interface OrderService {
    *   <li>Update their status to TIMEOUT
    *   <li>Trigger stock rollback for each timed out order
    * </ul>
-   *
    *
    * @param timeoutMinutes the timeout threshold in minutes
    * @return the number of orders that were timed out

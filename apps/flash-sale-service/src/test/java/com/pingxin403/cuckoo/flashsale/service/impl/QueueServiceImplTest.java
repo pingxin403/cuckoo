@@ -18,10 +18,7 @@ import com.pingxin403.cuckoo.flashsale.model.enums.OrderStatus;
 import com.pingxin403.cuckoo.flashsale.service.dto.OrderStatusResult;
 import com.pingxin403.cuckoo.flashsale.service.dto.QueueResult;
 
-/**
- * Unit tests for QueueServiceImpl token bucket control.
- *
- */
+/** Unit tests for QueueServiceImpl token bucket control. */
 @ExtendWith(MockitoExtension.class)
 @DisplayName("QueueService Token Bucket Control Tests")
 class QueueServiceImplTest {

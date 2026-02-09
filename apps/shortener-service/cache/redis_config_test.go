@@ -905,7 +905,7 @@ func TestRedisClientWithMetrics_ExposePoolMetrics(t *testing.T) {
 	config := DefaultRedisConfig()
 	wrapper := NewRedisClientWithMetrics(config, obs)
 	defer wrapper.Stop()
-	defer wrapper.Client().Close()
+	defer func() { _ = wrapper.Client().Close() }()
 
 	// Wait a bit for the first metric collection cycle
 	// The metrics are collected every 10 seconds, but we'll wait just a moment
@@ -961,7 +961,7 @@ func TestRedisClientWithMetrics_MetricsCollection(t *testing.T) {
 	config := DefaultRedisConfig()
 	wrapper := NewRedisClientWithMetrics(config, obs)
 	defer wrapper.Stop()
-	defer wrapper.Client().Close()
+	defer func() { _ = wrapper.Client().Close() }()
 
 	// Perform some operations to generate pool activity
 	ctx := context.Background()
@@ -991,7 +991,7 @@ func TestRedisClientWithMetrics_PoolStatsMetrics(t *testing.T) {
 	config := DefaultRedisConfig()
 	wrapper := NewRedisClientWithMetrics(config, obs)
 	defer wrapper.Stop()
-	defer wrapper.Client().Close()
+	defer func() { _ = wrapper.Client().Close() }()
 
 	// Get pool stats
 	stats := wrapper.Client().PoolStats()
@@ -1015,11 +1015,8 @@ func TestRedisClientWithMetrics_PoolStatsMetrics(t *testing.T) {
 	_ = stats.TotalConns
 	_ = stats.IdleConns
 
-	// Calculate active connections
-	activeConns := stats.TotalConns - stats.IdleConns
-	if activeConns < 0 {
-		t.Errorf("Active connections should not be negative, got %d", activeConns)
-	}
+	// Calculate active connections (both are uint32, so difference is always >= 0)
+	_ = stats.TotalConns - stats.IdleConns
 }
 
 // TestRedisClientWithMetrics_ClusterMode tests metrics collection in cluster mode
@@ -1040,7 +1037,7 @@ func TestRedisClientWithMetrics_ClusterMode(t *testing.T) {
 
 	wrapper := NewRedisClientWithMetrics(config, obs)
 	defer wrapper.Stop()
-	defer wrapper.Client().Close()
+	defer func() { _ = wrapper.Client().Close() }()
 
 	// Verify pool stats are available for cluster client
 	stats := wrapper.Client().PoolStats()

@@ -40,9 +40,9 @@ func setupBenchPipeline(b *testing.B) (*PipelineHelper, redis.UniversalClient, f
 	pipeline := NewPipelineHelper(client, obs)
 
 	cleanup := func() {
-		client.Close()
+		_ = client.Close()
 		mr.Close()
-		obs.Shutdown(context.Background())
+		_ = obs.Shutdown(context.Background())
 	}
 
 	return pipeline, client, cleanup
@@ -74,7 +74,7 @@ func BenchmarkPipelineVsIndividual(b *testing.B) {
 	b.Run("Pipeline_Batch", func(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			pipeline.BatchSet(ctx, entries, ttl)
+			_ = pipeline.BatchSet(ctx, entries, ttl)
 		}
 	})
 }
@@ -98,7 +98,7 @@ func BenchmarkBatchSizes(b *testing.B) {
 		b.Run(fmt.Sprintf("BatchSize_%d", size), func(b *testing.B) {
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
-				pipeline.BatchSet(ctx, entries, ttl)
+				_ = pipeline.BatchSet(ctx, entries, ttl)
 			}
 		})
 	}
@@ -131,7 +131,7 @@ func BenchmarkBatchGet(b *testing.B) {
 	b.Run("Pipeline_BatchGet", func(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			pipeline.BatchGet(ctx, keys)
+			_, _ = pipeline.BatchGet(ctx, keys)
 		}
 	})
 }
@@ -151,7 +151,7 @@ func BenchmarkConcurrentBatchSet(b *testing.B) {
 
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			pipeline.BatchSet(ctx, entries, ttl)
+			_ = pipeline.BatchSet(ctx, entries, ttl)
 		}
 	})
 }
@@ -189,6 +189,6 @@ func BenchmarkMemoryAllocation(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		pipeline.BatchSet(ctx, entries, ttl)
+		_ = pipeline.BatchSet(ctx, entries, ttl)
 	}
 }

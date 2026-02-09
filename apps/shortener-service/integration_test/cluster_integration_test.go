@@ -20,7 +20,6 @@ import (
 // To run this test:
 // 1. Start Redis Cluster (see deploy/docker/docker-compose.infra.yml)
 // 2. Run: go test -v -run TestRedisClusterIntegration ./integration_test/
-//
 func TestRedisClusterIntegration(t *testing.T) {
 	// Skip if not in integration test mode
 	if testing.Short() {
@@ -45,7 +44,7 @@ func TestRedisClusterIntegration(t *testing.T) {
 		ReadTimeout:  3 * time.Second,
 		WriteTimeout: 3 * time.Second,
 	})
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	ctx := context.Background()
 
@@ -248,7 +247,7 @@ func BenchmarkClusterVsStandalone(b *testing.B) {
 	standaloneClient := redis.NewClient(&redis.Options{
 		Addr: "localhost:6379",
 	})
-	defer standaloneClient.Close()
+	defer func() { _ = standaloneClient.Close() }()
 
 	// Test standalone connectivity
 	if err := standaloneClient.Ping(ctx).Err(); err != nil {
@@ -265,7 +264,7 @@ func BenchmarkClusterVsStandalone(b *testing.B) {
 			"localhost:7002",
 		},
 	})
-	defer clusterClient.Close()
+	defer func() { _ = clusterClient.Close() }()
 
 	// Test cluster connectivity
 	if err := clusterClient.Ping(ctx).Err(); err != nil {
@@ -283,7 +282,7 @@ func BenchmarkClusterVsStandalone(b *testing.B) {
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			standaloneCluster.BatchSetWithHashTag(ctx, prefix, testData, 10*time.Minute)
+			_ = standaloneCluster.BatchSetWithHashTag(ctx, prefix, testData, 10*time.Minute)
 		}
 	})
 
@@ -296,7 +295,7 @@ func BenchmarkClusterVsStandalone(b *testing.B) {
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			clusterWrapper.BatchSetWithHashTag(ctx, prefix, testData, 10*time.Minute)
+			_ = clusterWrapper.BatchSetWithHashTag(ctx, prefix, testData, 10*time.Minute)
 		}
 	})
 
@@ -309,7 +308,7 @@ func BenchmarkClusterVsStandalone(b *testing.B) {
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			standaloneCluster.BatchGetWithHashTag(ctx, prefix, keys)
+			_, _ = standaloneCluster.BatchGetWithHashTag(ctx, prefix, keys)
 		}
 	})
 
@@ -322,7 +321,7 @@ func BenchmarkClusterVsStandalone(b *testing.B) {
 
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			clusterWrapper.BatchGetWithHashTag(ctx, prefix, keys)
+			_, _ = clusterWrapper.BatchGetWithHashTag(ctx, prefix, keys)
 		}
 	})
 }

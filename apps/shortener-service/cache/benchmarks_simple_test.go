@@ -19,7 +19,7 @@ func BenchmarkPipelineEfficiencySimple(b *testing.B) {
 	client := redis.NewClient(&redis.Options{
 		Addr: mr.Addr(),
 	})
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	obs, _ := observability.New(observability.Config{
 		ServiceName:    "benchmark-test",
@@ -48,7 +48,7 @@ func BenchmarkPipelineEfficiencySimple(b *testing.B) {
 	b.Run("Pipeline_Batch", func(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			pipeline.BatchSet(ctx, testData, 0)
+			_ = pipeline.BatchSet(ctx, testData, 0)
 		}
 	})
 }
@@ -74,7 +74,7 @@ func BenchmarkSingleflightEfficiencySimple(b *testing.B) {
 		b.ResetTimer()
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
-				slowOp()
+				_, _ = slowOp()
 			}
 		})
 	})
@@ -83,7 +83,7 @@ func BenchmarkSingleflightEfficiencySimple(b *testing.B) {
 		b.ResetTimer()
 		b.RunParallel(func(pb *testing.PB) {
 			for pb.Next() {
-				sf.Do(ctx, "test-key", slowOp)
+				_, _ = sf.Do(ctx, "test-key", slowOp)
 			}
 		})
 	})
@@ -99,7 +99,7 @@ func BenchmarkConnectionPoolUtilizationSimple(b *testing.B) {
 		Addr:     mr.Addr(),
 		PoolSize: 5,
 	})
-	defer smallPoolClient.Close()
+	defer func() { _ = smallPoolClient.Close() }()
 
 	// Optimized pool
 	optimizedPoolClient := redis.NewClient(&redis.Options{
@@ -107,7 +107,7 @@ func BenchmarkConnectionPoolUtilizationSimple(b *testing.B) {
 		PoolSize:     20,
 		MinIdleConns: 6,
 	})
-	defer optimizedPoolClient.Close()
+	defer func() { _ = optimizedPoolClient.Close() }()
 
 	ctx := context.Background()
 
@@ -138,7 +138,7 @@ func BenchmarkCircuitBreakerOverheadSimple(b *testing.B) {
 	client := redis.NewClient(&redis.Options{
 		Addr: mr.Addr(),
 	})
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	obs, _ := observability.New(observability.Config{
 		ServiceName:    "benchmark-test",
@@ -157,14 +157,14 @@ func BenchmarkCircuitBreakerOverheadSimple(b *testing.B) {
 	b.Run("Without_CircuitBreaker", func(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			successOp()
+			_ = successOp()
 		}
 	})
 
 	b.Run("With_CircuitBreaker", func(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			cb.Execute(ctx, successOp)
+			_ = cb.Execute(ctx, successOp)
 		}
 	})
 }
@@ -177,7 +177,7 @@ func BenchmarkLuaScriptPerformanceSimple(b *testing.B) {
 	client := redis.NewClient(&redis.Options{
 		Addr: mr.Addr(),
 	})
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	obs, _ := observability.New(observability.Config{
 		ServiceName:    "benchmark-test",
@@ -186,7 +186,7 @@ func BenchmarkLuaScriptPerformanceSimple(b *testing.B) {
 	})
 
 	scriptMgr := NewLuaScriptManager(client, obs)
-	scriptMgr.PreloadScripts(context.Background())
+	_ = scriptMgr.PreloadScripts(context.Background())
 
 	ctx := context.Background()
 
@@ -203,7 +203,7 @@ func BenchmarkLuaScriptPerformanceSimple(b *testing.B) {
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
 			key := fmt.Sprintf("counter-%d", i)
-			scriptMgr.ExecuteIncrementAndExpire(ctx, key, 1, 60)
+			_, _ = scriptMgr.ExecuteIncrementAndExpire(ctx, key, 1, 60)
 		}
 	})
 }
@@ -216,7 +216,7 @@ func BenchmarkMemoryEfficiencySimple(b *testing.B) {
 	client := redis.NewClient(&redis.Options{
 		Addr: mr.Addr(),
 	})
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	obs, _ := observability.New(observability.Config{
 		ServiceName:    "benchmark-test",
@@ -246,7 +246,7 @@ func BenchmarkMemoryEfficiencySimple(b *testing.B) {
 		b.ReportAllocs()
 		b.ResetTimer()
 		for i := 0; i < b.N; i++ {
-			pipeline.BatchSet(ctx, testData, 0)
+			_ = pipeline.BatchSet(ctx, testData, 0)
 		}
 	})
 }

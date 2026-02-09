@@ -32,7 +32,7 @@ func createTestObservabilityForLua() observability.Observability {
 func TestNewLuaScriptManager(t *testing.T) {
 	mr, client := setupLuaTestRedis(t)
 	defer mr.Close()
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	obs := createTestObservabilityForLua()
 	manager := NewLuaScriptManager(client, obs)
@@ -53,7 +53,7 @@ func TestNewLuaScriptManager(t *testing.T) {
 func TestLuaScriptManager_PreloadScripts(t *testing.T) {
 	mr, client := setupLuaTestRedis(t)
 	defer mr.Close()
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	obs := createTestObservabilityForLua()
 	manager := NewLuaScriptManager(client, obs)
@@ -73,7 +73,7 @@ func TestLuaScriptManager_PreloadScripts(t *testing.T) {
 func TestLuaScriptManager_ExecuteCacheLoad_Hit(t *testing.T) {
 	mr, client := setupLuaTestRedis(t)
 	defer mr.Close()
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	obs := createTestObservabilityForLua()
 	manager := NewLuaScriptManager(client, obs)
@@ -98,7 +98,7 @@ func TestLuaScriptManager_ExecuteCacheLoad_Hit(t *testing.T) {
 func TestLuaScriptManager_ExecuteCacheLoad_Locked(t *testing.T) {
 	mr, client := setupLuaTestRedis(t)
 	defer mr.Close()
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	obs := createTestObservabilityForLua()
 	manager := NewLuaScriptManager(client, obs)
@@ -128,7 +128,7 @@ func TestLuaScriptManager_ExecuteCacheLoad_Locked(t *testing.T) {
 func TestLuaScriptManager_ExecuteCacheLoad_Contention(t *testing.T) {
 	mr, client := setupLuaTestRedis(t)
 	defer mr.Close()
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	obs := createTestObservabilityForLua()
 	manager := NewLuaScriptManager(client, obs)
@@ -140,7 +140,7 @@ func TestLuaScriptManager_ExecuteCacheLoad_Contention(t *testing.T) {
 	lockKey := "lock:test789"
 
 	// Set lock manually (simulate another process holding the lock)
-	mr.Set(lockKey, "1")
+	_ = mr.Set(lockKey, "1")
 	mr.SetTTL(lockKey, 5*time.Second)
 
 	// Execute cache load script - should detect contention
@@ -153,7 +153,7 @@ func TestLuaScriptManager_ExecuteCacheLoad_Contention(t *testing.T) {
 func TestLuaScriptManager_ExecuteIncrementAndExpire(t *testing.T) {
 	mr, client := setupLuaTestRedis(t)
 	defer mr.Close()
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	obs := createTestObservabilityForLua()
 	manager := NewLuaScriptManager(client, obs)
@@ -192,7 +192,7 @@ func TestLuaScriptManager_ExecuteIncrementAndExpire(t *testing.T) {
 func TestLuaScriptManager_ExecuteSetWithTTLJitter(t *testing.T) {
 	mr, client := setupLuaTestRedis(t)
 	defer mr.Close()
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	obs := createTestObservabilityForLua()
 	manager := NewLuaScriptManager(client, obs)
@@ -236,7 +236,7 @@ func TestLuaScriptManager_ExecuteSetWithTTLJitter(t *testing.T) {
 func TestLuaScriptManager_ScriptCacheFallback(t *testing.T) {
 	mr, client := setupLuaTestRedis(t)
 	defer mr.Close()
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	obs := createTestObservabilityForLua()
 	manager := NewLuaScriptManager(client, obs)
@@ -259,7 +259,7 @@ func TestLuaScriptManager_ScriptCacheFallback(t *testing.T) {
 func TestLuaScriptManager_ConcurrentExecution(t *testing.T) {
 	mr, client := setupLuaTestRedis(t)
 	defer mr.Close()
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	obs := createTestObservabilityForLua()
 	manager := NewLuaScriptManager(client, obs)
@@ -303,7 +303,7 @@ func TestLuaScriptManager_ConcurrentExecution(t *testing.T) {
 func TestLuaScriptManager_GetScriptSHA(t *testing.T) {
 	mr, client := setupLuaTestRedis(t)
 	defer mr.Close()
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	obs := createTestObservabilityForLua()
 	manager := NewLuaScriptManager(client, obs)
@@ -323,7 +323,7 @@ func TestLuaScriptManager_GetScriptSHA(t *testing.T) {
 func TestLuaScriptManager_ListScripts(t *testing.T) {
 	mr, client := setupLuaTestRedis(t)
 	defer mr.Close()
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	obs := createTestObservabilityForLua()
 	manager := NewLuaScriptManager(client, obs)

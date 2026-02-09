@@ -6,7 +6,6 @@ package com.pingxin403.cuckoo.flashsale.service.dto;
  * <p>Contains the outcome of a risk assessment for a seckill request, including the risk level,
  * recommended action, and reason for the assessment.
  *
- *
  * @param level the assessed risk level (LOW, MEDIUM, HIGH)
  * @param action the recommended action (PASS, CAPTCHA, BLOCK)
  * @param reason the reason for the assessment result

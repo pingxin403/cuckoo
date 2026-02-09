@@ -1,0 +1,79 @@
+# 2026/02/06 11:28:16.080879 [TestProperty_ReconciliationCompleteness] [rapid] draw numBaseMessages: 5
+# 2026/02/06 11:28:16.080896 [TestProperty_ReconciliationCompleteness] [rapid] draw content: ""
+# 2026/02/06 11:28:16.080897 [TestProperty_ReconciliationCompleteness] [rapid] draw conversationID: "conv-0"
+# 2026/02/06 11:28:16.080902 [TestProperty_ReconciliationCompleteness] [rapid] draw content: ""
+# 2026/02/06 11:28:16.080903 [TestProperty_ReconciliationCompleteness] [rapid] draw conversationID: "conv-0"
+# 2026/02/06 11:28:16.080904 [TestProperty_ReconciliationCompleteness] [rapid] draw content: ""
+# 2026/02/06 11:28:16.080905 [TestProperty_ReconciliationCompleteness] [rapid] draw conversationID: "conv-0"
+# 2026/02/06 11:28:16.080905 [TestProperty_ReconciliationCompleteness] [rapid] draw content: ""
+# 2026/02/06 11:28:16.080906 [TestProperty_ReconciliationCompleteness] [rapid] draw conversationID: "conv-0"
+# 2026/02/06 11:28:16.080911 [TestProperty_ReconciliationCompleteness] [rapid] draw content: ""
+# 2026/02/06 11:28:16.080915 [TestProperty_ReconciliationCompleteness] [rapid] draw conversationID: "conv-0"
+# 2026/02/06 11:28:16.080916 [TestProperty_ReconciliationCompleteness] [rapid] draw numMissingInLocal: 0
+# 2026/02/06 11:28:16.080917 [TestProperty_ReconciliationCompleteness] [rapid] draw numMissingInRemote: 1
+# 2026/02/06 11:28:16.080917 [TestProperty_ReconciliationCompleteness] [rapid] draw numConflicts: 1
+# 2026/02/06 11:28:16.080918 [TestProperty_ReconciliationCompleteness] [rapid] draw content: ""
+# 2026/02/06 11:28:16.080918 [TestProperty_ReconciliationCompleteness] [rapid] draw conversationID: "conv-0"
+# 2026/02/06 11:28:16.080919 [TestProperty_ReconciliationCompleteness] [rapid] draw conflictStartIdx: 0
+# 2026/02/06 11:28:16.080920 [TestProperty_ReconciliationCompleteness] [rapid] draw conflict_0: ""
+# 2026/02/06 11:28:16.081008 [TestProperty_ReconciliationCompleteness] Completeness violated: expected conflict region-a-1770348496080-0-80 not detected
+# 
+v0.4.8#14080678213331753998
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x1
+0x0
+0x0
+0x1
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0

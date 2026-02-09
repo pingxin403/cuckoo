@@ -19,10 +19,7 @@ import com.pingxin403.cuckoo.flashsale.service.ActivityService;
 import com.pingxin403.cuckoo.flashsale.service.dto.ActivityCreateRequest;
 import com.pingxin403.cuckoo.flashsale.service.dto.ActivityUpdateRequest;
 
-/**
- * 活动服务实现 Implementation of ActivityService for managing flash sale activities.
- *
- */
+/** 活动服务实现 Implementation of ActivityService for managing flash sale activities. */
 @Service
 public class ActivityServiceImpl implements ActivityService {
 

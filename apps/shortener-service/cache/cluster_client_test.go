@@ -30,7 +30,7 @@ func TestNewClusterClient(t *testing.T) {
 	client := redis.NewClient(&redis.Options{
 		Addr: mr.Addr(),
 	})
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	obs := createTestObservabilityForCluster()
 
@@ -94,7 +94,7 @@ func TestBatchGetWithHashTag(t *testing.T) {
 	client := redis.NewClient(&redis.Options{
 		Addr: mr.Addr(),
 	})
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	obs := createTestObservabilityForCluster()
 	clusterClient := NewClusterClient(client, obs)
@@ -172,7 +172,7 @@ func TestBatchSetWithHashTag(t *testing.T) {
 	client := redis.NewClient(&redis.Options{
 		Addr: mr.Addr(),
 	})
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	obs := createTestObservabilityForCluster()
 	clusterClient := NewClusterClient(client, obs)
@@ -244,7 +244,7 @@ func TestBatchDeleteWithHashTag(t *testing.T) {
 	client := redis.NewClient(&redis.Options{
 		Addr: mr.Addr(),
 	})
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	obs := createTestObservabilityForCluster()
 	clusterClient := NewClusterClient(client, obs)
@@ -300,7 +300,7 @@ func TestClusterClient_Client(t *testing.T) {
 	client := redis.NewClient(&redis.Options{
 		Addr: mr.Addr(),
 	})
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	obs := createTestObservabilityForCluster()
 	clusterClient := NewClusterClient(client, obs)
