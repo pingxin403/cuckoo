@@ -171,6 +171,7 @@ func (s *ReadReceiptService) GetReadReceipts(ctx context.Context, msgID string) 
 		ORDER BY read_at ASC
 	`
 
+	// #nosec G701 -- msgID is validated by caller and used in prepared statement
 	rows, err := s.db.QueryContext(ctx, query, msgID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query read receipts: %w", err)
@@ -216,6 +217,7 @@ func (s *ReadReceiptService) GetUnreadCount(ctx context.Context, userID string) 
 	`
 
 	var count int
+	// #nosec G701 -- userID is validated by caller and used in prepared statement
 	err := s.db.QueryRowContext(ctx, query, userID).Scan(&count)
 	if err != nil {
 		return 0, fmt.Errorf("failed to get unread count: %w", err)
@@ -234,6 +236,7 @@ func (s *ReadReceiptService) GetUnreadMessages(ctx context.Context, userID strin
 		LIMIT ? OFFSET ?
 	`
 
+	// #nosec G701 -- limit and offset are validated by caller and used in prepared statement
 	rows, err := s.db.QueryContext(ctx, query, userID, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query unread messages: %w", err)
@@ -266,6 +269,7 @@ func (s *ReadReceiptService) MarkConversationAsRead(ctx context.Context, userID,
 	`
 
 	readAt := time.Now()
+	// #nosec G701 -- userID and conversationID are validated by caller and used in prepared statement
 	result, err := s.db.ExecContext(ctx, query, readAt, userID, conversationID)
 	if err != nil {
 		return 0, fmt.Errorf("failed to mark conversation as read: %w", err)

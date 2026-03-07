@@ -1,0 +1,170 @@
+# Chaos Mesh 网络分区测试配置
+# 验证需求: 9.2.1, 9.2.2
+# 测试场景: 模拟两个地域之间的网络分区，验证系统在网络分区恢复后能够在 60 秒内完成数据重新同步
+
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: cross-region-partition
+  namespace: default
+  annotations:
+    description: "模拟跨地域网络分区，验证数据同步恢复能力"
+spec:
+  # 网络分区动作
+  action: partition
+  
+  # 应用到所有匹配的 Pod
+  mode: all
+  
+  # 选择 Region A 的 IM 服务
+  selector:
+    namespaces:
+      - im-region-a
+    labelSelectors:
+      app: im-service
+  
+  # 双向分区
+  direction: both
+  
+  # 目标: Region B 的 IM 服务
+  target:
+    selector:
+      namespaces:
+        - im-region-b
+      labelSelectors:
+        app: im-service
+  
+  # 持续时间: 60 秒
+  duration: "60s"
+  
+  # 调度器配置 (可选)
+  scheduler:
+    cron: "@every 2h"  # 每 2 小时执行一次
+
+---
+# 网络延迟测试配置
+# 验证需求: 9.2.1
+# 测试场景: 注入跨地域网络延迟，验证系统在高延迟环境下的表现
+
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: cross-region-latency
+  namespace: default
+  annotations:
+    description: "注入跨地域网络延迟，验证系统容错能力"
+spec:
+  # 网络延迟动作
+  action: delay
+  
+  # 应用到所有匹配的 Pod
+  mode: all
+  
+  # 选择 Region A 的 IM 服务
+  selector:
+    namespaces:
+      - im-region-a
+    labelSelectors:
+      app: im-service
+  
+  # 延迟配置
+  delay:
+    latency: "500ms"      # 基础延迟
+    correlation: "50"     # 相关性
+    jitter: "100ms"       # 抖动
+  
+  # 目标: Region B 的 IM 服务
+  target:
+    selector:
+      namespaces:
+        - im-region-b
+      labelSelectors:
+        app: im-service
+  
+  # 持续时间: 120 秒
+  duration: "120s"
+
+---
+# 网络丢包测试配置
+# 验证需求: 9.2.1
+# 测试场景: 注入网络丢包，验证消息重传和去重机制
+
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: cross-region-packet-loss
+  namespace: default
+  annotations:
+    description: "注入网络丢包，验证消息可靠性"
+spec:
+  # 网络丢包动作
+  action: loss
+  
+  # 应用到所有匹配的 Pod
+  mode: all
+  
+  # 选择 Region A 的 IM 服务
+  selector:
+    namespaces:
+      - im-region-a
+    labelSelectors:
+      app: im-service
+  
+  # 丢包配置
+  loss:
+    loss: "10"            # 丢包率 10%
+    correlation: "25"     # 相关性
+  
+  # 目标: Region B 的 IM 服务
+  target:
+    selector:
+      namespaces:
+        - im-region-b
+      labelSelectors:
+        app: im-service
+  
+  # 持续时间: 90 秒
+  duration: "90s"
+
+---
+# 网络带宽限制测试配置
+# 验证需求: 9.2.1
+# 测试场景: 限制跨地域网络带宽，验证系统在带宽受限时的表现
+
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: cross-region-bandwidth-limit
+  namespace: default
+  annotations:
+    description: "限制跨地域网络带宽，验证系统在带宽受限时的表现"
+spec:
+  # 网络带宽限制动作
+  action: bandwidth
+  
+  # 应用到所有匹配的 Pod
+  mode: all
+  
+  # 选择 Region A 的 IM 服务
+  selector:
+    namespaces:
+      - im-region-a
+    labelSelectors:
+      app: im-service
+  
+  # 带宽限制配置
+  bandwidth:
+    rate: "1mbps"         # 限制带宽为 1 Mbps
+    limit: 20480          # 缓冲区大小 (字节)
+    buffer: 10000         # 缓冲区大小 (字节)
+  
+  # 目标: Region B 的 IM 服务
+  target:
+    selector:
+      namespaces:
+        - im-region-b
+      labelSelectors:
+        app: im-service
+  
+  # 持续时间: 120 秒
+  duration: "120s"

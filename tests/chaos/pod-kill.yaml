@@ -1,0 +1,240 @@
+# Chaos Mesh Pod 故障测试配置
+# 验证需求: 9.2.3
+# 测试场景: 模拟节点故障，验证系统在 RTO (30 秒) 内完成故障转移
+
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: im-service-pod-kill
+  namespace: default
+  annotations:
+    description: "杀死 IM 服务 Pod，验证故障转移能力"
+spec:
+  # Pod 杀死动作
+  action: pod-kill
+  
+  # 应用到一个随机 Pod
+  mode: one
+  
+  # 选择 Region A 的 IM 服务
+  selector:
+    namespaces:
+      - im-region-a
+    labelSelectors:
+      app: im-service
+  
+  # 调度器配置: 每 5 分钟杀死一个 Pod
+  scheduler:
+    cron: "@every 5m"
+
+---
+# Pod 故障 - 杀死所有 Pod
+# 验证需求: 9.2.3
+# 测试场景: 模拟整个地域不可用，验证跨地域故障转移
+
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: im-service-region-failure
+  namespace: default
+  annotations:
+    description: "杀死 Region A 所有 IM 服务 Pod，模拟地域故障"
+spec:
+  # Pod 杀死动作
+  action: pod-kill
+  
+  # 应用到所有匹配的 Pod
+  mode: all
+  
+  # 选择 Region A 的 IM 服务
+  selector:
+    namespaces:
+      - im-region-a
+    labelSelectors:
+      app: im-service
+  
+  # 持续时间: 不设置，手动恢复
+  # duration: ""
+
+---
+# Pod 故障 - 容器杀死
+# 验证需求: 9.2.3
+# 测试场景: 杀死容器但不杀死 Pod，验证容器重启恢复
+
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: im-service-container-kill
+  namespace: default
+  annotations:
+    description: "杀死 IM 服务容器，验证容器重启恢复"
+spec:
+  # 容器杀死动作
+  action: container-kill
+  
+  # 应用到一个随机 Pod
+  mode: one
+  
+  # 选择 Region A 的 IM 服务
+  selector:
+    namespaces:
+      - im-region-a
+    labelSelectors:
+      app: im-service
+  
+  # 容器名称
+  containerNames:
+    - im-service
+  
+  # 调度器配置: 每 10 分钟杀死一个容器
+  scheduler:
+    cron: "@every 10m"
+
+---
+# Pod 故障 - Pod 失败
+# 验证需求: 9.2.3
+# 测试场景: 使 Pod 进入失败状态，验证 Kubernetes 自动恢复
+
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: im-service-pod-failure
+  namespace: default
+  annotations:
+    description: "使 IM 服务 Pod 失败，验证 Kubernetes 自动恢复"
+spec:
+  # Pod 失败动作
+  action: pod-failure
+  
+  # 应用到一个随机 Pod
+  mode: one
+  
+  # 选择 Region B 的 IM 服务
+  selector:
+    namespaces:
+      - im-region-b
+    labelSelectors:
+      app: im-service
+  
+  # 持续时间: 60 秒
+  duration: "60s"
+
+---
+# 数据库 Pod 故障测试
+# 验证需求: 9.2.3
+# 测试场景: 杀死数据库 Pod，验证数据库故障转移
+
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: mysql-pod-kill
+  namespace: default
+  annotations:
+    description: "杀死 MySQL Pod，验证数据库故障转移"
+spec:
+  # Pod 杀死动作
+  action: pod-kill
+  
+  # 应用到一个随机 Pod
+  mode: one
+  
+  # 选择 MySQL 服务
+  selector:
+    namespaces:
+      - im-region-a
+    labelSelectors:
+      app: mysql
+  
+  # 调度器配置: 每 30 分钟杀死一个 Pod
+  scheduler:
+    cron: "@every 30m"
+
+---
+# Redis Pod 故障测试
+# 验证需求: 9.2.3
+# 测试场景: 杀死 Redis Pod，验证缓存故障转移
+
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: redis-pod-kill
+  namespace: default
+  annotations:
+    description: "杀死 Redis Pod，验证缓存故障转移"
+spec:
+  # Pod 杀死动作
+  action: pod-kill
+  
+  # 应用到一个随机 Pod
+  mode: one
+  
+  # 选择 Redis 服务
+  selector:
+    namespaces:
+      - im-region-a
+    labelSelectors:
+      app: redis
+  
+  # 调度器配置: 每 20 分钟杀死一个 Pod
+  scheduler:
+    cron: "@every 20m"
+
+---
+# Kafka Pod 故障测试
+# 验证需求: 9.2.3
+# 测试场景: 杀死 Kafka Pod，验证消息队列故障转移
+
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: kafka-pod-kill
+  namespace: default
+  annotations:
+    description: "杀死 Kafka Pod，验证消息队列故障转移"
+spec:
+  # Pod 杀死动作
+  action: pod-kill
+  
+  # 应用到一个随机 Pod
+  mode: one
+  
+  # 选择 Kafka 服务
+  selector:
+    namespaces:
+      - im-region-a
+    labelSelectors:
+      app: kafka
+  
+  # 调度器配置: 每 15 分钟杀死一个 Pod
+  scheduler:
+    cron: "@every 15m"
+
+---
+# 多组件同时故障测试
+# 验证需求: 9.2.3
+# 测试场景: 同时杀死多个组件，验证系统整体容错能力
+
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: multi-component-failure
+  namespace: default
+  annotations:
+    description: "同时杀死多个组件，验证系统整体容错能力"
+spec:
+  # Pod 杀死动作
+  action: pod-kill
+  
+  # 应用到固定数量的 Pod
+  mode: fixed
+  value: "2"
+  
+  # 选择 Region A 的所有服务
+  selector:
+    namespaces:
+      - im-region-a
+    labelSelectors:
+      tier: backend
+  
+  # 持续时间: 不设置，手动恢复
+  # duration: ""

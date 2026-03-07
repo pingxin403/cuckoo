@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pingxin403/cuckoo/apps/im-service/hlc"
+	"github.com/pingxin403/cuckoo/libs/hlc"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -152,6 +152,11 @@ func (sg *SequenceGenerator) UpdateHLCFromRemote(remoteHLC string) error {
 	}
 
 	return sg.hlc.UpdateFromRemote(remoteHLC)
+}
+
+// GetHLC returns the HLC instance (for drift detection integration)
+func (sg *SequenceGenerator) GetHLC() *hlc.HLC {
+	return sg.hlc
 }
 
 // sortAndJoinUserIDs sorts two user IDs and joins them with a separator

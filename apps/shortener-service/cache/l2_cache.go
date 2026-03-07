@@ -131,6 +131,14 @@ func (c *L2Cache) Get(ctx context.Context, shortCode string) (*URLMapping, error
 			}
 		}
 
+		// Parse expires_at timestamp
+		if expiresAtStr, ok := result["expires_at"]; ok && expiresAtStr != "" {
+			expiresAt, err := time.Parse(time.RFC3339, expiresAtStr)
+			if err == nil {
+				mapping.ExpiresAt = &expiresAt
+			}
+		}
+
 		return nil
 	})
 
@@ -144,7 +152,7 @@ func (c *L2Cache) Get(ctx context.Context, shortCode string) (*URLMapping, error
 // Set stores a URL mapping in Redis with TTL jitter
 // TTL: 7 days ±1 day (6-8 days) to prevent cache expiration stampede
 // Uses crypto/rand for secure random number generation
-func (c *L2Cache) Set(ctx context.Context, shortCode string, longURL string, createdAt time.Time) error {
+func (c *L2Cache) Set(ctx context.Context, shortCode string, longURL string, createdAt time.Time, expiresAt *time.Time) error {
 	// Wrap Redis operation with circuit breaker
 	return c.circuitBreaker.Execute(ctx, func() error {
 		key := fmt.Sprintf("url:%s", shortCode)
@@ -154,6 +162,11 @@ func (c *L2Cache) Set(ctx context.Context, shortCode string, longURL string, cre
 			"short_code": shortCode,
 			"long_url":   longURL,
 			"created_at": createdAt.Format(time.RFC3339),
+		}
+
+		// Add expires_at if present
+		if expiresAt != nil {
+			fields["expires_at"] = expiresAt.Format(time.RFC3339)
 		}
 
 		// Set the hash

@@ -38,7 +38,6 @@ func NewCacheConsistency(cacheManager *cache.CacheManager, obs observability.Obs
 // 1. Immediate cache delete (before DB update)
 // 2. DB update operation
 // 3. Delayed cache delete (after 1 second)
-//
 func (cc *CacheConsistency) UpdateWithConsistency(
 	ctx context.Context,
 	shortCode string,
@@ -74,7 +73,6 @@ func (cc *CacheConsistency) UpdateWithConsistency(
 // CreateWithConsistency performs a database create operation with cache consistency
 // For create operations, we only need to invalidate cache after the operation
 // (no need for immediate delete since the key doesn't exist yet)
-//
 func (cc *CacheConsistency) CreateWithConsistency(
 	ctx context.Context,
 	shortCode string,
@@ -94,7 +92,6 @@ func (cc *CacheConsistency) CreateWithConsistency(
 
 // DeleteWithConsistency performs a database delete operation with cache consistency
 // For delete operations, we use the same delayed double delete strategy
-//
 func (cc *CacheConsistency) DeleteWithConsistency(
 	ctx context.Context,
 	shortCode string,
@@ -198,7 +195,7 @@ func (cc *CacheConsistency) WarmCacheAfterUpdate(ctx context.Context, shortCode 
 	time.Sleep(cc.delayTime + 100*time.Millisecond)
 
 	// Warm the cache with fresh data
-	if err := cc.cacheManager.Set(ctx, shortCode, mapping.LongURL, mapping.CreatedAt); err != nil {
+	if err := cc.cacheManager.Set(ctx, shortCode, mapping.LongURL, mapping.CreatedAt, mapping.ExpiresAt); err != nil {
 		return fmt.Errorf("failed to warm cache: %w", err)
 	}
 
