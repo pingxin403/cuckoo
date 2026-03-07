@@ -1,0 +1,212 @@
+# Redis Cluster 三主三从部署配置
+# 使用方法：docker compose -f deploy/docker/redis-cluster/docker-compose.yml up -d
+
+services:
+  # ===== Redis Master Nodes =====
+
+  redis-node-1:
+    image: redis:7.2-alpine
+    container_name: redis-node-1
+    ports:
+      - "10000:6379"
+    volumes:
+      - ./redis-cluster.conf:/usr/local/etc/redis/redis.conf:ro
+      - redis-node-1-data:/data
+    networks:
+      - redis-cluster-network
+    command: redis-server /usr/local/etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "6379", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  redis-node-2:
+    image: redis:7.2-alpine
+    container_name: redis-node-2
+    ports:
+      - "10001:6379"
+    volumes:
+      - ./redis-cluster.conf:/usr/local/etc/redis/redis.conf:ro
+      - redis-node-2-data:/data
+    networks:
+      - redis-cluster-network
+    command: redis-server /usr/local/etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "6379", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  redis-node-3:
+    image: redis:7.2-alpine
+    container_name: redis-node-3
+    ports:
+      - "10002:6379"
+    volumes:
+      - ./redis-cluster.conf:/usr/local/etc/redis/redis.conf:ro
+      - redis-node-3-data:/data
+    networks:
+      - redis-cluster-network
+    command: redis-server /usr/local/etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "6379", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ===== Redis Slave Nodes =====
+
+  redis-node-4:
+    image: redis:7.2-alpine
+    container_name: redis-node-4
+    ports:
+      - "10003:6379"
+    volumes:
+      - ./redis-cluster.conf:/usr/local/etc/redis/redis.conf:ro
+      - redis-node-4-data:/data
+    networks:
+      - redis-cluster-network
+    command: redis-server /usr/local/etc/redis/redis.conf
+    depends_on:
+      redis-node-1:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "6379", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  redis-node-5:
+    image: redis:7.2-alpine
+    container_name: redis-node-5
+    ports:
+      - "10004:6379"
+    volumes:
+      - ./redis-cluster.conf:/usr/local/etc/redis/redis.conf:ro
+      - redis-node-5-data:/data
+    networks:
+      - redis-cluster-network
+    command: redis-server /usr/local/etc/redis/redis.conf
+    depends_on:
+      redis-node-2:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "6379", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  redis-node-6:
+    image: redis:7.2-alpine
+    container_name: redis-node-6
+    ports:
+      - "10005:6379"
+    volumes:
+      - ./redis-cluster.conf:/usr/local/etc/redis/redis.conf:ro
+      - redis-node-6-data:/data
+    networks:
+      - redis-cluster-network
+    command: redis-server /usr/local/etc/redis/redis.conf
+    depends_on:
+      redis-node-3:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "6379", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  # ===== Cluster Initialization =====
+
+  redis-cluster-init:
+    image: redis:7.2-alpine
+    container_name: redis-cluster-init
+    depends_on:
+      - redis-node-1
+      - redis-node-2
+      - redis-node-3
+      - redis-node-4
+      - redis-node-5
+      - redis-node-6
+    networks:
+      - redis-cluster-network
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "Waiting for all Redis nodes to be ready..."
+        sleep 5
+
+        echo "Creating Redis Cluster with 3 masters and 3 slaves..."
+        
+        # Create cluster with --cluster-replicas 1 means each master has 1 slave
+        redis-cli --cluster create \
+          redis-node-1:6379 redis-node-2:6379 redis-node-3:6379 \
+          redis-node-4:6379 redis-node-5:6379 redis-node-6:6379 \
+          --cluster-replicas 1 \
+          --cluster-yes
+
+        echo "Redis Cluster created successfully!"
+        
+        echo ""
+        echo "Cluster Info:"
+        redis-cli -h redis-node-1 -p 6379 cluster info
+        
+        echo ""
+        echo "Cluster Nodes:"
+        redis-cli -h redis-node-1 -p 6379 cluster nodes
+
+networks:
+  redis-cluster-network:
+    driver: bridge
+    name: redis-cluster-network
+
+volumes:
+  redis-node-1-data:
+    name: redis-node-1-data
+  redis-node-2-data:
+    name: redis-node-2-data
+  redis-node-3-data:
+    name: redis-node-3-data
+  redis-node-4-data:
+    name: redis-node-4-data
+  redis-node-5-data:
+    name: redis-node-5-data
+  redis-node-6-data:
+    name: redis-node-6-data
