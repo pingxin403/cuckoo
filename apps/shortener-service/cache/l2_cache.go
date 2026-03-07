@@ -2,18 +2,21 @@ package cache
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"time"
 
+	"github.com/pingxin403/cuckoo/libs/observability"
 	"github.com/redis/go-redis/v9"
 )
 
 // L2Cache represents the Redis cache layer
-// Requirements: 4.2, 4.6
 type L2Cache struct {
-	client redis.UniversalClient
+	client         redis.UniversalClient
+	obs            observability.Observability
+	circuitBreaker *CircuitBreaker
 }
 
 // L2CacheConfig holds configuration for Redis cache
@@ -38,8 +41,7 @@ type L2CacheConfig struct {
 
 // NewL2Cache creates a new L2 Redis cache instance
 // Supports both standalone and cluster configurations
-// Requirements: 4.2
-func NewL2Cache(config L2CacheConfig) (*L2Cache, error) {
+func NewL2Cache(config L2CacheConfig, obs observability.Observability) (*L2Cache, error) {
 	if len(config.Addrs) == 0 {
 		return nil, fmt.Errorf("at least one Redis address is required")
 	}
@@ -69,94 +71,186 @@ func NewL2Cache(config L2CacheConfig) (*L2Cache, error) {
 		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
 	}
 
-	return &L2Cache{client: client}, nil
+	// Create circuit breaker for Redis operations
+	cbConfig := DefaultCircuitBreakerConfig()
+	circuitBreaker := NewCircuitBreaker(cbConfig, obs)
+
+	return &L2Cache{
+		client:         client,
+		obs:            obs,
+		circuitBreaker: circuitBreaker,
+	}, nil
 }
 
 // Get retrieves a URL mapping from Redis
 // Returns nil if the key is not found
-// Requirements: 4.2
 func (c *L2Cache) Get(ctx context.Context, shortCode string) (*URLMapping, error) {
-	// Use Redis Hash to store URL mapping
-	key := fmt.Sprintf("url:%s", shortCode)
+	var mapping *URLMapping
+	var getErr error
 
-	result, err := c.client.HGetAll(ctx, key).Result()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get from Redis: %w", err)
-	}
+	// Wrap Redis operation with circuit breaker
+	err := c.circuitBreaker.Execute(ctx, func() error {
+		// Use Redis Hash to store URL mapping
+		key := fmt.Sprintf("url:%s", shortCode)
 
-	if len(result) == 0 {
-		return nil, nil // Not found
-	}
-
-	// Parse the mapping
-	mapping := &URLMapping{
-		ShortCode: result["short_code"],
-		LongURL:   result["long_url"],
-	}
-
-	// Parse created_at timestamp
-	if createdAtStr, ok := result["created_at"]; ok {
-		createdAt, err := time.Parse(time.RFC3339, createdAtStr)
-		if err == nil {
-			mapping.CreatedAt = createdAt
+		result, err := c.client.HGetAll(ctx, key).Result()
+		if err != nil {
+			return fmt.Errorf("failed to get from Redis: %w", err)
 		}
+
+		if len(result) == 0 {
+			mapping = nil
+			return nil // Not found
+		}
+
+		// Check for empty marker to prevent cache penetration
+		longURL := result["long_url"]
+		if longURL == "__EMPTY__" || longURL == "" {
+			c.obs.Metrics().IncrementCounter("redis_empty_cache_hits_total", nil)
+			c.obs.Logger().Debug(ctx, "Empty cache hit", "short_code", shortCode)
+			// Return a null entry mapping instead of nil
+			mapping = &URLMapping{
+				ShortCode: shortCode,
+				LongURL:   "", // Empty URL indicates null entry
+				CreatedAt: time.Now(),
+			}
+			return nil
+		}
+
+		// Parse the mapping
+		mapping = &URLMapping{
+			ShortCode: result["short_code"],
+			LongURL:   longURL,
+		}
+
+		// Parse created_at timestamp
+		if createdAtStr, ok := result["created_at"]; ok {
+			createdAt, err := time.Parse(time.RFC3339, createdAtStr)
+			if err == nil {
+				mapping.CreatedAt = createdAt
+			}
+		}
+
+		// Parse expires_at timestamp
+		if expiresAtStr, ok := result["expires_at"]; ok && expiresAtStr != "" {
+			expiresAt, err := time.Parse(time.RFC3339, expiresAtStr)
+			if err == nil {
+				mapping.ExpiresAt = &expiresAt
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
 	}
 
-	return mapping, nil
+	return mapping, getErr
 }
 
 // Set stores a URL mapping in Redis with TTL jitter
 // TTL: 7 days ±1 day (6-8 days) to prevent cache expiration stampede
-// Requirements: 4.2
-func (c *L2Cache) Set(ctx context.Context, shortCode string, longURL string, createdAt time.Time) error {
-	key := fmt.Sprintf("url:%s", shortCode)
+// Uses crypto/rand for secure random number generation
+func (c *L2Cache) Set(ctx context.Context, shortCode string, longURL string, createdAt time.Time, expiresAt *time.Time) error {
+	// Wrap Redis operation with circuit breaker
+	return c.circuitBreaker.Execute(ctx, func() error {
+		key := fmt.Sprintf("url:%s", shortCode)
 
-	// Prepare hash fields
-	fields := map[string]interface{}{
-		"short_code": shortCode,
-		"long_url":   longURL,
-		"created_at": createdAt.Format(time.RFC3339),
-	}
+		// Prepare hash fields
+		fields := map[string]interface{}{
+			"short_code": shortCode,
+			"long_url":   longURL,
+			"created_at": createdAt.Format(time.RFC3339),
+		}
 
-	// Set the hash
-	if err := c.client.HSet(ctx, key, fields).Err(); err != nil {
-		return fmt.Errorf("failed to set in Redis: %w", err)
-	}
+		// Add expires_at if present
+		if expiresAt != nil {
+			fields["expires_at"] = expiresAt.Format(time.RFC3339)
+		}
 
-	// Calculate TTL with ±1 day jitter to prevent thundering herd
-	// Base TTL: 7 days (604800 seconds)
-	// Jitter range: 6-8 days (518400-691200 seconds)
-	baseTTL := 7 * 24 * 3600 // 7 days in seconds
-	jitterRange := 24 * 3600 // 1 day in seconds
+		// Set the hash
+		if err := c.client.HSet(ctx, key, fields).Err(); err != nil {
+			return fmt.Errorf("failed to set in Redis: %w", err)
+		}
 
-	// Generate random jitter: -1 day to +1 day
-	jitter := rand.Intn(2*jitterRange+1) - jitterRange // #nosec G404 - weak random is acceptable for cache TTL jitter
-	ttlSeconds := baseTTL + jitter
-	ttl := time.Duration(ttlSeconds) * time.Second
+		// Calculate TTL with ±1 day jitter to prevent thundering herd
+		// Base TTL: 7 days (604800 seconds)
+		// Jitter range: ±1 day (86400 seconds)
+		baseTTL := 7 * 24 * 3600 // 7 days in seconds
+		jitterRange := 24 * 3600 // 1 day in seconds
 
-	// Set TTL
-	if err := c.client.Expire(ctx, key, ttl).Err(); err != nil {
-		return fmt.Errorf("failed to set TTL in Redis: %w", err)
-	}
+		// Generate cryptographically secure random jitter: -1 day to +1 day
+		var randomBytes [8]byte
+		if _, err := rand.Read(randomBytes[:]); err != nil {
+			return fmt.Errorf("failed to generate random jitter: %w", err)
+		}
 
-	return nil
+		// Convert random bytes to uint64, then to int in range [0, 2*jitterRange]
+		randomUint64 := binary.BigEndian.Uint64(randomBytes[:])
+		jitter := int(randomUint64%uint64(2*jitterRange+1)) - jitterRange
+
+		ttlSeconds := baseTTL + jitter
+		ttl := time.Duration(ttlSeconds) * time.Second
+
+		// Track TTL distribution metrics
+		c.obs.Metrics().RecordHistogram("redis_ttl_seconds", ttl.Seconds(), map[string]string{
+			"layer": "L2",
+		})
+
+		// Set TTL
+		if err := c.client.Expire(ctx, key, ttl).Err(); err != nil {
+			return fmt.Errorf("failed to set TTL in Redis: %w", err)
+		}
+
+		return nil
+	})
 }
 
 // Delete removes a URL mapping from Redis
-// Requirements: 4.6
 func (c *L2Cache) Delete(ctx context.Context, shortCode string) error {
-	key := fmt.Sprintf("url:%s", shortCode)
+	// Wrap Redis operation with circuit breaker
+	return c.circuitBreaker.Execute(ctx, func() error {
+		key := fmt.Sprintf("url:%s", shortCode)
 
-	if err := c.client.Del(ctx, key).Err(); err != nil {
-		return fmt.Errorf("failed to delete from Redis: %w", err)
-	}
+		if err := c.client.Del(ctx, key).Err(); err != nil {
+			return fmt.Errorf("failed to delete from Redis: %w", err)
+		}
 
-	return nil
+		return nil
+	})
+}
+
+// SetWithTTL stores a URL mapping in Redis with custom TTL
+// This is useful for caching null entries with short TTL to prevent cache penetration
+func (c *L2Cache) SetWithTTL(ctx context.Context, shortCode string, longURL string, createdAt time.Time, ttl time.Duration) error {
+	// Wrap Redis operation with circuit breaker
+	return c.circuitBreaker.Execute(ctx, func() error {
+		key := fmt.Sprintf("url:%s", shortCode)
+
+		// Prepare hash fields
+		fields := map[string]interface{}{
+			"short_code": shortCode,
+			"long_url":   longURL,
+			"created_at": createdAt.Format(time.RFC3339),
+		}
+
+		// Set the hash
+		if err := c.client.HSet(ctx, key, fields).Err(); err != nil {
+			return fmt.Errorf("failed to set in Redis: %w", err)
+		}
+
+		// Set custom TTL
+		if err := c.client.Expire(ctx, key, ttl).Err(); err != nil {
+			return fmt.Errorf("failed to set TTL in Redis: %w", err)
+		}
+
+		return nil
+	})
 }
 
 // BatchGet retrieves multiple URL mappings from Redis
 // Returns a map of shortCode -> URLMapping
-// Requirements: 4.2
 func (c *L2Cache) BatchGet(ctx context.Context, shortCodes []string) (map[string]*URLMapping, error) {
 	if len(shortCodes) == 0 {
 		return make(map[string]*URLMapping), nil
@@ -204,7 +298,6 @@ func (c *L2Cache) BatchGet(ctx context.Context, shortCodes []string) (map[string
 }
 
 // BatchDelete removes multiple URL mappings from Redis
-// Requirements: 4.6
 func (c *L2Cache) BatchDelete(ctx context.Context, shortCodes []string) error {
 	if len(shortCodes) == 0 {
 		return nil
@@ -225,7 +318,6 @@ func (c *L2Cache) BatchDelete(ctx context.Context, shortCodes []string) error {
 }
 
 // Ping checks if Redis is reachable
-// Requirements: 4.2
 func (c *L2Cache) Ping(ctx context.Context) error {
 	return c.client.Ping(ctx).Err()
 }
@@ -235,9 +327,55 @@ func (c *L2Cache) Close() error {
 	return c.client.Close()
 }
 
+// Client returns the underlying Redis client for health checks
+func (c *L2Cache) Client() redis.UniversalClient {
+	return c.client
+}
+
+// CircuitBreaker returns the circuit breaker for monitoring
+func (c *L2Cache) CircuitBreaker() *CircuitBreaker {
+	return c.circuitBreaker
+}
+
 // Stats returns Redis statistics
 func (c *L2Cache) Stats() *redis.PoolStats {
 	return c.client.PoolStats()
+}
+
+// SetEmpty caches an empty result to prevent cache penetration
+func (c *L2Cache) SetEmpty(ctx context.Context, shortCode string) error {
+	// Wrap Redis operation with circuit breaker
+	return c.circuitBreaker.Execute(ctx, func() error {
+		key := fmt.Sprintf("url:%s", shortCode)
+
+		// Use special marker for empty values
+		emptyMarker := map[string]interface{}{
+			"short_code": shortCode,
+			"long_url":   "__EMPTY__", // Special marker for empty cache
+			"created_at": time.Now().Format(time.RFC3339),
+		}
+
+		// Short TTL for empty values (5 minutes instead of 7 days)
+		ttl := 5 * time.Minute
+
+		// Use pipeline for atomic operation
+		pipe := c.client.Pipeline()
+		pipe.HSet(ctx, key, emptyMarker)
+		pipe.Expire(ctx, key, ttl)
+
+		_, err := pipe.Exec(ctx)
+		if err != nil {
+			c.obs.Metrics().IncrementCounter("redis_empty_cache_set_errors_total", nil)
+			return fmt.Errorf("failed to set empty cache: %w", err)
+		}
+
+		c.obs.Metrics().IncrementCounter("redis_empty_cache_set_total", nil)
+		c.obs.Logger().Debug(ctx, "Cached empty value",
+			"short_code", shortCode,
+			"ttl_seconds", int(ttl.Seconds()))
+
+		return nil
+	})
 }
 
 // MarshalBinary implements encoding.BinaryMarshaler for URLMapping

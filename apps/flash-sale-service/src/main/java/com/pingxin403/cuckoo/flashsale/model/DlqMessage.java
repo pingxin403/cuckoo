@@ -8,8 +8,6 @@ import java.time.Instant;
  * <p>This record wraps the original OrderMessage with additional metadata about the failure,
  * including the error message, retry count, and timestamp when the message was sent to DLQ.
  *
- * <p>Requirements: 2.4, 2.5
- *
  * @param originalMessage the original order message that failed processing
  * @param errorMessage the error message describing why processing failed
  * @param retryCount the number of retry attempts before sending to DLQ

@@ -6,7 +6,7 @@
 -- Note: In production, you would migrate data first
 DROP TABLE IF EXISTS offline_messages;
 
--- Recreate offline_messages table with partitioning
+-- Recreate offline_messages table with partitioning and multi-region support
 CREATE TABLE offline_messages (
     id BIGINT AUTO_INCREMENT,
     msg_id VARCHAR(36) NOT NULL,
@@ -21,12 +21,22 @@ CREATE TABLE offline_messages (
     expires_at TIMESTAMP NOT NULL,
     metadata JSON,
     
+    -- Multi-region support fields (Task 18.1)
+    region_id VARCHAR(50) NOT NULL DEFAULT 'default',
+    global_id VARCHAR(255),  -- HLC-based global ID for cross-region ordering
+    sync_status ENUM('pending', 'synced', 'conflict') DEFAULT 'pending',
+    synced_at TIMESTAMP NULL,  -- Sync completion time
+    
     PRIMARY KEY (id, user_id),  -- Composite key required for partitioning
     UNIQUE KEY idx_msg_id (msg_id),
     KEY idx_user_timestamp (user_id, timestamp),
     KEY idx_conversation_seq (conversation_id, sequence_number),
     KEY idx_expires_at (expires_at),
-    KEY idx_user_conversation (user_id, conversation_id, sequence_number)
+    KEY idx_user_conversation (user_id, conversation_id, sequence_number),
+    
+    -- Multi-region indexes (Task 18.1)
+    KEY idx_region_sync_status (region_id, sync_status, created_at),
+    KEY idx_global_id (global_id)
 ) ENGINE=InnoDB
 PARTITION BY HASH(CRC32(user_id))
 PARTITIONS 16;
@@ -35,10 +45,11 @@ PARTITIONS 16;
 -- Note: UNIQUE constraint on msg_id is maintained across all partitions
 
 -- Test query performance with sample data
--- Insert sample offline messages for testing
+-- Insert sample offline messages for testing (with multi-region fields)
 INSERT INTO offline_messages (
     msg_id, user_id, sender_id, conversation_id, conversation_type,
-    content, sequence_number, timestamp, expires_at
+    content, sequence_number, timestamp, expires_at,
+    region_id, global_id, sync_status
 ) VALUES
 (
     UUID(),
@@ -49,7 +60,10 @@ INSERT INTO offline_messages (
     'Test message 1',
     1,
     UNIX_TIMESTAMP() * 1000,
-    DATE_ADD(NOW(), INTERVAL 7 DAY)
+    DATE_ADD(NOW(), INTERVAL 7 DAY),
+    'region-a',
+    'region-a-1234567890-0-1',
+    'synced'
 ),
 (
     UUID(),
@@ -60,7 +74,10 @@ INSERT INTO offline_messages (
     'Test message 2',
     2,
     UNIX_TIMESTAMP() * 1000,
-    DATE_ADD(NOW(), INTERVAL 7 DAY)
+    DATE_ADD(NOW(), INTERVAL 7 DAY),
+    'region-a',
+    'region-a-1234567891-0-2',
+    'pending'
 ),
 (
     UUID(),
@@ -71,7 +88,10 @@ INSERT INTO offline_messages (
     'Test message 3',
     3,
     UNIX_TIMESTAMP() * 1000,
-    DATE_ADD(NOW(), INTERVAL 7 DAY)
+    DATE_ADD(NOW(), INTERVAL 7 DAY),
+    'region-b',
+    'region-b-1234567892-0-3',
+    'synced'
 );
 
 -- Verify partitioning is working
@@ -91,3 +111,26 @@ INSERT INTO offline_messages (
 
 -- 4. TTL cleanup query (will scan all partitions)
 -- EXPLAIN DELETE FROM offline_messages WHERE expires_at < NOW() LIMIT 10000;
+
+-- Multi-region query patterns (Task 18.1):
+-- 5. Find pending sync messages for a region (uses idx_region_sync_status)
+-- EXPLAIN SELECT * FROM offline_messages 
+-- WHERE region_id = 'region-a' AND sync_status = 'pending' 
+-- ORDER BY created_at LIMIT 1000;
+
+-- 6. Cross-region query by global_id (uses idx_global_id)
+-- EXPLAIN SELECT * FROM offline_messages WHERE global_id = 'region-a-1234567890-0-1';
+
+-- 7. Find conflict messages across regions
+-- EXPLAIN SELECT * FROM offline_messages WHERE sync_status = 'conflict' ORDER BY created_at;
+
+-- 8. Update sync status after successful replication
+-- UPDATE offline_messages 
+-- SET sync_status = 'synced', synced_at = NOW() 
+-- WHERE region_id = 'region-a' AND sync_status = 'pending' 
+-- LIMIT 1000;
+
+-- 9. Cross-region message ordering by global_id (HLC-based)
+-- SELECT * FROM offline_messages 
+-- WHERE conversation_id = 'private:user001_user002' 
+-- ORDER BY global_id;

@@ -10,8 +10,6 @@ package com.pingxin403.cuckoo.flashsale.service.dto;
  *   <li>MEDIUM - Suspicious user, requires captcha verification
  *   <li>HIGH - High-risk user, request is blocked
  * </ul>
- *
- * <p>Validates Requirements: 3.4, 3.5, 3.6
  */
 public enum RiskLevel {
   /** 正常用户，无感通过 - Normal user, passes without additional verification */

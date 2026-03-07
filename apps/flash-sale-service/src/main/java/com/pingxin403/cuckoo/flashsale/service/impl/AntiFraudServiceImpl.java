@@ -35,8 +35,6 @@ import com.pingxin403.cuckoo.flashsale.service.dto.SeckillRequest;
  *   <li>captcha:{userId} -> String (captcha code) -> TTL: 5分钟
  *   <li>request_count:{deviceId} -> Integer (request count in time window)
  * </ul>
- *
- * <p>Validates Requirements: 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 7.4
  */
 @Service
 public class AntiFraudServiceImpl implements AntiFraudService {
@@ -125,8 +123,6 @@ public class AntiFraudServiceImpl implements AntiFraudService {
 
   /**
    * {@inheritDoc}
-   *
-   * <p>Validates Requirements: 3.4, 3.5, 3.6
    *
    * <p>Risk assessment logic:
    *
@@ -384,8 +380,6 @@ public class AntiFraudServiceImpl implements AntiFraudService {
    *
    * <p>Uses Redis token bucket algorithm to control request rate at L2 level. This provides smooth
    * rate limiting with burst capacity.
-   *
-   * <p>Validates Requirements: 3.2, 7.4
    *
    * @param key the rate limit key (e.g., "device:{deviceId}" or "user:{userId}")
    * @return true if token acquired successfully, false if rate limited

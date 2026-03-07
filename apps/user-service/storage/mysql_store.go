@@ -53,6 +53,11 @@ func (s *MySQLStore) Close() error {
 	return s.db.Close()
 }
 
+// DB returns the underlying database connection for health checks
+func (s *MySQLStore) DB() *sql.DB {
+	return s.db
+}
+
 // GetUser retrieves a single user's profile
 func (s *MySQLStore) GetUser(ctx context.Context, userID string) (*userpb.UserProfile, error) {
 	query := `

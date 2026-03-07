@@ -31,8 +31,6 @@ import com.pingxin403.cuckoo.flashsale.service.dto.WarmupResult;
  *   <li>stock:sku_{skuId} - Remaining stock count (Integer)
  *   <li>sold:sku_{skuId} - Sold count (Integer)
  * </ul>
- *
- * <p>Validates Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.7
  */
 @Service
 public class InventoryServiceImpl implements InventoryService {

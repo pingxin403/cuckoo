@@ -6,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/pingxin403/cuckoo/libs/hlc"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -27,13 +28,25 @@ type RedisClient interface {
 
 // SequenceGenerator generates monotonically increasing sequence numbers for messages
 type SequenceGenerator struct {
-	redis RedisClient
+	redis    RedisClient
+	hlc      *hlc.HLC // HLC for global ID generation
+	regionID string   // Region identifier for multi-region support
 }
 
 // NewSequenceGenerator creates a new sequence generator with Redis backend
 func NewSequenceGenerator(redisClient RedisClient) *SequenceGenerator {
 	return &SequenceGenerator{
-		redis: redisClient,
+		redis:    redisClient,
+		regionID: "default", // Default region, should be configured
+	}
+}
+
+// NewSequenceGeneratorWithRegion creates a new sequence generator with region support
+func NewSequenceGeneratorWithRegion(redisClient RedisClient, regionID, nodeID string) *SequenceGenerator {
+	return &SequenceGenerator{
+		redis:    redisClient,
+		hlc:      hlc.NewHLC(regionID, nodeID),
+		regionID: regionID,
 	}
 }
 
@@ -45,8 +58,8 @@ func (sg *SequenceGenerator) GenerateSequence(ctx context.Context, conversationT
 		return 0, fmt.Errorf("conversation ID cannot be empty")
 	}
 
-	// Build Redis key: seq:{conversation_type}:{conversation_id}
-	key := fmt.Sprintf("seq:%s:%s", conversationType, conversationID)
+	// Build Redis key: seq:{region}:{conversation_type}:{conversation_id}
+	key := fmt.Sprintf("seq:%s:%s:%s", sg.regionID, conversationType, conversationID)
 
 	// Use Redis INCR for atomic increment
 	result, err := sg.redis.Incr(ctx, key).Result()
@@ -55,6 +68,37 @@ func (sg *SequenceGenerator) GenerateSequence(ctx context.Context, conversationT
 	}
 
 	return result, nil
+}
+
+// GenerateGlobalID generates a globally unique ID using HLC
+// Returns the global ID string in format: {region_id}-{hlc_timestamp}-{sequence}
+func (sg *SequenceGenerator) GenerateGlobalID() (string, error) {
+	if sg.hlc == nil {
+		return "", fmt.Errorf("HLC not initialized, use NewSequenceGeneratorWithRegion")
+	}
+
+	globalID := sg.hlc.GenerateID()
+	return globalID.String(), nil
+}
+
+// GenerateSequenceWithGlobalID generates both a local sequence number and a global ID
+// This is useful for multi-region deployments where we need both local ordering and global uniqueness
+func (sg *SequenceGenerator) GenerateSequenceWithGlobalID(ctx context.Context, conversationType ConversationType, conversationID string) (localSeq int64, globalID string, err error) {
+	// Generate local sequence
+	localSeq, err = sg.GenerateSequence(ctx, conversationType, conversationID)
+	if err != nil {
+		return 0, "", err
+	}
+
+	// Generate global ID if HLC is available
+	if sg.hlc != nil {
+		globalID, err = sg.GenerateGlobalID()
+		if err != nil {
+			return 0, "", err
+		}
+	}
+
+	return localSeq, globalID, nil
 }
 
 // GeneratePrivateChatSequence generates a sequence number for a private chat
@@ -85,7 +129,7 @@ func (sg *SequenceGenerator) GetCurrentSequence(ctx context.Context, conversatio
 		return 0, fmt.Errorf("conversation ID cannot be empty")
 	}
 
-	key := fmt.Sprintf("seq:%s:%s", conversationType, conversationID)
+	key := fmt.Sprintf("seq:%s:%s:%s", sg.regionID, conversationType, conversationID)
 
 	result, err := sg.redis.Get(ctx, key).Int64()
 	if err == redis.Nil {
@@ -97,6 +141,22 @@ func (sg *SequenceGenerator) GetCurrentSequence(ctx context.Context, conversatio
 	}
 
 	return result, nil
+}
+
+// UpdateHLCFromRemote updates the HLC clock from a remote timestamp
+// This is used when receiving messages from other regions to maintain causal ordering
+// remoteHLC should be in format "physical-logical" (e.g., "1234567890-5")
+func (sg *SequenceGenerator) UpdateHLCFromRemote(remoteHLC string) error {
+	if sg.hlc == nil {
+		return fmt.Errorf("HLC not initialized")
+	}
+
+	return sg.hlc.UpdateFromRemote(remoteHLC)
+}
+
+// GetHLC returns the HLC instance (for drift detection integration)
+func (sg *SequenceGenerator) GetHLC() *hlc.HLC {
+	return sg.hlc
 }
 
 // sortAndJoinUserIDs sorts two user IDs and joins them with a separator

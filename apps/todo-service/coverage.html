@@ -1,0 +1,559 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>client: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/pingxin403/cuckoo/apps/todo-service/client/hello_client.go (0.0%)</option>
+				
+				<option value="file1">github.com/pingxin403/cuckoo/apps/todo-service/config/config.go (89.5%)</option>
+				
+				<option value="file2">github.com/pingxin403/cuckoo/apps/todo-service/service/todo_service.go (88.6%)</option>
+				
+				<option value="file3">github.com/pingxin403/cuckoo/apps/todo-service/storage/memory_store.go (100.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">no coverage</span>
+				<span class="cov1">low coverage</span>
+				<span class="cov2">*</span>
+				<span class="cov3">*</span>
+				<span class="cov4">*</span>
+				<span class="cov5">*</span>
+				<span class="cov6">*</span>
+				<span class="cov7">*</span>
+				<span class="cov8">*</span>
+				<span class="cov9">*</span>
+				<span class="cov10">high coverage</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package client
+
+import (
+        "context"
+        "fmt"
+        "os"
+        "time"
+
+        "github.com/pingxin403/cuckoo/api/gen/go/hellopb"
+        "google.golang.org/grpc"
+        "google.golang.org/grpc/credentials/insecure"
+)
+
+// HelloClient wraps the gRPC client for Hello service
+type HelloClient struct {
+        client hellopb.HelloServiceClient
+        conn   *grpc.ClientConn
+}
+
+// NewHelloClient creates a new Hello service client
+// It reads the service address from the HELLO_SERVICE_ADDR environment variable
+// If not set, it defaults to "localhost:9090"
+func NewHelloClient() (*HelloClient, error) <span class="cov0" title="0">{
+        // Get service address from environment variable
+        addr := os.Getenv("HELLO_SERVICE_ADDR")
+        if addr == "" </span><span class="cov0" title="0">{
+                addr = "localhost:9090" // Default for local development
+        }</span>
+
+        // Configure gRPC connection with retry policy
+        <span class="cov0" title="0">conn, err := grpc.Dial(addr,
+                grpc.WithTransportCredentials(insecure.NewCredentials()),
+                grpc.WithDefaultServiceConfig(`{
+                        "methodConfig": [{
+                                "name": [{"service": "api.v1.HelloService"}],
+                                "retryPolicy": {
+                                        "maxAttempts": 3,
+                                        "initialBackoff": "0.1s",
+                                        "maxBackoff": "1s",
+                                        "backoffMultiplier": 2,
+                                        "retryableStatusCodes": ["UNAVAILABLE", "DEADLINE_EXCEEDED"]
+                                }
+                        }]
+                }`),
+        )
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to connect to Hello service at %s: %w", addr, err)
+        }</span>
+
+        <span class="cov0" title="0">client := hellopb.NewHelloServiceClient(conn)
+        return &amp;HelloClient{
+                client: client,
+                conn:   conn,
+        }, nil</span>
+}
+
+// SayHello calls the Hello service with the given name
+// It includes timeout and error handling
+func (c *HelloClient) SayHello(ctx context.Context, name string) (string, error) <span class="cov0" title="0">{
+        // Set timeout for the request
+        ctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+        defer cancel()
+
+        // Make the gRPC call
+        req := &amp;hellopb.HelloRequest{Name: name}
+        resp, err := c.client.SayHello(ctx, req)
+        if err != nil </span><span class="cov0" title="0">{
+                return "", fmt.Errorf("failed to call SayHello: %w", err)
+        }</span>
+
+        <span class="cov0" title="0">return resp.Message, nil</span>
+}
+
+// Close closes the gRPC connection
+func (c *HelloClient) Close() error <span class="cov0" title="0">{
+        if c.conn != nil </span><span class="cov0" title="0">{
+                return c.conn.Close()
+        }</span>
+        <span class="cov0" title="0">return nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">package config
+
+import (
+        "fmt"
+
+        "github.com/pingxin403/cuckoo/libs/config"
+)
+
+// Config holds all configuration for todo-service
+type Config struct {
+        // Server configuration
+        Server ServerConfig `mapstructure:"server"`
+
+        // Observability configuration
+        Observability config.ObservabilityConfig `mapstructure:"observability"`
+}
+
+// ServerConfig holds server-specific configuration
+type ServerConfig struct {
+        // GRPCPort is the port for gRPC server
+        GRPCPort int `mapstructure:"grpc_port" validate:"required,min=1,max=65535"`
+        // HTTPPort is the port for HTTP server
+        HTTPPort int `mapstructure:"http_port" validate:"required,min=1,max=65535"`
+        // Host is the host to bind to
+        Host string `mapstructure:"host"`
+}
+
+// Load loads configuration from environment variables and config files
+func Load() (*Config, error) <span class="cov10" title="4">{
+        loader, err := config.Load(config.Options{
+                ServiceName: "", // Empty to use default "config" filename
+                ConfigType:  "yaml",
+                ConfigPaths: []string{".", "./config"},
+        })
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to create config loader: %w", err)
+        }</span>
+
+        // Set defaults
+        <span class="cov10" title="4">config.SetCommonDefaults(loader)
+        setTodoServiceDefaults(loader)
+
+        // Load configuration
+        cfg := &amp;Config{}
+        if err := loader.LoadInto(cfg); err != nil </span><span class="cov0" title="0">{
+                return nil, fmt.Errorf("failed to load config: %w", err)
+        }</span>
+
+        <span class="cov10" title="4">return cfg, nil</span>
+}
+
+// setTodoServiceDefaults sets todo-service specific defaults
+func setTodoServiceDefaults(loader *config.Loader) <span class="cov10" title="4">{
+        // Server defaults
+        loader.SetDefault("server.grpc_port", 9091)
+        loader.SetDefault("server.http_port", 8080)
+        loader.SetDefault("server.host", "0.0.0.0")
+
+        // Observability defaults
+        loader.SetDefault("observability.service_name", "todo-service")
+        loader.SetDefault("observability.service_version", "1.0.0")
+        loader.SetDefault("observability.environment", "development")
+        loader.SetDefault("observability.enable_metrics", true)
+        loader.SetDefault("observability.metrics_port", 9090)
+        loader.SetDefault("observability.log_level", "info")
+        loader.SetDefault("observability.log_format", "json")
+}</span>
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package service
+
+import (
+        "context"
+        "strings"
+        "time"
+
+        "github.com/google/uuid"
+        "github.com/pingxin403/cuckoo/api/gen/go/todopb"
+        "github.com/pingxin403/cuckoo/apps/todo-service/storage"
+        "github.com/pingxin403/cuckoo/libs/observability"
+        "google.golang.org/grpc/codes"
+        "google.golang.org/grpc/status"
+        "google.golang.org/protobuf/types/known/timestamppb"
+)
+
+// TodoServiceServer implements the TodoService gRPC service
+type TodoServiceServer struct {
+        todopb.UnimplementedTodoServiceServer
+        store storage.TodoStore
+        obs   observability.Observability
+}
+
+// NewTodoServiceServer creates a new TodoServiceServer
+func NewTodoServiceServer(store storage.TodoStore, obs observability.Observability) *TodoServiceServer <span class="cov5" title="5">{
+        return &amp;TodoServiceServer{
+                store: store,
+                obs:   obs,
+        }
+}</span>
+
+// CreateTodo creates a new TODO item
+func (s *TodoServiceServer) CreateTodo(ctx context.Context, req *todopb.CreateTodoRequest) (*todopb.CreateTodoResponse, error) <span class="cov10" title="21">{
+        start := time.Now()
+        defer func() </span><span class="cov10" title="21">{
+                duration := time.Since(start).Seconds()
+                s.obs.Metrics().RecordHistogram("todo_grpc_request_duration_seconds", duration, map[string]string{"method": "CreateTodo"})
+        }</span>()
+
+        // Validate input
+        <span class="cov10" title="21">if req.Title == "" || strings.TrimSpace(req.Title) == "" </span><span class="cov3" title="2">{
+                s.obs.Metrics().IncrementCounter("todo_operations_total", map[string]string{"operation": "create", "status": "failure"})
+                s.obs.Metrics().IncrementCounter("todo_grpc_requests_total", map[string]string{"method": "CreateTodo", "status": "invalid_argument"})
+                return nil, status.Error(codes.InvalidArgument, "title is required and cannot be empty")
+        }</span>
+
+        // Generate unique ID
+        <span class="cov9" title="19">id := uuid.New().String()
+
+        // Create TODO
+        now := timestamppb.Now()
+        todo := &amp;todopb.Todo{
+                Id:          id,
+                Title:       req.Title,
+                Description: req.Description,
+                Completed:   false,
+                CreatedAt:   now,
+                UpdatedAt:   now,
+        }
+
+        // Save to store
+        if err := s.store.Create(todo); err != nil </span><span class="cov0" title="0">{
+                s.obs.Metrics().IncrementCounter("todo_operations_total", map[string]string{"operation": "create", "status": "failure"})
+                s.obs.Metrics().IncrementCounter("todo_grpc_requests_total", map[string]string{"method": "CreateTodo", "status": "internal"})
+                return nil, status.Errorf(codes.Internal, "failed to create todo: %v", err)
+        }</span>
+
+        // Update metrics
+        <span class="cov9" title="19">s.obs.Metrics().IncrementCounter("todo_operations_total", map[string]string{"operation": "create", "status": "success"})
+        s.obs.Metrics().IncrementCounter("todo_grpc_requests_total", map[string]string{"method": "CreateTodo", "status": "ok"})
+
+        // Update total items gauge
+        todos, _ := s.store.List()
+        s.obs.Metrics().SetGauge("todo_items_total", float64(len(todos)), nil)
+
+        return &amp;todopb.CreateTodoResponse{
+                Todo: todo,
+        }, nil</span>
+}
+
+// ListTodos returns all TODO items
+func (s *TodoServiceServer) ListTodos(ctx context.Context, req *todopb.ListTodosRequest) (*todopb.ListTodosResponse, error) <span class="cov5" title="5">{
+        start := time.Now()
+        defer func() </span><span class="cov5" title="5">{
+                duration := time.Since(start).Seconds()
+                s.obs.Metrics().RecordHistogram("todo_grpc_request_duration_seconds", duration, map[string]string{"method": "ListTodos"})
+        }</span>()
+
+        <span class="cov5" title="5">todos, err := s.store.List()
+        if err != nil </span><span class="cov0" title="0">{
+                s.obs.Metrics().IncrementCounter("todo_operations_total", map[string]string{"operation": "list", "status": "failure"})
+                s.obs.Metrics().IncrementCounter("todo_grpc_requests_total", map[string]string{"method": "ListTodos", "status": "internal"})
+                return nil, status.Errorf(codes.Internal, "failed to list todos: %v", err)
+        }</span>
+
+        <span class="cov5" title="5">s.obs.Metrics().IncrementCounter("todo_operations_total", map[string]string{"operation": "list", "status": "success"})
+        s.obs.Metrics().IncrementCounter("todo_grpc_requests_total", map[string]string{"method": "ListTodos", "status": "ok"})
+
+        // Update total items gauge
+        s.obs.Metrics().SetGauge("todo_items_total", float64(len(todos)), nil)
+
+        return &amp;todopb.ListTodosResponse{
+                Todos: todos,
+        }, nil</span>
+}
+
+// UpdateTodo updates an existing TODO item
+func (s *TodoServiceServer) UpdateTodo(ctx context.Context, req *todopb.UpdateTodoRequest) (*todopb.UpdateTodoResponse, error) <span class="cov6" title="6">{
+        start := time.Now()
+        defer func() </span><span class="cov6" title="6">{
+                duration := time.Since(start).Seconds()
+                s.obs.Metrics().RecordHistogram("todo_grpc_request_duration_seconds", duration, map[string]string{"method": "UpdateTodo"})
+        }</span>()
+
+        // Validate input
+        <span class="cov6" title="6">if req.Id == "" </span><span class="cov1" title="1">{
+                s.obs.Metrics().IncrementCounter("todo_operations_total", map[string]string{"operation": "update", "status": "failure"})
+                s.obs.Metrics().IncrementCounter("todo_grpc_requests_total", map[string]string{"method": "UpdateTodo", "status": "invalid_argument"})
+                return nil, status.Error(codes.InvalidArgument, "id is required")
+        }</span>
+
+        <span class="cov5" title="5">if req.Title == "" || strings.TrimSpace(req.Title) == "" </span><span class="cov1" title="1">{
+                s.obs.Metrics().IncrementCounter("todo_operations_total", map[string]string{"operation": "update", "status": "failure"})
+                s.obs.Metrics().IncrementCounter("todo_grpc_requests_total", map[string]string{"method": "UpdateTodo", "status": "invalid_argument"})
+                return nil, status.Error(codes.InvalidArgument, "title is required and cannot be empty")
+        }</span>
+
+        // Get existing TODO
+        <span class="cov5" title="4">existingTodo, err := s.store.Get(req.Id)
+        if err != nil </span><span class="cov1" title="1">{
+                s.obs.Metrics().IncrementCounter("todo_operations_total", map[string]string{"operation": "update", "status": "failure"})
+                s.obs.Metrics().IncrementCounter("todo_grpc_requests_total", map[string]string{"method": "UpdateTodo", "status": "not_found"})
+                return nil, status.Error(codes.NotFound, "todo not found")
+        }</span>
+
+        // Update fields
+        <span class="cov4" title="3">existingTodo.Title = req.Title
+        existingTodo.Description = req.Description
+        existingTodo.Completed = req.Completed
+        existingTodo.UpdatedAt = timestamppb.Now()
+
+        // Save updated TODO
+        if err := s.store.Update(existingTodo); err != nil </span><span class="cov0" title="0">{
+                s.obs.Metrics().IncrementCounter("todo_operations_total", map[string]string{"operation": "update", "status": "failure"})
+                s.obs.Metrics().IncrementCounter("todo_grpc_requests_total", map[string]string{"method": "UpdateTodo", "status": "internal"})
+                return nil, status.Errorf(codes.Internal, "failed to update todo: %v", err)
+        }</span>
+
+        <span class="cov4" title="3">s.obs.Metrics().IncrementCounter("todo_operations_total", map[string]string{"operation": "update", "status": "success"})
+        s.obs.Metrics().IncrementCounter("todo_grpc_requests_total", map[string]string{"method": "UpdateTodo", "status": "ok"})
+
+        return &amp;todopb.UpdateTodoResponse{
+                Todo: existingTodo,
+        }, nil</span>
+}
+
+// DeleteTodo deletes a TODO item
+func (s *TodoServiceServer) DeleteTodo(ctx context.Context, req *todopb.DeleteTodoRequest) (*todopb.DeleteTodoResponse, error) <span class="cov5" title="4">{
+        start := time.Now()
+        defer func() </span><span class="cov5" title="4">{
+                duration := time.Since(start).Seconds()
+                s.obs.Metrics().RecordHistogram("todo_grpc_request_duration_seconds", duration, map[string]string{"method": "DeleteTodo"})
+        }</span>()
+
+        // Validate input
+        <span class="cov5" title="4">if req.Id == "" </span><span class="cov1" title="1">{
+                s.obs.Metrics().IncrementCounter("todo_operations_total", map[string]string{"operation": "delete", "status": "failure"})
+                s.obs.Metrics().IncrementCounter("todo_grpc_requests_total", map[string]string{"method": "DeleteTodo", "status": "invalid_argument"})
+                return nil, status.Error(codes.InvalidArgument, "id is required")
+        }</span>
+
+        // Delete TODO
+        <span class="cov4" title="3">if err := s.store.Delete(req.Id); err != nil </span><span class="cov1" title="1">{
+                s.obs.Metrics().IncrementCounter("todo_operations_total", map[string]string{"operation": "delete", "status": "failure"})
+                s.obs.Metrics().IncrementCounter("todo_grpc_requests_total", map[string]string{"method": "DeleteTodo", "status": "not_found"})
+                return nil, status.Error(codes.NotFound, "todo not found")
+        }</span>
+
+        <span class="cov3" title="2">s.obs.Metrics().IncrementCounter("todo_operations_total", map[string]string{"operation": "delete", "status": "success"})
+        s.obs.Metrics().IncrementCounter("todo_grpc_requests_total", map[string]string{"method": "DeleteTodo", "status": "ok"})
+
+        // Update total items gauge
+        todos, _ := s.store.List()
+        s.obs.Metrics().SetGauge("todo_items_total", float64(len(todos)), nil)
+
+        return &amp;todopb.DeleteTodoResponse{
+                Success: true,
+        }, nil</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package storage
+
+import (
+        "fmt"
+        "sync"
+
+        "github.com/pingxin403/cuckoo/api/gen/go/todopb"
+)
+
+// TodoStore defines the interface for TODO storage operations
+type TodoStore interface {
+        Create(todo *todopb.Todo) error
+        Get(id string) (*todopb.Todo, error)
+        List() ([]*todopb.Todo, error)
+        Update(todo *todopb.Todo) error
+        Delete(id string) error
+}
+
+// MemoryStore implements TodoStore using an in-memory map
+type MemoryStore struct {
+        mu    sync.RWMutex
+        todos map[string]*todopb.Todo
+}
+
+// NewMemoryStore creates a new in-memory TODO store
+func NewMemoryStore() *MemoryStore <span class="cov4" title="7">{
+        return &amp;MemoryStore{
+                todos: make(map[string]*todopb.Todo),
+        }
+}</span>
+
+// Create adds a new TODO to the store
+func (s *MemoryStore) Create(todo *todopb.Todo) error <span class="cov10" title="112">{
+        s.mu.Lock()
+        defer s.mu.Unlock()
+
+        if todo == nil </span><span class="cov1" title="1">{
+                return fmt.Errorf("todo cannot be nil")
+        }</span>
+
+        <span class="cov9" title="111">s.todos[todo.Id] = todo
+        return nil</span>
+}
+
+// Get retrieves a TODO by ID
+func (s *MemoryStore) Get(id string) (*todopb.Todo, error) <span class="cov9" title="107">{
+        s.mu.RLock()
+        defer s.mu.RUnlock()
+
+        todo, exists := s.todos[id]
+        if !exists </span><span class="cov2" title="2">{
+                return nil, fmt.Errorf("todo with id %s not found", id)
+        }</span>
+
+        <span class="cov9" title="105">return todo, nil</span>
+}
+
+// List returns all TODOs
+func (s *MemoryStore) List() ([]*todopb.Todo, error) <span class="cov3" title="3">{
+        s.mu.RLock()
+        defer s.mu.RUnlock()
+
+        todos := make([]*todopb.Todo, 0, len(s.todos))
+        for _, todo := range s.todos </span><span class="cov9" title="103">{
+                todos = append(todos, todo)
+        }</span>
+
+        <span class="cov3" title="3">return todos, nil</span>
+}
+
+// Update modifies an existing TODO
+func (s *MemoryStore) Update(todo *todopb.Todo) error <span class="cov9" title="103">{
+        s.mu.Lock()
+        defer s.mu.Unlock()
+
+        if todo == nil </span><span class="cov1" title="1">{
+                return fmt.Errorf("todo cannot be nil")
+        }</span>
+
+        <span class="cov9" title="102">if _, exists := s.todos[todo.Id]; !exists </span><span class="cov1" title="1">{
+                return fmt.Errorf("todo with id %s not found", todo.Id)
+        }</span>
+
+        <span class="cov9" title="101">s.todos[todo.Id] = todo
+        return nil</span>
+}
+
+// Delete removes a TODO by ID
+func (s *MemoryStore) Delete(id string) error <span class="cov2" title="2">{
+        s.mu.Lock()
+        defer s.mu.Unlock()
+
+        if _, exists := s.todos[id]; !exists </span><span class="cov1" title="1">{
+                return fmt.Errorf("todo with id %s not found", id)
+        }</span>
+
+        <span class="cov1" title="1">delete(s.todos, id)
+        return nil</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>

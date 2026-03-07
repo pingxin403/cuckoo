@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/pingxin403/cuckoo/apps/im-gateway-service/routing"
+	"github.com/pingxin403/cuckoo/libs/seqcheck"
 	"github.com/redis/go-redis/v9"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
@@ -30,9 +32,11 @@ type GatewayService struct {
 	pushService   *PushService
 	cacheManager  *CacheManager
 	kafkaConsumer *KafkaConsumer
+	geoRouter     *routing.GeoRouter // Geographic routing for multi-region
 
 	// Configuration
-	config GatewayConfig
+	config   GatewayConfig
+	regionID string // Current region ID
 
 	// Shutdown
 	ctx    context.Context
@@ -90,6 +94,9 @@ type Connection struct {
 	// Rate limiting
 	lastMessageTime time.Time
 	messageCount    int
+
+	// Sequence checking for message gap detection
+	seqChecker *seqcheck.SequenceChecker
 
 	// Lifecycle
 	ctx       context.Context
@@ -173,17 +180,22 @@ type RouteGroupMessageResponse struct {
 
 // ClientMessage represents a message from the client.
 type ClientMessage struct {
-	Type      string          `json:"type"` // "send_msg", "ack", "heartbeat"
+	Type      string          `json:"type"` // "send_msg", "ack", "heartbeat", "gap_fill_response"
 	MsgID     string          `json:"msg_id"`
 	Recipient string          `json:"recipient"` // user_id or group_id
 	Content   string          `json:"content"`
 	Timestamp int64           `json:"timestamp"`
 	Extra     json.RawMessage `json:"extra,omitempty"`
+
+	// Gap fill response fields
+	RequestID string             `json:"request_id,omitempty"`
+	Messages  []seqcheck.Message `json:"messages,omitempty"`
+	NotFound  []int64            `json:"not_found,omitempty"`
 }
 
 // ServerMessage represents a message to the client.
 type ServerMessage struct {
-	Type           string `json:"type"` // "message", "ack", "ping", "error", "read_receipt"
+	Type           string `json:"type"` // "message", "ack", "ping", "error", "read_receipt", "gap_fill_request"
 	MsgID          string `json:"msg_id"`
 	Sender         string `json:"sender"`
 	Content        string `json:"content"`
@@ -195,6 +207,10 @@ type ServerMessage struct {
 	ReaderID       string `json:"reader_id,omitempty"`
 	ReadAt         int64  `json:"read_at,omitempty"`
 	ConversationID string `json:"conversation_id,omitempty"`
+
+	// Gap fill request fields
+	RequestID string              `json:"request_id,omitempty"`
+	Gaps      []seqcheck.GapRange `json:"gaps,omitempty"`
 }
 
 // NewGatewayService creates a new gateway service instance.
@@ -213,6 +229,7 @@ func NewGatewayService(
 		imClient:       imClient,
 		redisClient:    redisClient,
 		config:         config,
+		regionID:       "region-a", // Default, should be configured
 		ctx:            ctx,
 		cancel:         cancel,
 		upgrader: websocket.Upgrader{
@@ -240,6 +257,27 @@ func NewGatewayService(
 	return gateway
 }
 
+// NewGatewayServiceWithRegion creates a new gateway service instance with region support
+func NewGatewayServiceWithRegion(
+	authClient AuthServiceClient,
+	registryClient RegistryClient,
+	imClient IMServiceClient,
+	redisClient *redis.Client,
+	config GatewayConfig,
+	regionID string,
+	routingConfig *routing.GeoRouterConfig,
+) *GatewayService {
+	gateway := NewGatewayService(authClient, registryClient, imClient, redisClient, config)
+	gateway.regionID = regionID
+
+	// Initialize geo router if config provided
+	if routingConfig != nil {
+		gateway.geoRouter = routing.NewGeoRouter(regionID, *routingConfig, nil) // TODO: Add logger
+	}
+
+	return gateway
+}
+
 // Start starts the gateway service and all internal components.
 func (g *GatewayService) Start(kafkaConfig KafkaConfig) error {
 	// Start cache manager
@@ -253,12 +291,32 @@ func (g *GatewayService) Start(kafkaConfig KafkaConfig) error {
 		return fmt.Errorf("failed to start kafka consumer: %w", err)
 	}
 
+	// Start geo router if configured
+	if g.geoRouter != nil {
+		if err := g.geoRouter.Start(); err != nil {
+			return fmt.Errorf("failed to start geo router: %w", err)
+		}
+	}
+
 	return nil
 }
 
 // HandleWebSocket handles WebSocket connection upgrade and lifecycle.
 // Validates: Requirements 6.1, 6.2, 11.1, 15.5
 func (g *GatewayService) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
+	// Check if geo-routing is enabled and route to appropriate region
+	if g.geoRouter != nil {
+		decision := g.geoRouter.RouteRequest(r)
+
+		// If target region is not local, redirect or proxy
+		if decision.TargetRegion != g.regionID {
+			// For WebSocket, we need to send a redirect response
+			// In production, this would be handled by a load balancer
+			http.Error(w, fmt.Sprintf("Please connect to region: %s", decision.TargetRegion), http.StatusTemporaryRedirect)
+			return
+		}
+	}
+
 	// Extract JWT token from query parameter or header
 	token := r.URL.Query().Get("token")
 	if token == "" {
@@ -307,6 +365,14 @@ func (g *GatewayService) HandleWebSocket(w http.ResponseWriter, r *http.Request)
 		cancel:   cancel,
 	}
 
+	// Initialize sequence checker with gap callback
+	// Note: We need to capture connection in the closure, so we initialize it after creating the connection
+	connection.seqChecker = seqcheck.NewSequenceChecker(3, func(gaps []seqcheck.GapRange) {
+		// Gap callback: send gap fill request to server
+		// This runs in a goroutine, so we need to be careful with the connection
+		go connection.sendGapFillRequest(gaps)
+	})
+
 	// Register user in Registry (Requirement 7.1, 7.2, 15.10)
 	if err := g.registryClient.RegisterUser(ctx, claims.UserID, claims.DeviceID, g.getGatewayNodeID()); err != nil {
 		_ = conn.Close()
@@ -343,6 +409,13 @@ func (g *GatewayService) getGatewayNodeID() string {
 func (g *GatewayService) Shutdown(ctx context.Context) error {
 	// Cancel context to signal shutdown
 	g.cancel()
+
+	// Stop geo router
+	if g.geoRouter != nil {
+		if err := g.geoRouter.Stop(); err != nil {
+			// Log error but continue shutdown
+		}
+	}
 
 	// Stop Kafka consumer
 	if g.kafkaConsumer != nil {
@@ -442,6 +515,8 @@ func (c *Connection) readPump() {
 			c.handleAck(&clientMsg)
 		case "heartbeat":
 			c.handleHeartbeat(&clientMsg)
+		case "gap_fill_response":
+			c.handleGapFillResponse(&clientMsg)
 		default:
 			c.sendError("UNKNOWN_MESSAGE_TYPE", fmt.Sprintf("Unknown message type: %s", clientMsg.Type))
 		}
@@ -636,6 +711,111 @@ func (c *Connection) sendError(code, message string) {
 	}
 }
 
+// sendGapFillRequest sends a gap fill request to the server
+// This is called when the sequence checker detects gaps
+func (c *Connection) sendGapFillRequest(gaps []seqcheck.GapRange) {
+	if len(gaps) == 0 {
+		return
+	}
+
+	// Group gaps by conversation ID
+	gapsByConv := make(map[string][]seqcheck.GapRange)
+	for _, gap := range gaps {
+		gapsByConv[gap.ConversationID] = append(gapsByConv[gap.ConversationID], gap)
+	}
+
+	// Send a request for each conversation
+	for convID, convGaps := range gapsByConv {
+		request := seqcheck.BuildGapFillRequest(convID, convGaps, fmt.Sprintf("req-%d-%s", time.Now().UnixNano(), c.UserID))
+
+		response := ServerMessage{
+			Type:           "gap_fill_request",
+			ConversationID: convID,
+			RequestID:      request.RequestID,
+			Gaps:           request.Gaps,
+			Timestamp:      time.Now().Unix(),
+		}
+
+		data, err := json.Marshal(response)
+		if err != nil {
+			// Log error
+			continue
+		}
+
+		select {
+		case c.Send <- data:
+		default:
+			// Channel full, skip
+		}
+	}
+}
+
+// handleGapFillResponse handles a gap fill response from the server
+func (c *Connection) handleGapFillResponse(msg *ClientMessage) {
+	if msg.RequestID == "" {
+		c.sendError("INVALID_GAP_FILL_RESPONSE", "Missing request_id")
+		return
+	}
+
+	// Create response object
+	response := &seqcheck.GapFillResponse{
+		RequestID: msg.RequestID,
+		Messages:  msg.Messages,
+		NotFound:  msg.NotFound,
+	}
+
+	// Validate response
+	if err := response.Validate(); err != nil {
+		c.sendError("INVALID_GAP_FILL_RESPONSE", fmt.Sprintf("Validation failed: %v", err))
+		return
+	}
+
+	// Process response and fill gaps
+	if err := seqcheck.ProcessGapFillResponse(c.seqChecker, response); err != nil {
+		c.sendError("GAP_FILL_ERROR", fmt.Sprintf("Failed to process response: %v", err))
+		return
+	}
+
+	// Deliver the filled messages to the client
+	for _, message := range response.Messages {
+		serverMsg := ServerMessage{
+			Type:           "message",
+			MsgID:          message.ID,
+			Sender:         message.SenderID,
+			Content:        message.Content,
+			Timestamp:      message.Timestamp,
+			SequenceNumber: message.Sequence,
+			ConversationID: message.ConversationID,
+		}
+
+		data, err := json.Marshal(serverMsg)
+		if err != nil {
+			continue
+		}
+
+		select {
+		case c.Send <- data:
+		default:
+			// Channel full, skip
+		}
+	}
+}
+
+// recordMessageSequence records a message sequence and checks for gaps
+// This should be called whenever a message is received from the server
+func (c *Connection) recordMessageSequence(conversationID string, sequence int64) {
+	if c.seqChecker == nil {
+		return
+	}
+
+	// Record the sequence and get any newly detected gaps
+	newGaps := c.seqChecker.RecordSequence(conversationID, sequence)
+
+	// The gap callback will automatically send gap fill requests
+	// No need to do anything here as the callback is already configured
+	_ = newGaps
+}
+
 // Close closes the connection and cleans up resources.
 func (c *Connection) Close() {
 	c.closeOnce.Do(func() {
@@ -655,4 +835,30 @@ func (c *Connection) Close() {
 			_ = c.Conn.Close()
 		}
 	})
+}
+
+// ConnectionStats represents WebSocket connection statistics
+type ConnectionStats struct {
+	TotalConnections int64
+	ActiveDevices    int64
+	ErrorCount       int64
+}
+
+// GetConnectionStats returns current connection statistics
+func (g *GatewayService) GetConnectionStats() ConnectionStats {
+	var totalConnections int64
+	var activeDevices int64
+
+	// Count connections
+	g.connections.Range(func(key, value any) bool {
+		totalConnections++
+		activeDevices++
+		return true
+	})
+
+	return ConnectionStats{
+		TotalConnections: totalConnections,
+		ActiveDevices:    activeDevices,
+		ErrorCount:       0, // TODO: Track error count if needed
+	}
 }

@@ -9,8 +9,6 @@ package com.pingxin403.cuckoo.flashsale.service.dto;
  * <p>Redis Key Pattern: device_risk:{deviceId} -> Hash { score: Integer, lastSeen: Long,
  * requestCount: Integer } -> TTL: 24小时
  *
- * <p>Validates Requirements: 3.3
- *
  * @param deviceId unique device identifier (generated from device characteristics)
  * @param platform the platform type (iOS, Android, Web, etc.)
  * @param browserName the browser name (Chrome, Safari, Firefox, etc.)

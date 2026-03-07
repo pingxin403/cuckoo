@@ -1,0 +1,147 @@
+groups:
+  - name: health_checks
+    interval: 30s
+    rules:
+      # Service Not Ready Alert
+      - alert: ServiceNotReady
+        expr: health_status == 0
+        for: 5m
+        labels:
+          severity: critical
+          category: health
+        annotations:
+          summary: "Service {{ $labels.service }} is not ready"
+          description: "Service {{ $labels.service }} has been in not-ready state for more than 5 minutes. Current status: {{ $value }}."
+          runbook: "https://docs.example.com/runbooks/service-not-ready"
+          action: "Check service logs and component health status. Verify all dependencies are available."
+
+      # Liveness Failure Alert (Immediate)
+      - alert: LivenessCheckFailed
+        expr: health_status == 0 and health_score < 10
+        for: 0s
+        labels:
+          severity: critical
+          category: health
+          page: "true"
+        annotations:
+          summary: "CRITICAL: Service {{ $labels.service }} liveness check failed"
+          description: "Service {{ $labels.service }} liveness check has failed. Pod may need restart. Health score: {{ $value }}%."
+          runbook: "https://docs.example.com/runbooks/liveness-failure"
+          action: "IMMEDIATE ACTION REQUIRED: Check if pod is responding. Kubernetes should restart the pod automatically."
+
+      # High Failure Rate Alert
+      - alert: HighHealthCheckFailureRate
+        expr: rate(health_check_failures_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          category: health
+        annotations:
+          summary: "High health check failure rate for {{ $labels.service }}/{{ $labels.component }}"
+          description: "Component {{ $labels.component }} in service {{ $labels.service }} has failure rate > 10% over last 5 minutes. Current rate: {{ $value | humanize }} failures/sec."
+          runbook: "https://docs.example.com/runbooks/high-failure-rate"
+          action: "Investigate component {{ $labels.component }}. Check logs for errors. Verify dependency health."
+
+      # Slow Health Check Alert
+      - alert: SlowHealthCheck
+        expr: histogram_quantile(0.99, sum(rate(component_response_time_seconds_bucket[5m])) by (le, service, component)) > 0.2
+        for: 10m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "Slow health check for {{ $labels.service }}/{{ $labels.component }}"
+          description: "Health check for component {{ $labels.component }} in service {{ $labels.service }} is slow. P99 latency: {{ $value | humanize }}s (threshold: 200ms)."
+          runbook: "https://docs.example.com/runbooks/slow-health-check"
+          action: "Investigate {{ $labels.component }} performance. Check for network issues or resource constraints."
+
+      # Component Critical Status
+      - alert: ComponentCritical
+        expr: component_status == 0
+        for: 2m
+        labels:
+          severity: warning
+          category: health
+        annotations:
+          summary: "Component {{ $labels.component }} is critical in {{ $labels.service }}"
+          description: "Component {{ $labels.component }} in service {{ $labels.service }} is in critical state for more than 2 minutes."
+          runbook: "https://docs.example.com/runbooks/component-critical"
+          action: "Check {{ $labels.component }} health. Verify dependency availability. Review service logs."
+
+      # Component Degraded Status
+      - alert: ComponentDegraded
+        expr: component_status == 1
+        for: 10m
+        labels:
+          severity: info
+          category: health
+        annotations:
+          summary: "Component {{ $labels.component }} is degraded in {{ $labels.service }}"
+          description: "Component {{ $labels.component }} in service {{ $labels.service }} has been degraded for more than 10 minutes."
+          runbook: "https://docs.example.com/runbooks/component-degraded"
+          action: "Monitor {{ $labels.component }}. May indicate intermittent issues. Check if auto-recovery is working."
+
+      # Health Score Low
+      - alert: LowHealthScore
+        expr: health_score < 50
+        for: 5m
+        labels:
+          severity: warning
+          category: health
+        annotations:
+          summary: "Low health score for {{ $labels.service }}"
+          description: "Service {{ $labels.service }} has health score below 50% for more than 5 minutes. Current score: {{ $value }}%."
+          runbook: "https://docs.example.com/runbooks/low-health-score"
+          action: "Check component statuses. Multiple components may be unhealthy. Review service health dashboard."
+
+      # Circuit Breaker Open
+      - alert: CircuitBreakerOpen
+        expr: circuit_breaker_state == 1
+        for: 5m
+        labels:
+          severity: warning
+          category: reliability
+        annotations:
+          summary: "Circuit breaker open for {{ $labels.service }}/{{ $labels.component }}"
+          description: "Circuit breaker for component {{ $labels.component }} in service {{ $labels.service }} has been open for more than 5 minutes."
+          runbook: "https://docs.example.com/runbooks/circuit-breaker-open"
+          action: "Component {{ $labels.component }} is experiencing repeated failures. Check dependency health and logs."
+
+      # Auto-Recovery Failing
+      - alert: AutoRecoveryFailing
+        expr: rate(recovery_attempts_total[10m]) > 0 and rate(recovery_success_total[10m]) == 0
+        for: 10m
+        labels:
+          severity: warning
+          category: reliability
+        annotations:
+          summary: "Auto-recovery failing for {{ $labels.service }}/{{ $labels.component }}"
+          description: "Auto-recovery for component {{ $labels.component }} in service {{ $labels.service }} has been attempting but failing for 10 minutes."
+          runbook: "https://docs.example.com/runbooks/auto-recovery-failing"
+          action: "Manual intervention may be required. Check why recovery is failing. Review component configuration."
+
+      # No Health Metrics
+      - alert: NoHealthMetrics
+        expr: absent(health_status)
+        for: 5m
+        labels:
+          severity: warning
+          category: monitoring
+        annotations:
+          summary: "No health metrics received"
+          description: "No health_status metrics have been received for 5 minutes. Health monitoring may be down."
+          runbook: "https://docs.example.com/runbooks/no-health-metrics"
+          action: "Check if services are running. Verify Prometheus is scraping health endpoints. Check network connectivity."
+
+      # Readiness Flapping
+      - alert: ReadinessFlapping
+        expr: changes(health_status[10m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+          category: stability
+        annotations:
+          summary: "Service {{ $labels.service }} readiness is flapping"
+          description: "Service {{ $labels.service }} readiness status has changed more than 5 times in 10 minutes. This indicates instability."
+          runbook: "https://docs.example.com/runbooks/readiness-flapping"
+          action: "Investigate intermittent issues. Check for network problems, resource constraints, or dependency instability."

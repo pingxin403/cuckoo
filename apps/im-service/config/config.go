@@ -35,6 +35,9 @@ type Config struct {
 
 	// Read Receipt configuration
 	ReadReceipt ReadReceiptConfig `mapstructure:"read_receipt"`
+
+	// Multi-Region configuration
+	Region RegionConfig `mapstructure:"region"`
 }
 
 // ServerConfig holds server-specific configuration
@@ -89,6 +92,32 @@ type SensitiveWordFilterConfig struct {
 	CaseSensitive bool `mapstructure:"case_sensitive"`
 	// NormalizeUnicode indicates if Unicode normalization is enabled
 	NormalizeUnicode bool `mapstructure:"normalize_unicode"`
+}
+
+// RegionConfig holds multi-region configuration
+type RegionConfig struct {
+	// ID is the unique identifier for this region (e.g., "region-a", "region-b")
+	ID string `mapstructure:"id" validate:"required"`
+	// Name is the human-readable name for this region
+	Name string `mapstructure:"name"`
+	// NodeID is the unique identifier for this node within the region
+	NodeID string `mapstructure:"node_id"`
+	// CrossRegion holds cross-region replication settings
+	CrossRegion CrossRegionConfig `mapstructure:"cross_region"`
+}
+
+// CrossRegionConfig holds cross-region replication configuration
+type CrossRegionConfig struct {
+	// Enabled indicates if cross-region replication is enabled
+	Enabled bool `mapstructure:"enabled"`
+	// PeerRegions is the list of peer region IDs to replicate to
+	PeerRegions []string `mapstructure:"peer_regions"`
+	// SyncInterval is the interval for cross-region sync operations
+	SyncInterval time.Duration `mapstructure:"sync_interval"`
+	// FailoverTimeout is the timeout for failover operations
+	FailoverTimeout time.Duration `mapstructure:"failover_timeout"`
+	// ConflictResolution is the strategy for resolving conflicts (lww, manual)
+	ConflictResolution string `mapstructure:"conflict_resolution"`
 }
 
 // Load loads configuration from environment variables and config files
@@ -178,6 +207,16 @@ func setIMServiceDefaults(loader *config.Loader) {
 	loader.SetDefault("observability.metrics_port", 9090)
 	loader.SetDefault("observability.log_level", "info")
 	loader.SetDefault("observability.log_format", "json")
+
+	// Multi-Region defaults
+	loader.SetDefault("region.id", "region-a")
+	loader.SetDefault("region.name", "Primary Region")
+	loader.SetDefault("region.node_id", "node-1")
+	loader.SetDefault("region.cross_region.enabled", false)
+	loader.SetDefault("region.cross_region.peer_regions", []string{})
+	loader.SetDefault("region.cross_region.sync_interval", 100*time.Millisecond)
+	loader.SetDefault("region.cross_region.failover_timeout", 30*time.Second)
+	loader.SetDefault("region.cross_region.conflict_resolution", "lww")
 }
 
 // GetDatabaseDSN returns the MySQL DSN string

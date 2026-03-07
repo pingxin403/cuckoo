@@ -616,3 +616,132 @@ groups:
           runbook_url: "https://wiki.example.com/runbooks/flash-sale/deduction-anomaly"
           dashboard_url: "http://grafana:3000/d/flash-sale-inventory"
           action: "Investigate potential double-deduction or reconciliation issues"
+
+  # Capacity Monitoring Alerts
+  - name: capacity_alerts
+    interval: 1m
+    rules:
+      # Critical Alert: Resource Usage Above 80% Threshold
+      - alert: HighResourceUsage
+        expr: capacity_resource_usage_percent >= 80
+        for: 5m
+        labels:
+          severity: warning
+          service: capacity-monitor
+          component: resource-usage
+        annotations:
+          summary: "Resource usage above 80% threshold"
+          description: "{{ $labels.resource_type }} resource '{{ $labels.resource_name }}' in region {{ $labels.region_id }} is at {{ $value | humanizePercentage }} capacity (threshold: 80%)"
+          runbook_url: "https://wiki.example.com/runbooks/capacity/high-usage"
+          dashboard_url: "http://grafana:3000/d/capacity-usage-trends"
+          action: "Review capacity forecast and plan for scaling or cleanup"
+
+      # Critical Alert: Resource Usage Above 90% Threshold
+      - alert: CriticalResourceUsage
+        expr: capacity_resource_usage_percent >= 90
+        for: 2m
+        labels:
+          severity: critical
+          service: capacity-monitor
+          component: resource-usage
+        annotations:
+          summary: "CRITICAL: Resource usage above 90%"
+          description: "{{ $labels.resource_type }} resource '{{ $labels.resource_name }}' in region {{ $labels.region_id }} is at {{ $value | humanizePercentage }} capacity (threshold: 90%)"
+          runbook_url: "https://wiki.example.com/runbooks/capacity/critical-usage"
+          dashboard_url: "http://grafana:3000/d/capacity-usage-trends"
+          action: "IMMEDIATE ACTION REQUIRED: Scale resources or free up capacity"
+
+      # Warning Alert: Capacity Will Be Full Soon
+      - alert: CapacityFullSoon
+        expr: capacity_forecast_days_until_full > 0 and capacity_forecast_days_until_full <= 7
+        for: 10m
+        labels:
+          severity: warning
+          service: capacity-monitor
+          component: forecast
+        annotations:
+          summary: "Resource capacity will be full within 7 days"
+          description: "{{ $labels.resource_type }} resource '{{ $labels.resource_name }}' in region {{ $labels.region_id }} will reach 100% capacity in {{ $value }} days"
+          runbook_url: "https://wiki.example.com/runbooks/capacity/forecast"
+          dashboard_url: "http://grafana:3000/d/capacity-forecast"
+          action: "Plan capacity expansion or data cleanup within the next week"
+
+      # Critical Alert: Capacity Will Be Full Very Soon
+      - alert: CapacityFullImminently
+        expr: capacity_forecast_days_until_full > 0 and capacity_forecast_days_until_full <= 3
+        for: 5m
+        labels:
+          severity: critical
+          service: capacity-monitor
+          component: forecast
+        annotations:
+          summary: "CRITICAL: Resource capacity will be full within 3 days"
+          description: "{{ $labels.resource_type }} resource '{{ $labels.resource_name }}' in region {{ $labels.region_id }} will reach 100% capacity in {{ $value }} days"
+          runbook_url: "https://wiki.example.com/runbooks/capacity/forecast"
+          dashboard_url: "http://grafana:3000/d/capacity-forecast"
+          action: "URGENT: Immediate capacity expansion or data cleanup required"
+
+      # Alert: High Resource Collection Error Rate
+      - alert: HighCapacityCollectionErrorRate
+        expr: |
+          (
+            rate(capacity_collection_errors_total[5m]) 
+            / 
+            (rate(capacity_collection_success_total[5m]) + rate(capacity_collection_errors_total[5m]))
+          ) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          service: capacity-monitor
+          component: collection
+        annotations:
+          summary: "High capacity collection error rate"
+          description: "Capacity collection error rate for {{ $labels.resource_type }} in region {{ $labels.region_id }} is {{ $value | humanizePercentage }} (threshold: 10%)"
+          runbook_url: "https://wiki.example.com/runbooks/capacity/collection-errors"
+          dashboard_url: "http://grafana:3000/d/capacity-usage-trends"
+          action: "Check capacity collector connectivity and permissions"
+
+      # Alert: MySQL Storage Growth Rate High
+      - alert: HighMySQLStorageGrowth
+        expr: capacity_forecast_growth_rate_bytes_per_day{resource_type="mysql"} > 10737418240
+        for: 30m
+        labels:
+          severity: warning
+          service: capacity-monitor
+          component: mysql
+        annotations:
+          summary: "High MySQL storage growth rate detected"
+          description: "MySQL database '{{ $labels.resource_name }}' in region {{ $labels.region_id }} is growing at {{ $value | humanize1024 }}/day (threshold: 10GB/day)"
+          runbook_url: "https://wiki.example.com/runbooks/capacity/mysql-growth"
+          dashboard_url: "http://grafana:3000/d/capacity-forecast"
+          action: "Review data retention policies and consider archiving old data"
+
+      # Alert: Kafka Topic Storage Growth Rate High
+      - alert: HighKafkaStorageGrowth
+        expr: capacity_forecast_growth_rate_bytes_per_day{resource_type="kafka"} > 5368709120
+        for: 30m
+        labels:
+          severity: warning
+          service: capacity-monitor
+          component: kafka
+        annotations:
+          summary: "High Kafka topic storage growth rate detected"
+          description: "Kafka topic '{{ $labels.resource_name }}' in region {{ $labels.region_id }} is growing at {{ $value | humanize1024 }}/day (threshold: 5GB/day)"
+          runbook_url: "https://wiki.example.com/runbooks/capacity/kafka-growth"
+          dashboard_url: "http://grafana:3000/d/capacity-forecast"
+          action: "Review Kafka retention policies and consumer lag"
+
+      # Alert: Network Bandwidth Usage High
+      - alert: HighNetworkBandwidthUsage
+        expr: capacity_resource_usage_percent{resource_type="network"} >= 70
+        for: 10m
+        labels:
+          severity: warning
+          service: capacity-monitor
+          component: network
+        annotations:
+          summary: "High network bandwidth usage"
+          description: "Network link '{{ $labels.resource_name }}' in region {{ $labels.region_id }} is at {{ $value | humanizePercentage }} capacity (threshold: 70%)"
+          runbook_url: "https://wiki.example.com/runbooks/capacity/network-bandwidth"
+          dashboard_url: "http://grafana:3000/d/capacity-usage-trends"
+          action: "Monitor cross-region traffic and consider bandwidth upgrade"

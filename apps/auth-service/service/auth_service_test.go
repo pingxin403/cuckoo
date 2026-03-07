@@ -10,7 +10,7 @@ import (
 	"github.com/pingxin403/cuckoo/libs/observability"
 )
 
-const testSecret = "test-secret-key-for-testing-only"
+const testSecret = "test-secret-key-for-testing-only" // #nosec G101 -- This is a test secret, not a real credential
 
 // Helper function to create a test observability instance
 func createTestObservability() observability.Observability {
@@ -173,7 +173,7 @@ func TestValidateToken_MalformedToken(t *testing.T) {
 	ctx := context.Background()
 
 	req := &authpb.ValidateTokenRequest{
-		AccessToken: "not.a.valid.jwt.token",
+		AccessToken: "not.a.valid.jwt.token", // #nosec G101 -- This is a test token string, not a credential
 	}
 
 	// Act

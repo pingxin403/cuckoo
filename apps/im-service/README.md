@@ -145,6 +145,100 @@ See [worker/README.md](worker/README.md) for details.
 
 See [storage/README.md](storage/README.md) for details.
 
+## Health Checks
+
+The service uses the standardized health check library (`libs/health`) providing comprehensive health monitoring:
+
+### Health Check Endpoints
+
+```
+GET /healthz   # Liveness probe (process health only)
+GET /readyz    # Readiness probe (checks all dependencies)
+GET /health    # Full health status (detailed JSON)
+```
+
+**Liveness Probe** (`/healthz`):
+- Checks process health only (heartbeat, memory, goroutines)
+- Returns 200 if process is healthy, 503 if unhealthy
+- Used by Kubernetes to restart unhealthy pods
+
+**Readiness Probe** (`/readyz`):
+- Checks all dependencies (Database, Redis, Kafka, etcd, Offline Worker)
+- Returns 200 if ready to serve traffic, 503 if not ready
+- Used by Kubernetes to route traffic to healthy pods
+- Implements anti-flapping (requires 3 consecutive failures)
+
+**Full Health Status** (`/health`):
+- Returns detailed JSON with component-level health
+- Includes health score, component status, and response times
+- Useful for debugging and monitoring
+
+**Example:**
+
+```bash
+# Check liveness
+curl http://localhost:8080/healthz
+
+# Check readiness
+curl http://localhost:8080/readyz
+
+# Get detailed health status
+curl http://localhost:8080/health | jq
+```
+
+**Example Response:**
+
+```json
+{
+  "status": "healthy",
+  "health_score": 100,
+  "timestamp": "2026-02-02T10:30:00Z",
+  "components": [
+    {
+      "name": "database",
+      "status": "healthy",
+      "message": "Database connection healthy",
+      "response_time_ms": 5
+    },
+    {
+      "name": "redis",
+      "status": "healthy",
+      "message": "Redis connection healthy",
+      "response_time_ms": 2
+    },
+    {
+      "name": "kafka",
+      "status": "healthy",
+      "message": "Kafka brokers reachable",
+      "response_time_ms": 10
+    },
+    {
+      "name": "etcd",
+      "status": "healthy",
+      "message": "etcd cluster healthy",
+      "response_time_ms": 8
+    },
+    {
+      "name": "offline_worker",
+      "status": "healthy",
+      "message": "Offline worker running",
+      "response_time_ms": 1
+    }
+  ]
+}
+```
+
+**Health Check Features:**
+- **Auto-Recovery**: Automatically attempts to reconnect to failed dependencies
+- **Circuit Breaker**: Prevents cascading failures with circuit breaker pattern
+- **Metrics Export**: Exposes health metrics to Prometheus
+- **Custom Checks**: Includes etcd and offline worker health checks
+- **Graceful Shutdown**: Properly handles in-flight requests during shutdown
+
+For more details, see [Health Check Integration](./HEALTH_CHECK_INTEGRATION.md).
+
+---
+
 ## Configuration
 
 The service is configured via environment variables:
@@ -526,4 +620,3 @@ If you previously deployed offline-worker as a separate service:
 4. Verify worker is running via logs or `/stats` endpoint
 5. Remove obsolete offline-worker deployment files
 
-See [.kiro/specs/im-chat-system/ARCHITECTURE_CLARIFICATION.md](../../.kiro/specs/im-chat-system/ARCHITECTURE_CLARIFICATION.md) for detailed architecture explanation.

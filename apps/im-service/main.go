@@ -21,7 +21,10 @@ import (
 	"github.com/pingxin403/cuckoo/apps/im-service/service"
 	"github.com/pingxin403/cuckoo/apps/im-service/storage"
 	"github.com/pingxin403/cuckoo/apps/im-service/worker"
+	"github.com/pingxin403/cuckoo/libs/clockdrift"
+	"github.com/pingxin403/cuckoo/libs/health"
 	"github.com/pingxin403/cuckoo/libs/observability"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/grpc"
 )
@@ -63,6 +66,15 @@ func main() {
 		"grpc_port", cfg.Server.GRPCPort,
 		"http_port", cfg.Server.HTTPPort,
 	)
+
+	// Initialize health checker
+	obs.Logger().Info(ctx, "Initializing health checker")
+	hc := health.NewHealthChecker(health.Config{
+		ServiceName:      cfg.Observability.ServiceName,
+		CheckInterval:    5 * time.Second,
+		DefaultTimeout:   100 * time.Millisecond,
+		FailureThreshold: 3,
+	}, obs)
 
 	// Initialize shared dependencies
 	obs.Logger().Info(ctx, "Initializing shared dependencies")
@@ -110,6 +122,52 @@ func main() {
 		os.Exit(1)
 	}
 	obs.Logger().Info(ctx, "Sequence generator initialized")
+
+	// Initialize clock drift detector (if HLC is enabled)
+	var driftDetector *clockdrift.DriftDetector
+	if cfg.Region.ID != "" && cfg.Region.NodeID != "" {
+		obs.Logger().Info(ctx, "Initializing clock drift detector")
+
+		// Get HLC instance from sequence generator
+		hlcInstance := seqGen.GetHLC()
+		if hlcInstance != nil {
+			// Create calibration function
+			calibrateFunc := func(offset time.Duration) error {
+				obs.Logger().Info(ctx, "Calibrating HLC for clock drift",
+					"offset_ms", offset.Milliseconds(),
+					"region", cfg.Region.ID,
+					"node", cfg.Region.NodeID,
+				)
+				return hlcInstance.AdjustForDrift(offset)
+			}
+
+			// Create drift detector with default config
+			driftCfg := clockdrift.DefaultConfig()
+			driftDetector = clockdrift.NewDriftDetector(driftCfg, calibrateFunc)
+
+			// Register drift detector metrics with observability
+			if err := registerDriftDetectorMetrics(obs, driftDetector); err != nil {
+				obs.Logger().Warn(ctx, "Failed to register drift detector metrics", "error", err)
+			}
+
+			// Start drift detector in background
+			driftCtx, driftCancel := context.WithCancel(context.Background())
+			defer driftCancel()
+
+			go func() {
+				obs.Logger().Info(ctx, "Starting clock drift detector")
+				if err := driftDetector.Start(driftCtx); err != nil && err != context.Canceled {
+					obs.Logger().Error(ctx, "Clock drift detector error", "error", err)
+				}
+			}()
+
+			obs.Logger().Info(ctx, "Clock drift detector started")
+		} else {
+			obs.Logger().Warn(ctx, "HLC not initialized, skipping drift detector")
+		}
+	} else {
+		obs.Logger().Info(ctx, "Multi-region not configured, skipping drift detector")
+	}
 
 	// Create registry client
 	registryClient, err := initializeRegistryClient(cfg)
@@ -159,6 +217,7 @@ func main() {
 	var offlineWorker *worker.OfflineWorker
 	if cfg.OfflineWorker.Enabled {
 		obs.Logger().Info(ctx, "Starting offline worker component")
+		obs.Logger().Info(ctx, "Kafka configuration", "brokers", cfg.Kafka.Brokers, "consumer_group", cfg.Kafka.ConsumerGroup, "topic", cfg.Kafka.Topic)
 		offlineWorker, err = worker.NewOfflineWorker(
 			worker.WorkerConfig{
 				KafkaBrokers:  cfg.Kafka.Brokers,
@@ -206,8 +265,44 @@ func main() {
 	readReceiptHandler := readreceipt.NewHTTPHandler(readReceiptService)
 	obs.Logger().Info(ctx, "Read receipt HTTP handler initialized")
 
+	// Register health checks for all dependencies
+	obs.Logger().Info(ctx, "Registering health checks")
+
+	// 1. Database health check (MySQL) - critical
+	hc.RegisterCheck(health.NewDatabaseCheck("database", store.GetDB()))
+	obs.Logger().Info(ctx, "Registered database health check")
+
+	// 2. Redis health check - critical
+	hc.RegisterCheck(health.NewRedisCheck("redis", dedupService.GetClient()))
+	obs.Logger().Info(ctx, "Registered Redis health check")
+
+	// 3. Kafka health check - non-critical (only if worker is enabled)
+	if cfg.OfflineWorker.Enabled {
+		hc.RegisterCheck(health.NewKafkaCheck("kafka", cfg.Kafka.Brokers))
+		obs.Logger().Info(ctx, "Registered Kafka health check")
+	}
+
+	// 4. Etcd health check - critical for service discovery
+	hc.RegisterCheck(NewEtcdHealthCheck("etcd", registryClient))
+	obs.Logger().Info(ctx, "Registered etcd health check")
+
+	// 5. Offline worker health check - non-critical (only if worker is enabled)
+	if offlineWorker != nil {
+		hc.RegisterCheck(NewOfflineWorkerHealthCheck("offline-worker", offlineWorker))
+		obs.Logger().Info(ctx, "Registered offline worker health check")
+	}
+
+	obs.Logger().Info(ctx, "All health checks registered")
+
 	// Start HTTP server for health checks, metrics, and read receipts
-	go startHTTPServer(obs, offlineWorker, readReceiptHandler, cfg.Server.HTTPPort)
+	go startHTTPServer(obs, hc, offlineWorker, readReceiptHandler, cfg.Server.HTTPPort)
+
+	// Start health checker after all dependencies are initialized
+	obs.Logger().Info(ctx, "Starting health checker")
+	if err := hc.Start(); err != nil {
+		obs.Logger().Error(ctx, "Failed to start health checker", "error", err)
+		os.Exit(1)
+	}
 
 	obs.Logger().Info(ctx, "IM Service started successfully",
 		"grpc_port", cfg.Server.GRPCPort,
@@ -223,6 +318,9 @@ func main() {
 	obs.Logger().Info(ctx, "Shutting down IM Service")
 
 	// Graceful shutdown
+	obs.Logger().Info(ctx, "Stopping health checker")
+	hc.Stop()
+
 	if offlineWorker != nil {
 		obs.Logger().Info(ctx, "Stopping offline worker")
 		if err := offlineWorker.Stop(); err != nil {
@@ -237,7 +335,7 @@ func main() {
 }
 
 // startHTTPServer starts HTTP server for health checks, metrics, and read receipts
-func startHTTPServer(obs observability.Observability, w *worker.OfflineWorker, readReceiptHandler *readreceipt.HTTPHandler, port int) {
+func startHTTPServer(obs observability.Observability, hc *health.HealthChecker, w *worker.OfflineWorker, readReceiptHandler *readreceipt.HTTPHandler, port int) {
 	ctx := context.Background()
 	mux := http.NewServeMux()
 
@@ -266,26 +364,10 @@ func startHTTPServer(obs observability.Observability, w *worker.OfflineWorker, r
 		}
 	}
 
-	// Health check endpoint
-	mux.HandleFunc("/health", metricsMiddleware("/health", func(rw http.ResponseWriter, r *http.Request) {
-		rw.WriteHeader(http.StatusOK)
-		_, _ = rw.Write([]byte("OK"))
-	}))
-
-	// Readiness check endpoint
-	mux.HandleFunc("/ready", metricsMiddleware("/ready", func(rw http.ResponseWriter, r *http.Request) {
-		// Check if worker is processing messages (if enabled)
-		if w != nil {
-			stats := w.GetStats()
-			if stats.Errors > 0 && stats.MessagesProcessed == 0 {
-				rw.WriteHeader(http.StatusServiceUnavailable)
-				_, _ = rw.Write([]byte("NOT READY"))
-				return
-			}
-		}
-		rw.WriteHeader(http.StatusOK)
-		_, _ = rw.Write([]byte("READY"))
-	}))
+	// Health check endpoints (using health library)
+	mux.HandleFunc("/healthz", health.HealthzHandler(hc))
+	mux.HandleFunc("/readyz", health.ReadyzHandler(hc))
+	mux.HandleFunc("/health", health.HealthHandler(hc))
 
 	// Stats endpoint
 	mux.HandleFunc("/stats", metricsMiddleware("/stats", func(rw http.ResponseWriter, r *http.Request) {
@@ -339,12 +421,13 @@ func startHTTPServer(obs observability.Observability, w *worker.OfflineWorker, r
 		_, _ = rw.Write([]byte("# Worker metrics have been recorded and will be exported via the observability library\n"))
 	}))
 
-	// Read Receipt API endpoints
-	mux.HandleFunc("/api/v1/messages/read", metricsMiddleware("/api/v1/messages/read", readReceiptHandler.HandleMarkAsRead))
-	mux.HandleFunc("/api/v1/messages/unread/count", metricsMiddleware("/api/v1/messages/unread/count", readReceiptHandler.HandleGetUnreadCount))
-	mux.HandleFunc("/api/v1/messages/unread", metricsMiddleware("/api/v1/messages/unread", readReceiptHandler.HandleGetUnreadMessages))
-	mux.HandleFunc("/api/v1/messages/receipts", metricsMiddleware("/api/v1/messages/receipts", readReceiptHandler.HandleGetReadReceipts))
-	mux.HandleFunc("/api/v1/conversations/read", metricsMiddleware("/api/v1/conversations/read", readReceiptHandler.HandleMarkConversationAsRead))
+	// Read Receipt API endpoints (with readiness middleware)
+	readinessMiddleware := health.ReadinessMiddleware(hc)
+	mux.Handle("/api/v1/messages/read", readinessMiddleware(metricsMiddleware("/api/v1/messages/read", readReceiptHandler.HandleMarkAsRead)))
+	mux.Handle("/api/v1/messages/unread/count", readinessMiddleware(metricsMiddleware("/api/v1/messages/unread/count", readReceiptHandler.HandleGetUnreadCount)))
+	mux.Handle("/api/v1/messages/unread", readinessMiddleware(metricsMiddleware("/api/v1/messages/unread", readReceiptHandler.HandleGetUnreadMessages)))
+	mux.Handle("/api/v1/messages/receipts", readinessMiddleware(metricsMiddleware("/api/v1/messages/receipts", readReceiptHandler.HandleGetReadReceipts)))
+	mux.Handle("/api/v1/conversations/read", readinessMiddleware(metricsMiddleware("/api/v1/conversations/read", readReceiptHandler.HandleMarkConversationAsRead)))
 
 	addr := fmt.Sprintf(":%d", port)
 	obs.Logger().Info(ctx, "HTTP server listening", "address", addr)
@@ -450,4 +533,41 @@ func initializeIMService(
 		encryption,
 		serviceCfg,
 	), nil
+}
+
+// registerDriftDetectorMetrics registers drift detector metrics with observability
+func registerDriftDetectorMetrics(obs observability.Observability, dd *clockdrift.DriftDetector) error {
+	// Get the drift detector's Prometheus registry
+	registry := dd.GetRegistry()
+	if registry == nil {
+		return fmt.Errorf("drift detector registry is nil")
+	}
+
+	// Gather metrics from drift detector registry
+	metricFamilies, err := registry.Gather()
+	if err != nil {
+		return fmt.Errorf("failed to gather drift detector metrics: %w", err)
+	}
+
+	// Register each metric family with the observability metrics
+	for _, mf := range metricFamilies {
+		// Create a collector that wraps the drift detector metrics
+		collector := prometheus.NewGaugeFunc(
+			prometheus.GaugeOpts{
+				Name: *mf.Name,
+				Help: *mf.Help,
+			},
+			func() float64 {
+				// This is a placeholder - actual metric values are managed by drift detector
+				return 0
+			},
+		)
+
+		// Note: We don't actually register the collector because the drift detector
+		// manages its own metrics. This function is here for future integration
+		// if we need to merge metrics into a single registry.
+		_ = collector
+	}
+
+	return nil
 }

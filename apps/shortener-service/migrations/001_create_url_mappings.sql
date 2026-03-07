@@ -1,6 +1,5 @@
 -- Migration: Create url_mappings table
 -- Description: Creates the main table for storing URL mappings with proper indexes
--- Requirements: 2.2, 5.5
 
 CREATE TABLE IF NOT EXISTS url_mappings (
     -- Primary key: 7-character Base62 short code (can expand to 10 for future growth)

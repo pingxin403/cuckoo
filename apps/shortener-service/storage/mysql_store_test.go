@@ -54,18 +54,6 @@ func TestStorage_Interface(t *testing.T) {
 	var _ Storage = (*MySQLStore)(nil)
 }
 
-// TestGetEnv verifies the environment variable helper function
-func TestGetEnv(t *testing.T) {
-	// Test with non-existent env var (should return default)
-	result := getEnv("NONEXISTENT_VAR_12345", "default_value")
-	assert.Equal(t, "default_value", result)
-
-	// Test with existing env var
-	t.Setenv("TEST_VAR", "test_value")
-	result = getEnv("TEST_VAR", "default_value")
-	assert.Equal(t, "test_value", result)
-}
-
 // TestMySQLStore_NilMapping verifies that Create rejects nil mappings
 func TestMySQLStore_NilMapping(t *testing.T) {
 	store := &MySQLStore{db: nil} // db is nil but we're only testing validation
@@ -128,7 +116,6 @@ func (m *MockStorage) Close() error {
 }
 
 // TestMySQLStore_DuplicateShortCode tests duplicate short_code rejection
-// Requirements: 2.2
 func TestMySQLStore_DuplicateShortCode(t *testing.T) {
 	// This test verifies the behavior when attempting to create a duplicate short code.
 	// In a real MySQL database, this would trigger a unique constraint violation.
@@ -206,7 +193,6 @@ func TestMySQLStore_DuplicateShortCode(t *testing.T) {
 }
 
 // TestMySQLStore_DatabaseConnectionFailure tests database connection error handling
-// Requirements: 2.5
 func TestMySQLStore_DatabaseConnectionFailure(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -288,7 +274,6 @@ func TestMySQLStore_DatabaseConnectionFailure(t *testing.T) {
 }
 
 // TestMySQLStore_GetNotFound tests Get behavior when short code doesn't exist
-// Requirements: 2.5
 func TestMySQLStore_GetNotFound(t *testing.T) {
 	mock := &MockStorage{
 		GetFunc: func(ctx context.Context, shortCode string) (*URLMapping, error) {
@@ -304,7 +289,6 @@ func TestMySQLStore_GetNotFound(t *testing.T) {
 }
 
 // TestMySQLStore_DeleteNotFound tests Delete behavior when short code doesn't exist
-// Requirements: 2.5
 func TestMySQLStore_DeleteNotFound(t *testing.T) {
 	mock := &MockStorage{
 		DeleteFunc: func(ctx context.Context, shortCode string) error {
@@ -319,7 +303,6 @@ func TestMySQLStore_DeleteNotFound(t *testing.T) {
 }
 
 // TestMySQLStore_ContextCancellation tests context cancellation handling
-// Requirements: 2.5
 func TestMySQLStore_ContextCancellation(t *testing.T) {
 	tests := []struct {
 		name      string

@@ -61,6 +61,88 @@ IM Service → Kafka → Gateway (Consumer) → WebSocket → Clients
 3. Each Gateway filters for locally-connected members
 4. Gateway pushes to local WebSocket connections
 
+## Health Checks
+
+The service uses the standardized health check library (`libs/health`) providing comprehensive health monitoring:
+
+### Health Check Endpoints
+
+```
+GET /healthz   # Liveness probe (process health only)
+GET /readyz    # Readiness probe (checks all dependencies)
+GET /health    # Full health status (detailed JSON)
+```
+
+**Liveness Probe** (`/healthz`):
+- Checks process health only (heartbeat, memory, goroutines)
+- Returns 200 if process is healthy, 503 if unhealthy
+- Used by Kubernetes to restart unhealthy pods
+
+**Readiness Probe** (`/readyz`):
+- Checks all dependencies (Redis, IM Service, WebSocket connections)
+- Returns 200 if ready to serve traffic, 503 if not ready
+- Used by Kubernetes to route traffic to healthy pods
+- Implements anti-flapping (requires 3 consecutive failures)
+
+**Full Health Status** (`/health`):
+- Returns detailed JSON with component-level health
+- Includes health score, component status, and response times
+- Useful for debugging and monitoring
+
+**Example:**
+
+```bash
+# Check liveness
+curl http://localhost:8080/healthz
+
+# Check readiness
+curl http://localhost:8080/readyz
+
+# Get detailed health status
+curl http://localhost:8080/health | jq
+```
+
+**Example Response:**
+
+```json
+{
+  "status": "healthy",
+  "health_score": 100,
+  "timestamp": "2026-02-02T10:30:00Z",
+  "components": [
+    {
+      "name": "redis",
+      "status": "healthy",
+      "message": "Redis connection healthy",
+      "response_time_ms": 2
+    },
+    {
+      "name": "im_service",
+      "status": "healthy",
+      "message": "IM Service reachable",
+      "response_time_ms": 15
+    },
+    {
+      "name": "websocket",
+      "status": "healthy",
+      "message": "WebSocket server running, 1234 active connections",
+      "response_time_ms": 1
+    }
+  ]
+}
+```
+
+**Health Check Features:**
+- **Auto-Recovery**: Automatically attempts to reconnect to failed dependencies
+- **Circuit Breaker**: Prevents cascading failures with circuit breaker pattern
+- **Metrics Export**: Exposes health metrics to Prometheus
+- **Custom Checks**: Includes WebSocket connection health check
+- **Graceful Shutdown**: Notifies connected clients before shutdown
+
+For more details, see [Health Check Integration](./HEALTH_CHECK_INTEGRATION.md).
+
+---
+
 ## Configuration
 
 ### GatewayConfig
@@ -286,6 +368,3 @@ go test -tags=property ./service
 
 ## References
 
-- [Requirements Document](../../.kiro/specs/im-chat-system/requirements.md)
-- [Design Document](../../.kiro/specs/im-chat-system/design.md)
-- [Task List](../../.kiro/specs/im-chat-system/tasks.md)

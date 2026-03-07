@@ -21,15 +21,15 @@ import (
 )
 
 // ShortenerServiceImpl implements the ShortenerService gRPC service
-// Requirements: 1.4, 1.5, 2.1, 4.3, 9.3
 type ShortenerServiceImpl struct {
 	shortenerpb.UnimplementedShortenerServiceServer
-	storage      storage.Storage
-	idGen        idgen.IDGenerator
-	validator    *URLValidator
-	cacheManager *cache.CacheManager
-	baseURL      string
-	obs          observability.Observability
+	storage          storage.Storage
+	idGen            idgen.IDGenerator
+	validator        *URLValidator
+	cacheManager     *cache.CacheManager
+	cacheConsistency *CacheConsistency
+	baseURL          string
+	obs              observability.Observability
 }
 
 // NewShortenerServiceImpl creates a new ShortenerServiceImpl
@@ -45,18 +45,24 @@ func NewShortenerServiceImpl(
 		baseURL = "https://ex.co"
 	}
 
+	// Create CacheConsistency for delayed double delete strategy
+	var cacheConsistency *CacheConsistency
+	if cacheManager != nil {
+		cacheConsistency = NewCacheConsistency(cacheManager, obs)
+	}
+
 	return &ShortenerServiceImpl{
-		storage:      storage,
-		idGen:        idGen,
-		validator:    validator,
-		cacheManager: cacheManager,
-		baseURL:      baseURL,
-		obs:          obs,
+		storage:          storage,
+		idGen:            idGen,
+		validator:        validator,
+		cacheManager:     cacheManager,
+		cacheConsistency: cacheConsistency,
+		baseURL:          baseURL,
+		obs:              obs,
 	}
 }
 
 // CreateShortLink creates a new short link from a long URL
-// Requirements: 1.4, 1.5, 2.1, 4.3, 9.3
 func (s *ShortenerServiceImpl) CreateShortLink(
 	ctx context.Context,
 	req *shortenerpb.CreateShortLinkRequest,
@@ -121,9 +127,18 @@ func (s *ShortenerServiceImpl) CreateShortLink(
 		mapping.ExpiresAt = &expiresAt
 	}
 
-	// Write to MySQL (synchronous - wait for confirmation)
-	// Requirements: 2.1, 13.2
-	if err := s.storage.Create(ctx, mapping); err != nil {
+	// Write to MySQL with cache consistency strategy
+	if s.cacheConsistency != nil {
+		// Use CreateWithConsistency for delayed double delete
+		err = s.cacheConsistency.CreateWithConsistency(ctx, shortCode, func(ctx context.Context) error {
+			return s.storage.Create(ctx, mapping)
+		})
+	} else {
+		// Fallback to direct storage create (backward compatibility)
+		err = s.storage.Create(ctx, mapping)
+	}
+
+	if err != nil {
 		s.obs.Metrics().IncrementCounter("shortener_errors_total", map[string]string{"type": "storage_create"})
 		if strings.Contains(err.Error(), "Duplicate entry") {
 			return nil, status.Errorf(codes.AlreadyExists, "Short code already exists: %s", shortCode)
@@ -132,7 +147,6 @@ func (s *ShortenerServiceImpl) CreateShortLink(
 	}
 
 	// Audit log: Log creation request with source IP
-	// Requirements: 14.5
 	s.obs.Logger().Info(ctx, "Short link created",
 		"short_code", shortCode,
 		"long_url", sanitizedURL,
@@ -141,7 +155,6 @@ func (s *ShortenerServiceImpl) CreateShortLink(
 	)
 
 	// Preheat cache (Redis) - best effort, don't fail if cache write fails
-	// Requirements: 4.3
 	if s.cacheManager != nil {
 		_ = s.cacheManager.Set(ctx, shortCode, sanitizedURL, now)
 	}
@@ -166,7 +179,6 @@ func (s *ShortenerServiceImpl) CreateShortLink(
 }
 
 // GetLinkInfo retrieves metadata for a short link
-// Requirements: 9.4
 func (s *ShortenerServiceImpl) GetLinkInfo(
 	ctx context.Context,
 	req *shortenerpb.GetLinkInfoRequest,
@@ -210,7 +222,6 @@ func (s *ShortenerServiceImpl) GetLinkInfo(
 }
 
 // DeleteShortLink removes a short link (soft delete)
-// Requirements: 4.6
 func (s *ShortenerServiceImpl) DeleteShortLink(
 	ctx context.Context,
 	req *shortenerpb.DeleteShortLinkRequest,
@@ -225,19 +236,33 @@ func (s *ShortenerServiceImpl) DeleteShortLink(
 		return nil, status.Errorf(codes.InvalidArgument, "Short code cannot be empty")
 	}
 
-	// Soft delete in MySQL
-	if err := s.storage.Delete(ctx, req.ShortCode); err != nil {
-		s.obs.Metrics().IncrementCounter("shortener_errors_total", map[string]string{"type": "storage_delete"})
-		if strings.Contains(err.Error(), "not found") {
-			return nil, status.Errorf(codes.NotFound, "Short code not found: %s", req.ShortCode)
+	// Soft delete in MySQL with cache consistency strategy
+	if s.cacheConsistency != nil {
+		// Use DeleteWithConsistency for delayed double delete
+		err := s.cacheConsistency.DeleteWithConsistency(ctx, req.ShortCode, func(ctx context.Context) error {
+			return s.storage.Delete(ctx, req.ShortCode)
+		})
+		if err != nil {
+			s.obs.Metrics().IncrementCounter("shortener_errors_total", map[string]string{"type": "storage_delete"})
+			if strings.Contains(err.Error(), "not found") {
+				return nil, status.Errorf(codes.NotFound, "Short code not found: %s", req.ShortCode)
+			}
+			return nil, status.Errorf(codes.Internal, "Failed to delete mapping: %v", err)
 		}
-		return nil, status.Errorf(codes.Internal, "Failed to delete mapping: %v", err)
-	}
+	} else {
+		// Fallback to direct storage delete (backward compatibility)
+		if err := s.storage.Delete(ctx, req.ShortCode); err != nil {
+			s.obs.Metrics().IncrementCounter("shortener_errors_total", map[string]string{"type": "storage_delete"})
+			if strings.Contains(err.Error(), "not found") {
+				return nil, status.Errorf(codes.NotFound, "Short code not found: %s", req.ShortCode)
+			}
+			return nil, status.Errorf(codes.Internal, "Failed to delete mapping: %v", err)
+		}
 
-	// Invalidate all cache layers
-	// Requirements: 4.6
-	if s.cacheManager != nil {
-		_ = s.cacheManager.Delete(ctx, req.ShortCode)
+		// Invalidate all cache layers (only if not using consistency strategy)
+		if s.cacheManager != nil {
+			_ = s.cacheManager.Delete(ctx, req.ShortCode)
+		}
 	}
 
 	// Record metrics

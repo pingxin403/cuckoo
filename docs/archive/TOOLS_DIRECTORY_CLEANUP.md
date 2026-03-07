@@ -38,8 +38,6 @@ Cleaned up and reorganized the `tools/` directory by moving configurations to ap
 Updated all documentation references from `tools/` to `deploy/`:
 
 **Files Updated** (20 files):
-- `.kiro/specs/monorepo-hello-todo/design.md`
-- `.kiro/specs/monorepo-hello-todo/tasks.md`
 - `README.md`
 - `apps/im-service/README.md`
 - `apps/shortener-service/GATEWAY_VERIFICATION.md`

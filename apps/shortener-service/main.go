@@ -13,24 +13,33 @@ import (
 	"github.com/pingxin403/cuckoo/api/gen/go/shortenerpb"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/analytics"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/cache"
+	"github.com/pingxin403/cuckoo/apps/shortener-service/config"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/idgen"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/service"
 	"github.com/pingxin403/cuckoo/apps/shortener-service/storage"
+	"github.com/pingxin403/cuckoo/libs/health"
 	"github.com/pingxin403/cuckoo/libs/observability"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 )
 
 func main() {
+	// Load configuration
+	cfg, err := config.Load()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to load configuration: %v\n", err)
+		os.Exit(1)
+	}
+
 	// Initialize observability
 	obs, err := observability.New(observability.Config{
-		ServiceName:    getEnv("SERVICE_NAME", "shortener-service"),
-		ServiceVersion: getEnv("SERVICE_VERSION", "1.0.0"),
-		Environment:    getEnv("DEPLOYMENT_ENVIRONMENT", "development"),
-		EnableMetrics:  getEnvBool("ENABLE_METRICS", true),
-		MetricsPort:    getEnvInt("METRICS_PORT", 9090),
-		LogLevel:       getEnv("LOG_LEVEL", "info"),
-		LogFormat:      getEnv("LOG_FORMAT", "json"),
+		ServiceName:    cfg.Observability.ServiceName,
+		ServiceVersion: cfg.Observability.ServiceVersion,
+		Environment:    cfg.Observability.Environment,
+		EnableMetrics:  cfg.Observability.EnableMetrics,
+		MetricsPort:    cfg.Observability.MetricsPort,
+		LogLevel:       cfg.Observability.LogLevel,
+		LogFormat:      cfg.Observability.LogFormat,
 	})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to initialize observability: %v\n", err)
@@ -46,31 +55,35 @@ func main() {
 
 	ctx := context.Background()
 	obs.Logger().Info(ctx, "Starting shortener-service",
-		"service", "shortener-service",
-		"version", getEnv("SERVICE_VERSION", "1.0.0"),
+		"service", cfg.Observability.ServiceName,
+		"version", cfg.Observability.ServiceVersion,
 	)
 
-	// Get gRPC port from environment variable or use default
-	grpcPort := os.Getenv("PORT")
-	if grpcPort == "" {
-		grpcPort = "9092"
-	}
-
-	// Get HTTP port from environment variable or use default
-	httpPort := os.Getenv("HTTP_PORT")
-	if httpPort == "" {
-		httpPort = "8080"
-	}
+	// Initialize health checker with default config
+	healthConfig := health.DefaultConfig(cfg.Observability.ServiceName)
+	healthConfig.CheckInterval = 5 * time.Second
+	healthConfig.DefaultTimeout = 100 * time.Millisecond
+	healthConfig.FailureThreshold = 3
+	hc := health.NewHealthChecker(healthConfig, obs)
+	obs.Logger().Info(ctx, "Initialized health checker")
 
 	// Create TCP listener for gRPC
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", grpcPort))
+	lis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.GRPCPort))
 	if err != nil {
-		obs.Logger().Error(ctx, "Failed to listen", "port", grpcPort, "error", err)
+		obs.Logger().Error(ctx, "Failed to listen", "port", cfg.Server.GRPCPort, "error", err)
 		os.Exit(1)
 	}
 
 	// Initialize MySQL storage
-	store, err := storage.NewMySQLStore()
+	store, err := storage.NewMySQLStore(storage.MySQLConfig{
+		Host:         cfg.Database.Host,
+		Port:         cfg.Database.Port,
+		User:         cfg.Database.User,
+		Password:     cfg.Database.Password,
+		Database:     cfg.Database.Database,
+		MaxOpenConns: cfg.Database.MaxOpenConns,
+		MaxIdleConns: cfg.Database.MaxIdleConns,
+	})
 	if err != nil {
 		obs.Logger().Error(ctx, "Failed to initialize MySQL store", "error", err)
 		os.Exit(1)
@@ -98,42 +111,119 @@ func main() {
 	}
 	obs.Logger().Info(ctx, "Initialized L1 cache")
 
-	// Initialize L2 cache (Redis) - optional, can be nil
+	// Initialize L2 cache (Redis) with optimized client and metrics - optional, can be nil
 	var l2Cache *cache.L2Cache
-	redisAddr := os.Getenv("REDIS_ADDR")
-	if redisAddr != "" {
-		config := cache.L2CacheConfig{
-			Addrs:    []string{redisAddr},
-			PoolSize: 10,
+	var redisClientWithMetrics *cache.RedisClientWithMetrics
+	if cfg.Redis != nil && cfg.Redis.Addr != "" {
+		// Convert config to optimized RedisConfig
+		// Load configuration from environment variables
+		redisConfig := cache.RedisConfig{
+			Addrs:           []string{cfg.Redis.Addr},
+			Password:        cfg.Redis.Password,
+			DB:              cfg.Redis.DB,
+			ClusterMode:     false, // Default to standalone mode
+			PoolSize:        cfg.Redis.PoolSize,
+			MinIdleConns:    cfg.Redis.MinIdleConns,
+			ConnMaxLifetime: 30 * time.Minute, // Default from design
+			DialTimeout:     5 * time.Second,  // Default from design
+			ReadTimeout:     3 * time.Second,  // Default from design
+			WriteTimeout:    3 * time.Second,  // Default from design
+			MaxRedirects:    3,                // Default for cluster mode
 		}
-		l2Cache, err = cache.NewL2Cache(config)
-		if err != nil {
-			obs.Logger().Warn(ctx, "Failed to initialize L2 cache (Redis), continuing without Redis", "error", err)
-			l2Cache = nil
+
+		// Apply defaults if not set
+		redisConfig.ApplyDefaults()
+
+		// Validate configuration
+		if err := redisConfig.Validate(); err != nil {
+			obs.Logger().Warn(ctx, "Invalid Redis configuration, continuing without Redis", "error", err)
 		} else {
-			obs.Logger().Info(ctx, "Initialized L2 cache (Redis)")
+			// Create Redis client with metrics
+			redisClientWithMetrics = cache.NewRedisClientWithMetrics(redisConfig, obs)
+			obs.Logger().Info(ctx, "Initialized optimized Redis client with metrics", "config", redisConfig.String())
+
+			// Create L2 cache using the optimized client
+			l2Config := cache.L2CacheConfig{
+				Addrs:    []string{cfg.Redis.Addr},
+				PoolSize: cfg.Redis.PoolSize,
+			}
+			l2Cache, err = cache.NewL2Cache(l2Config, obs)
+			if err != nil {
+				obs.Logger().Warn(ctx, "Failed to initialize L2 cache (Redis), continuing without Redis", "error", err)
+				l2Cache = nil
+				// Stop metrics collection if L2 cache initialization failed
+				if redisClientWithMetrics != nil {
+					redisClientWithMetrics.Stop()
+					redisClientWithMetrics = nil
+				}
+			} else {
+				obs.Logger().Info(ctx, "Initialized L2 cache (Redis)")
+			}
 		}
 	} else {
 		obs.Logger().Info(ctx, "Redis not configured, running without L2 cache")
 	}
 
-	// Initialize cache manager
-	cacheManager := cache.NewCacheManager(l1Cache, l2Cache, &cacheStorageAdapter{store: store}, obs)
-	obs.Logger().Info(ctx, "Initialized cache manager")
+	// Initialize cache manager with CacheLoader for better cache stampede prevention
+	var cacheManager *cache.CacheManager
+	if l2Cache != nil {
+		// Create CacheLoader to prevent cache stampede using SETNX
+		loader := cache.NewCacheLoader(
+			l2Cache.Client(),
+			&cacheStorageAdapter{store: store},
+			l2Cache,
+			obs,
+		)
+
+		// Use CacheManagerWithLoader for enhanced cache management
+		cacheManager = cache.NewCacheManagerWithLoader(
+			l1Cache,
+			l2Cache,
+			&cacheStorageAdapter{store: store},
+			loader,
+			obs,
+		)
+		obs.Logger().Info(ctx, "Initialized cache manager with CacheLoader (SETNX-based)")
+	} else {
+		// Fallback to basic cache manager when Redis is not available
+		cacheManager = cache.NewCacheManager(
+			l1Cache,
+			l2Cache,
+			&cacheStorageAdapter{store: store},
+			obs,
+		)
+		obs.Logger().Info(ctx, "Initialized cache manager without CacheLoader (Redis not available)")
+	}
+
+	// Register health checks
+	// Database health check (MySQL) - critical
+	hc.RegisterCheck(health.NewDatabaseCheck("database", store.DB()))
+	obs.Logger().Info(ctx, "Registered database health check")
+
+	// Redis health check - critical if Redis is configured
+	if l2Cache != nil {
+		hc.RegisterCheck(health.NewRedisCheck("redis", l2Cache.Client()))
+		obs.Logger().Info(ctx, "Registered Redis health check")
+	}
+
+	// Start health checker
+	if err := hc.Start(); err != nil {
+		obs.Logger().Error(ctx, "Failed to start health checker", "error", err)
+		os.Exit(1)
+	}
+	obs.Logger().Info(ctx, "Started health checker")
 
 	// Initialize analytics writer (Kafka) - optional
-	// Requirements: 7.1, 7.2
 	var analyticsWriter *analytics.AnalyticsWriter
-	kafkaBrokers := os.Getenv("KAFKA_BROKERS")
-	if kafkaBrokers != "" {
+	if cfg.Kafka != nil && len(cfg.Kafka.Brokers) > 0 {
 		analyticsConfig := analytics.Config{
-			KafkaBrokers: []string{kafkaBrokers},
-			Topic:        "url-clicks",
+			KafkaBrokers: cfg.Kafka.Brokers,
+			Topic:        cfg.Kafka.Topic,
 			NumWorkers:   4,
 			BufferSize:   10000,
 		}
 		analyticsWriter = analytics.NewAnalyticsWriter(analyticsConfig, obs)
-		obs.Logger().Info(ctx, "Initialized analytics writer", "brokers", kafkaBrokers)
+		obs.Logger().Info(ctx, "Initialized analytics writer", "brokers", cfg.Kafka.Brokers)
 	} else {
 		obs.Logger().Info(ctx, "Kafka not configured, running without analytics")
 	}
@@ -142,9 +232,8 @@ func main() {
 	svc := service.NewShortenerServiceImpl(store, idGenerator, urlValidator, cacheManager, obs)
 
 	// Initialize rate limiter (100 requests per minute per IP)
-	// Requirements: 6.1, 6.2
-	rateLimiter := service.NewRateLimiter(100)
-	obs.Logger().Info(ctx, "Initialized rate limiter", "requests_per_minute", 100)
+	rateLimiter := service.NewRateLimiter(cfg.RateLimiter.RequestsPerMinute)
+	obs.Logger().Info(ctx, "Initialized rate limiter", "requests_per_minute", cfg.RateLimiter.RequestsPerMinute)
 
 	// Start rate limiter cleanup goroutine
 	ctx, cancel := context.WithCancel(context.Background())
@@ -155,12 +244,25 @@ func main() {
 	redirectHandler := service.NewRedirectHandler(cacheManager, store, analyticsWriter, obs)
 	httpRouter := redirectHandler.SetupRouter()
 
+	// Create main HTTP mux to handle both health endpoints and application routes
+	mainMux := http.NewServeMux()
+
+	// Register health check endpoints (without readiness middleware)
+	mainMux.HandleFunc("/healthz", health.HealthzHandler(hc))
+	mainMux.HandleFunc("/readyz", health.ReadyzHandler(hc))
+	mainMux.HandleFunc("/health", health.HealthHandler(hc))
+	obs.Logger().Info(ctx, "Registered health check endpoints")
+
+	// Wrap redirect handler with readiness middleware
+	readinessWrappedHandler := health.ReadinessMiddleware(hc)(httpRouter)
+
+	// Mount the redirect handler at root (it will handle all other routes)
+	mainMux.Handle("/", readinessWrappedHandler)
+
 	// Wrap HTTP router with rate limiter middleware
-	// Requirements: 6.1, 6.2, 6.5
-	httpRouterWithRateLimit := rateLimiter.HTTPMiddleware(httpRouter)
+	httpRouterWithRateLimit := rateLimiter.HTTPMiddleware(mainMux)
 
 	// Create gRPC server with rate limiter interceptor
-	// Requirements: 6.1, 6.2, 6.5
 	grpcServer := grpc.NewServer(
 		grpc.UnaryInterceptor(rateLimiter.UnaryServerInterceptor()),
 	)
@@ -173,7 +275,7 @@ func main() {
 
 	// Create HTTP server
 	httpServer := &http.Server{
-		Addr:         fmt.Sprintf(":%s", httpPort),
+		Addr:         fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.HTTPPort),
 		Handler:      httpRouterWithRateLimit,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
@@ -186,7 +288,7 @@ func main() {
 
 	// Start gRPC server in a goroutine
 	go func() {
-		obs.Logger().Info(ctx, "gRPC server listening", "port", grpcPort)
+		obs.Logger().Info(ctx, "gRPC server listening", "port", cfg.Server.GRPCPort)
 		if err := grpcServer.Serve(lis); err != nil {
 			obs.Logger().Error(ctx, "Failed to serve gRPC", "error", err)
 			os.Exit(1)
@@ -195,7 +297,7 @@ func main() {
 
 	// Start HTTP server in a goroutine
 	go func() {
-		obs.Logger().Info(ctx, "HTTP redirect server listening", "port", httpPort)
+		obs.Logger().Info(ctx, "HTTP redirect server listening", "port", cfg.Server.HTTPPort)
 		obs.Logger().Info(ctx, "Service ready to accept requests")
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			obs.Logger().Error(ctx, "Failed to serve HTTP", "error", err)
@@ -241,32 +343,17 @@ func main() {
 		}
 	}
 
+	// Stop Redis metrics collection goroutine
+	if redisClientWithMetrics != nil {
+		redisClientWithMetrics.Stop()
+		obs.Logger().Info(ctx, "Redis metrics collection stopped")
+	}
+
+	// Stop health checker
+	hc.Stop()
+	obs.Logger().Info(ctx, "Health checker stopped")
+
 	obs.Logger().Info(ctx, "shortener-service shutdown complete")
-}
-
-// Helper functions for environment variables
-func getEnv(key, defaultValue string) string {
-	if value := os.Getenv(key); value != "" {
-		return value
-	}
-	return defaultValue
-}
-
-func getEnvInt(key string, defaultValue int) int {
-	if value := os.Getenv(key); value != "" {
-		var intValue int
-		if _, err := fmt.Sscanf(value, "%d", &intValue); err == nil {
-			return intValue
-		}
-	}
-	return defaultValue
-}
-
-func getEnvBool(key string, defaultValue bool) bool {
-	if value := os.Getenv(key); value != "" {
-		return value == "true" || value == "1" || value == "yes"
-	}
-	return defaultValue
 }
 
 // cacheStorageAdapter adapts storage.Storage to cache.Storage interface

@@ -1,0 +1,100 @@
+# 2026/02/26 08:21:33.306147 [TestProperty_GapDetectionCompleteness] [rapid] draw maxSeq: 45
+# 2026/02/26 08:21:33.306164 [TestProperty_GapDetectionCompleteness] [rapid] draw include: false
+# 2026/02/26 08:21:33.306165 [TestProperty_GapDetectionCompleteness] [rapid] draw include: true
+# 2026/02/26 08:21:33.306167 [TestProperty_GapDetectionCompleteness] [rapid] draw include: true
+# 2026/02/26 08:21:33.306168 [TestProperty_GapDetectionCompleteness] [rapid] draw include: false
+# 2026/02/26 08:21:33.306168 [TestProperty_GapDetectionCompleteness] [rapid] draw include: true
+# 2026/02/26 08:21:33.306168 [TestProperty_GapDetectionCompleteness] [rapid] draw include: true
+# 2026/02/26 08:21:33.306169 [TestProperty_GapDetectionCompleteness] [rapid] draw include: false
+# 2026/02/26 08:21:33.306169 [TestProperty_GapDetectionCompleteness] [rapid] draw include: false
+# 2026/02/26 08:21:33.306170 [TestProperty_GapDetectionCompleteness] [rapid] draw include: false
+# 2026/02/26 08:21:33.306170 [TestProperty_GapDetectionCompleteness] [rapid] draw include: true
+# 2026/02/26 08:21:33.306170 [TestProperty_GapDetectionCompleteness] [rapid] draw include: true
+# 2026/02/26 08:21:33.306171 [TestProperty_GapDetectionCompleteness] [rapid] draw include: false
+# 2026/02/26 08:21:33.306171 [TestProperty_GapDetectionCompleteness] [rapid] draw include: true
+# 2026/02/26 08:21:33.306171 [TestProperty_GapDetectionCompleteness] [rapid] draw include: true
+# 2026/02/26 08:21:33.306171 [TestProperty_GapDetectionCompleteness] [rapid] draw include: false
+# 2026/02/26 08:21:33.306171 [TestProperty_GapDetectionCompleteness] [rapid] draw include: false
+# 2026/02/26 08:21:33.306172 [TestProperty_GapDetectionCompleteness] [rapid] draw include: true
+# 2026/02/26 08:21:33.306173 [TestProperty_GapDetectionCompleteness] [rapid] draw include: false
+# 2026/02/26 08:21:33.306173 [TestProperty_GapDetectionCompleteness] [rapid] draw include: true
+# 2026/02/26 08:21:33.306173 [TestProperty_GapDetectionCompleteness] [rapid] draw include: false
+# 2026/02/26 08:21:33.306173 [TestProperty_GapDetectionCompleteness] [rapid] draw include: false
+# 2026/02/26 08:21:33.306173 [TestProperty_GapDetectionCompleteness] [rapid] draw include: true
+# 2026/02/26 08:21:33.306174 [TestProperty_GapDetectionCompleteness] [rapid] draw include: false
+# 2026/02/26 08:21:33.306174 [TestProperty_GapDetectionCompleteness] [rapid] draw include: false
+# 2026/02/26 08:21:33.306174 [TestProperty_GapDetectionCompleteness] [rapid] draw include: true
+# 2026/02/26 08:21:33.306174 [TestProperty_GapDetectionCompleteness] [rapid] draw include: false
+# 2026/02/26 08:21:33.306174 [TestProperty_GapDetectionCompleteness] [rapid] draw include: true
+# 2026/02/26 08:21:33.306175 [TestProperty_GapDetectionCompleteness] [rapid] draw include: true
+# 2026/02/26 08:21:33.306175 [TestProperty_GapDetectionCompleteness] [rapid] draw include: true
+# 2026/02/26 08:21:33.306175 [TestProperty_GapDetectionCompleteness] [rapid] draw include: false
+# 2026/02/26 08:21:33.306176 [TestProperty_GapDetectionCompleteness] [rapid] draw include: false
+# 2026/02/26 08:21:33.306176 [TestProperty_GapDetectionCompleteness] [rapid] draw include: false
+# 2026/02/26 08:21:33.306178 [TestProperty_GapDetectionCompleteness] [rapid] draw include: false
+# 2026/02/26 08:21:33.306178 [TestProperty_GapDetectionCompleteness] [rapid] draw include: false
+# 2026/02/26 08:21:33.306178 [TestProperty_GapDetectionCompleteness] [rapid] draw include: true
+# 2026/02/26 08:21:33.306178 [TestProperty_GapDetectionCompleteness] [rapid] draw include: true
+# 2026/02/26 08:21:33.306179 [TestProperty_GapDetectionCompleteness] [rapid] draw include: true
+# 2026/02/26 08:21:33.306179 [TestProperty_GapDetectionCompleteness] [rapid] draw include: true
+# 2026/02/26 08:21:33.306179 [TestProperty_GapDetectionCompleteness] [rapid] draw include: true
+# 2026/02/26 08:21:33.306179 [TestProperty_GapDetectionCompleteness] [rapid] draw include: true
+# 2026/02/26 08:21:33.306180 [TestProperty_GapDetectionCompleteness] [rapid] draw include: true
+# 2026/02/26 08:21:33.306180 [TestProperty_GapDetectionCompleteness] [rapid] draw include: false
+# 2026/02/26 08:21:33.306180 [TestProperty_GapDetectionCompleteness] [rapid] draw include: true
+# 2026/02/26 08:21:33.306180 [TestProperty_GapDetectionCompleteness] [rapid] draw include: true
+# 2026/02/26 08:21:33.306180 [TestProperty_GapDetectionCompleteness] [rapid] draw include: true
+# 2026/02/26 08:21:33.306193 [TestProperty_GapDetectionCompleteness] Gap detection mismatch: expected 19 missing, got 37 missing
+# Expected: map[4:true 7:true 8:true 9:true 12:true 15:true 16:true 18:true 20:true 21:true 23:true 24:true 26:true 30:true 31:true 32:true 33:true 34:true 42:true]
+# Actual: map[1:true 2:true 3:true 4:true 5:true 6:true 7:true 8:true 9:true 10:true 11:true 12:true 14:true 15:true 16:true 18:true 19:true 20:true 21:true 22:true 23:true 24:true 25:true 26:true 27:true 28:true 29:true 30:true 31:true 32:true 33:true 34:true 35:true 41:true 42:true 43:true 44:true]
+# 
+v0.4.8#16697554901065534874
+0x170bcfd610aff7
+0x124f288712fc83
+0x72
+0x23
+0x0
+0x1
+0x1
+0x0
+0x1
+0x1
+0x0
+0x0
+0x0
+0x1
+0x1
+0x0
+0x1
+0x1
+0x0
+0x0
+0x1
+0x0
+0x1
+0x0
+0x0
+0x1
+0x0
+0x0
+0x1
+0x0
+0x1
+0x1
+0x1
+0x0
+0x0
+0x0
+0x0
+0x0
+0x1
+0x1
+0x1
+0x1
+0x1
+0x1
+0x1
+0x0
+0x1
+0x1
+0x1

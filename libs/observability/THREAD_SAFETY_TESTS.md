@@ -164,6 +164,4 @@ If tests are slow:
 
 ## References
 
-- [Requirements Document](../../.kiro/specs/observability-otel-enhancement/requirements.md) - Requirements 11.1-11.7
-- [Design Document](../../.kiro/specs/observability-otel-enhancement/design.md) - Property 31: Thread Safety
 - [Property Testing Guide](../../docs/development/PROPERTY_TESTING.md)

@@ -1,0 +1,55 @@
+# Multi-Region Configuration Example for IM Gateway Service
+# This file demonstrates how to configure the gateway service for multi-region deployment
+
+server:
+  grpc_port: 9097
+  http_port: 8080
+
+redis:
+  addr: localhost:6379
+  password: ""
+  db: 0
+
+kafka:
+  brokers:
+    - localhost:9092
+  topic: offline_msg
+
+etcd:
+  endpoints:
+    - localhost:2379
+
+service_discovery:
+  auth_service_addr: localhost:9095
+  im_service_addr: localhost:9094
+
+# Multi-Region Configuration
+region:
+  # Unique identifier for this region
+  id: region-a
+  # Human-readable name
+  name: Primary Region (Beijing)
+  
+  # Routing configuration
+  routing:
+    # Enable geo-routing
+    enabled: true
+    
+    # Peer region endpoints
+    peer_regions:
+      region-b: http://region-b-gateway.example.com:8080
+    
+    # Health check interval
+    health_check_interval: 30s
+    
+    # Enable automatic failover
+    failover_enabled: true
+
+observability:
+  service_name: im-gateway-service
+  service_version: 1.0.0
+  environment: production
+  enable_metrics: true
+  metrics_port: 9090
+  log_level: info
+  log_format: json

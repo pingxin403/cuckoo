@@ -1,0 +1,466 @@
+version: '3.8'
+
+services:
+  # Region A Services
+  im-service-a:
+    build: 
+      context: ../../
+      dockerfile: apps/im-service/Dockerfile
+    container_name: im-service-region-a
+    environment:
+      - REGION_ID=region-a
+      - PEER_REGION=region-b
+      - PEER_ENDPOINT=http://im-service-b:8080
+      - DATABASE_PATH=/data/region-a/im.db
+      - REDIS_ADDR=redis-region-a:6379
+      - KAFKA_BROKERS=kafka:9092
+      - ARBITER_ENDPOINT=zookeeper-1:2181,zookeeper-2:2182,zookeeper-3:2183
+      - HLC_REGION_ID=region-a
+    volumes:
+      - region-a-data:/data/region-a
+    networks:
+      - region-a-net
+      - cross-region-net
+      - arbiter-net
+    depends_on:
+      - redis-region-a
+      - kafka
+      - zookeeper-1
+      - zookeeper-2
+      - zookeeper-3
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  im-gateway-a:
+    build:
+      context: ../../
+      dockerfile: apps/im-gateway-service/Dockerfile
+    container_name: im-gateway-region-a
+    environment:
+      - REGION_ID=region-a
+      - IM_SERVICE_ENDPOINT=http://im-service-a:8080
+      - WEBSOCKET_PORT=8080
+    ports:
+      - "8080:8080"  # WebSocket endpoint for Region A
+    networks:
+      - region-a-net
+    depends_on:
+      - im-service-a
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  redis-region-a:
+    image: redis:7-alpine
+    container_name: redis-region-a
+    command: redis-server --appendonly yes --appendfsync everysec
+    volumes:
+      - redis-a-data:/data
+    networks:
+      - region-a-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  # Region B Services
+  im-service-b:
+    build: 
+      context: ../../
+      dockerfile: apps/im-service/Dockerfile
+    container_name: im-service-region-b
+    environment:
+      - REGION_ID=region-b
+      - PEER_REGION=region-a
+      - PEER_ENDPOINT=http://im-service-a:8080
+      - DATABASE_PATH=/data/region-b/im.db
+      - REDIS_ADDR=redis-region-b:6379
+      - KAFKA_BROKERS=kafka:9092
+      - ARBITER_ENDPOINT=zookeeper-1:2181,zookeeper-2:2182,zookeeper-3:2183
+      - HLC_REGION_ID=region-b
+    volumes:
+      - region-b-data:/data/region-b
+    networks:
+      - region-b-net
+      - cross-region-net
+      - arbiter-net
+    depends_on:
+      - redis-region-b
+      - kafka
+      - zookeeper-1
+      - zookeeper-2
+      - zookeeper-3
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  im-gateway-b:
+    build:
+      context: ../../
+      dockerfile: apps/im-gateway-service/Dockerfile
+    container_name: im-gateway-region-b
+    environment:
+      - REGION_ID=region-b
+      - IM_SERVICE_ENDPOINT=http://im-service-b:8080
+      - WEBSOCKET_PORT=8080
+    ports:
+      - "8081:8080"  # WebSocket endpoint for Region B
+    networks:
+      - region-b-net
+    depends_on:
+      - im-service-b
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  redis-region-b:
+    image: redis:7-alpine
+    container_name: redis-region-b
+    command: redis-server --appendonly yes --appendfsync everysec
+    volumes:
+      - redis-b-data:/data
+    networks:
+      - region-b-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+
+  # Shared Infrastructure
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: kafka-cluster
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    networks:
+      - cross-region-net
+    depends_on:
+      - zookeeper
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Zookeeper Cluster for Arbiter (Third AZ simulation)
+  zookeeper-1:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: zookeeper-1
+    environment:
+      ZOOKEEPER_SERVER_ID: 1
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_INIT_LIMIT: 5
+      ZOOKEEPER_SYNC_LIMIT: 2
+      ZOOKEEPER_SERVERS: zookeeper-1:2888:3888;zookeeper-2:2888:3888;zookeeper-3:2888:3888
+    volumes:
+      - zookeeper-1-data:/var/lib/zookeeper/data
+      - zookeeper-1-logs:/var/lib/zookeeper/log
+    networks:
+      - arbiter-net
+    healthcheck:
+      test: ["CMD", "echo", "ruok", "|", "nc", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  zookeeper-2:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: zookeeper-2
+    environment:
+      ZOOKEEPER_SERVER_ID: 2
+      ZOOKEEPER_CLIENT_PORT: 2182
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_INIT_LIMIT: 5
+      ZOOKEEPER_SYNC_LIMIT: 2
+      ZOOKEEPER_SERVERS: zookeeper-1:2888:3888;zookeeper-2:2888:3888;zookeeper-3:2888:3888
+    volumes:
+      - zookeeper-2-data:/var/lib/zookeeper/data
+      - zookeeper-2-logs:/var/lib/zookeeper/log
+    networks:
+      - arbiter-net
+    healthcheck:
+      test: ["CMD", "echo", "ruok", "|", "nc", "localhost", "2182"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  zookeeper-3:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: zookeeper-3
+    environment:
+      ZOOKEEPER_SERVER_ID: 3
+      ZOOKEEPER_CLIENT_PORT: 2183
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_INIT_LIMIT: 5
+      ZOOKEEPER_SYNC_LIMIT: 2
+      ZOOKEEPER_SERVERS: zookeeper-1:2888:3888;zookeeper-2:2888:3888;zookeeper-3:2888:3888
+    volumes:
+      - zookeeper-3-data:/var/lib/zookeeper/data
+      - zookeeper-3-logs:/var/lib/zookeeper/log
+    networks:
+      - arbiter-net
+    healthcheck:
+      test: ["CMD", "echo", "ruok", "|", "nc", "localhost", "2183"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Legacy single zookeeper for Kafka (keeping for compatibility)
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: zookeeper-kafka
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+      - zookeeper-logs:/var/lib/zookeeper/log
+    networks:
+      - cross-region-net
+    healthcheck:
+      test: ["CMD", "echo", "ruok", "|", "nc", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Network Chaos Engineering - Traffic Control for latency injection
+  network-chaos:
+    image: nicolaka/netshoot
+    container_name: network-chaos
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+    command: |
+      sh -c "
+        echo 'Setting up network latency simulation...'
+        
+        # Install tc if not available
+        apk add --no-cache iproute2 2>/dev/null || true
+        
+        # Add 30-50ms latency with 5ms jitter for cross-region simulation
+        # This simulates the network delay between two geographic regions
+        tc qdisc add dev eth0 root handle 1: prio
+        tc qdisc add dev eth0 parent 1:1 handle 10: netem delay 40ms 10ms distribution normal
+        
+        echo 'Network latency injection configured: 40ms ± 10ms'
+        echo 'Simulating cross-region network conditions...'
+        
+        # Keep container running
+        tail -f /dev/null
+      "
+    networks:
+      - cross-region-net
+    restart: unless-stopped
+
+  # Mock Arbiter Service for split-brain prevention
+  arbiter-mock:
+    build:
+      context: ../../
+      dockerfile: tools/arbiter-mock/Dockerfile
+    container_name: arbiter-mock
+    environment:
+      - PORT=9999
+      - LOG_LEVEL=info
+    ports:
+      - "9999:9999"
+    networks:
+      - cross-region-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9999/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  # Monitoring and Observability
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - cross-region-net
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:10.0.0
+    container_name: grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources
+    ports:
+      - "3000:3000"
+    networks:
+      - cross-region-net
+    restart: unless-stopped
+
+# Network Configuration
+networks:
+  # Region A internal network - isolated from Region B
+  region-a-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24
+    labels:
+      - "region=a"
+      - "purpose=internal"
+
+  # Region B internal network - isolated from Region A  
+  region-b-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/24
+    labels:
+      - "region=b"
+      - "purpose=internal"
+
+  # Cross-region network with simulated latency
+  cross-region-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.22.0.0/24
+    labels:
+      - "purpose=cross-region"
+      - "latency=simulated"
+
+  # Arbiter network for Zookeeper cluster (Third AZ simulation)
+  arbiter-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.23.0.0/24
+    labels:
+      - "purpose=arbiter"
+      - "zone=third-az"
+
+# Persistent Volumes
+volumes:
+  # Region A data
+  region-a-data:
+    driver: local
+    labels:
+      - "region=a"
+      - "type=database"
+  
+  redis-a-data:
+    driver: local
+    labels:
+      - "region=a"
+      - "type=cache"
+
+  # Region B data
+  region-b-data:
+    driver: local
+    labels:
+      - "region=b"
+      - "type=database"
+  
+  redis-b-data:
+    driver: local
+    labels:
+      - "region=b"
+      - "type=cache"
+
+  # Shared infrastructure data
+  kafka-data:
+    driver: local
+    labels:
+      - "type=messaging"
+  
+  # Zookeeper cluster data (arbiter)
+  zookeeper-1-data:
+    driver: local
+    labels:
+      - "type=arbiter"
+      - "node=zk1"
+  
+  zookeeper-1-logs:
+    driver: local
+    labels:
+      - "type=arbiter-logs"
+      - "node=zk1"
+
+  zookeeper-2-data:
+    driver: local
+    labels:
+      - "type=arbiter"
+      - "node=zk2"
+  
+  zookeeper-2-logs:
+    driver: local
+    labels:
+      - "type=arbiter-logs"
+      - "node=zk2"
+
+  zookeeper-3-data:
+    driver: local
+    labels:
+      - "type=arbiter"
+      - "node=zk3"
+  
+  zookeeper-3-logs:
+    driver: local
+    labels:
+      - "type=arbiter-logs"
+      - "node=zk3"
+  
+  # Legacy Kafka Zookeeper
+  zookeeper-data:
+    driver: local
+    labels:
+      - "type=coordination"
+  
+  zookeeper-logs:
+    driver: local
+    labels:
+      - "type=coordination-logs"
+
+  # Monitoring data
+  prometheus-data:
+    driver: local
+    labels:
+      - "type=monitoring"
+  
+  grafana-data:
+    driver: local
+    labels:
+      - "type=visualization"

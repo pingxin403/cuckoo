@@ -13,8 +13,6 @@ import com.pingxin403.cuckoo.flashsale.model.DlqMessage;
  *   <li>Original message metadata is preserved for debugging
  *   <li>Failures are logged but don't block the consumer
  * </ul>
- *
- * <p>Requirements: 2.5
  */
 public interface DlqMessageProducer {
 

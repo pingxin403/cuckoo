@@ -673,12 +673,9 @@ The service uses structured logging (JSON format in production):
 
 For questions or issues:
 - Check the [main README](../README.md)
-- Review the [design document](../../../.kiro/specs/url-shortener-service/design.md)
 - Contact the backend-go-team
 
 ## Related Documentation
 
 - [Service README](../README.md) - Service overview and setup
 - [Protocol Buffer Definition](../../../api/v1/shortener.proto) - API contract
-- [Design Document](../../../.kiro/specs/url-shortener-service/design.md) - Architecture and design decisions
-- [Requirements Document](../../../.kiro/specs/url-shortener-service/requirements.md) - Feature requirements

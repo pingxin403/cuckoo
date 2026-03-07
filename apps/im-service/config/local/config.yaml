@@ -21,7 +21,7 @@ redis:
 
 kafka:
   brokers:
-    - "localhost:9092"
+    - "localhost:9093"
   consumer_group: "im-service-local"
 
 observability:

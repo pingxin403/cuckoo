@@ -1,0 +1,78 @@
+# 2026/02/06 11:30:30.186856 [TestProperty_ReconciliationConvergence] [rapid] draw numCommonMessages: 3
+# 2026/02/06 11:30:30.186860 [TestProperty_ReconciliationConvergence] [rapid] draw numLocalOnly: 4
+# 2026/02/06 11:30:30.186861 [TestProperty_ReconciliationConvergence] [rapid] draw numRemoteOnly: 0
+# 2026/02/06 11:30:30.186863 [TestProperty_ReconciliationConvergence] [rapid] draw content: ""
+# 2026/02/06 11:30:30.186864 [TestProperty_ReconciliationConvergence] [rapid] draw conversationID: "conv-0"
+# 2026/02/06 11:30:30.186866 [TestProperty_ReconciliationConvergence] [rapid] draw content: ""
+# 2026/02/06 11:30:30.186867 [TestProperty_ReconciliationConvergence] [rapid] draw conversationID: "conv-0"
+# 2026/02/06 11:30:30.186868 [TestProperty_ReconciliationConvergence] [rapid] draw content: ""
+# 2026/02/06 11:30:30.186868 [TestProperty_ReconciliationConvergence] [rapid] draw conversationID: "conv-1"
+# 2026/02/06 11:30:30.186869 [TestProperty_ReconciliationConvergence] [rapid] draw content: ""
+# 2026/02/06 11:30:30.186870 [TestProperty_ReconciliationConvergence] [rapid] draw conversationID: "conv-1"
+# 2026/02/06 11:30:30.186871 [TestProperty_ReconciliationConvergence] [rapid] draw content: ""
+# 2026/02/06 11:30:30.186872 [TestProperty_ReconciliationConvergence] [rapid] draw conversationID: "conv-0"
+# 2026/02/06 11:30:30.186873 [TestProperty_ReconciliationConvergence] [rapid] draw content: ""
+# 2026/02/06 11:30:30.186873 [TestProperty_ReconciliationConvergence] [rapid] draw conversationID: "conv-0"
+# 2026/02/06 11:30:30.186874 [TestProperty_ReconciliationConvergence] [rapid] draw content: ""
+# 2026/02/06 11:30:30.186875 [TestProperty_ReconciliationConvergence] [rapid] draw conversationID: "conv-0"
+# 2026/02/06 11:30:30.186955 [TestProperty_ReconciliationConvergence] Convergence violated: failed to converge after 5 iterations, 7 differences remain (expected at most 4 local-only)
+# 
+v0.4.8#3145865107727736963
+0x0
+0x0
+0x0
+0x0
+0x700070bc81144
+0x4
+0x15907086dbd45f
+0x6d6cd71a6af7c
+0x0
+0x0
+0x0
+0x0
+0x0
+0x1
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x1
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x1
+0x0
+0x0
+0x0
+0x0
+0x0
+0x0
+0x1
+0x0
+0x0
+0x0
+0x2
+0x0
+0x0
+0x0
+0x0
+0x1
+0x0
+0x169579906003d8
+0x0
+0x1c4520b9dfde31
+0x0
+0x421e0c09615c7
+0x0
+0x0
+0x0
+0x0
+0x1
+0x0
+0x0

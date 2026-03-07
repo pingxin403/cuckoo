@@ -1,0 +1,324 @@
+{
+  "dashboard": {
+    "title": "Redis Optimization Metrics",
+    "tags": ["redis", "cache", "shortener"],
+    "timezone": "browser",
+    "schemaVersion": 16,
+    "version": 1,
+    "refresh": "10s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Cache Hit Rate",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "rate(shortener_cache_hits_total{layer=\"L1\"}[5m]) / (rate(shortener_cache_hits_total{layer=\"L1\"}[5m]) + rate(shortener_cache_misses_total{layer=\"L1\"}[5m]))",
+            "legendFormat": "L1 Hit Rate",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(shortener_cache_hits_total{layer=\"L2\"}[5m]) / (rate(shortener_cache_hits_total{layer=\"L2\"}[5m]) + rate(shortener_cache_misses_total{layer=\"L2\"}[5m]))",
+            "legendFormat": "L2 Hit Rate",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {"format": "percentunit", "min": 0, "max": 1}
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {"params": [0.8], "type": "lt"},
+              "operator": {"type": "and"},
+              "query": {"params": ["B", "5m", "now"]},
+              "reducer": {"params": [], "type": "avg"},
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "frequency": "60s",
+          "handler": 1,
+          "name": "L2 Cache Hit Rate Low",
+          "noDataState": "no_data",
+          "notifications": []
+        }
+      },
+      {
+        "id": 2,
+        "title": "Connection Pool Utilization",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "redis_pool_connections{state=\"active\"} / redis_pool_connections{state=\"total\"}",
+            "legendFormat": "Pool Utilization",
+            "refId": "A"
+          },
+          {
+            "expr": "redis_pool_connections{state=\"active\"}",
+            "legendFormat": "Active Connections",
+            "refId": "B"
+          },
+          {
+            "expr": "redis_pool_connections{state=\"idle\"}",
+            "legendFormat": "Idle Connections",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "min": 0}
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Pipeline Latency (P50, P95, P99)",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(redis_pipeline_duration_seconds_bucket[5m]))",
+            "legendFormat": "P50",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(redis_pipeline_duration_seconds_bucket[5m]))",
+            "legendFormat": "P95",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(redis_pipeline_duration_seconds_bucket[5m]))",
+            "legendFormat": "P99",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {"format": "s", "min": 0}
+        ]
+      },
+      {
+        "id": 4,
+        "title": "Pipeline Batch Size Distribution",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(redis_pipeline_batch_size_bucket[5m]))",
+            "legendFormat": "P50 Batch Size",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(redis_pipeline_batch_size_bucket[5m]))",
+            "legendFormat": "P95 Batch Size",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(redis_pipeline_batch_size_bucket[5m]))",
+            "legendFormat": "P99 Batch Size",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "min": 0}
+        ]
+      },
+      {
+        "id": 5,
+        "title": "SETNX Lock Metrics",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 16, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "rate(redis_setnx_lock_acquired_total[5m])",
+            "legendFormat": "Lock Acquisitions/s",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(redis_setnx_lock_contention_total[5m])",
+            "legendFormat": "Lock Contentions/s",
+            "refId": "B"
+          },
+          {
+            "expr": "rate(redis_setnx_lock_contention_total[5m]) / (rate(redis_setnx_lock_acquired_total[5m]) + rate(redis_setnx_lock_contention_total[5m]))",
+            "legendFormat": "Contention Rate",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "min": 0}
+        ]
+      },
+      {
+        "id": 6,
+        "title": "SETNX Lock Wait Time",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 16, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(redis_setnx_lock_wait_duration_seconds_bucket[5m]))",
+            "legendFormat": "P50 Wait Time",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(redis_setnx_lock_wait_duration_seconds_bucket[5m]))",
+            "legendFormat": "P95 Wait Time",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(redis_setnx_lock_wait_duration_seconds_bucket[5m]))",
+            "legendFormat": "P99 Wait Time",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {"format": "s", "min": 0}
+        ]
+      },
+      {
+        "id": 7,
+        "title": "TTL Distribution (L2 Cache)",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 24, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, rate(redis_ttl_seconds_bucket{layer=\"L2\"}[5m]))",
+            "legendFormat": "P50 TTL",
+            "refId": "A"
+          },
+          {
+            "expr": "histogram_quantile(0.95, rate(redis_ttl_seconds_bucket{layer=\"L2\"}[5m]))",
+            "legendFormat": "P95 TTL",
+            "refId": "B"
+          },
+          {
+            "expr": "histogram_quantile(0.99, rate(redis_ttl_seconds_bucket{layer=\"L2\"}[5m]))",
+            "legendFormat": "P99 TTL",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {"format": "s", "min": 0}
+        ]
+      },
+      {
+        "id": 8,
+        "title": "Singleflight Efficiency",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 24, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "rate(shortener_singleflight_waits_total[5m])",
+            "legendFormat": "Coalesced Requests/s",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(redis_singleflight_errors_total[5m])",
+            "legendFormat": "Errors/s",
+            "refId": "B"
+          },
+          {
+            "expr": "rate(redis_singleflight_timeouts_total[5m])",
+            "legendFormat": "Timeouts/s",
+            "refId": "C"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "min": 0}
+        ]
+      },
+      {
+        "id": 9,
+        "title": "Connection Pool Errors",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 32, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "rate(redis_pool_timeouts_total[5m])",
+            "legendFormat": "Pool Timeouts/s",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(redis_pool_misses_total[5m])",
+            "legendFormat": "Pool Misses/s",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "min": 0}
+        ],
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {"params": [10], "type": "gt"},
+              "operator": {"type": "and"},
+              "query": {"params": ["A", "1m", "now"]},
+              "reducer": {"params": [], "type": "avg"},
+              "type": "query"
+            }
+          ],
+          "executionErrorState": "alerting",
+          "frequency": "60s",
+          "handler": 1,
+          "name": "Redis Pool Timeouts High",
+          "noDataState": "no_data",
+          "notifications": []
+        }
+      },
+      {
+        "id": 10,
+        "title": "Pipeline Error Rate",
+        "type": "graph",
+        "gridPos": {"x": 12, "y": 32, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "rate(redis_pipeline_errors_total[5m]) / rate(redis_pipeline_duration_seconds_count[5m])",
+            "legendFormat": "Error Rate",
+            "refId": "A"
+          }
+        ],
+        "yaxes": [
+          {"format": "percentunit", "min": 0}
+        ]
+      },
+      {
+        "id": 11,
+        "title": "Cache Operations Rate",
+        "type": "graph",
+        "gridPos": {"x": 0, "y": 40, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "rate(shortener_cache_operations_total{operation=\"hit\"}[5m])",
+            "legendFormat": "Hits/s - {{layer}}",
+            "refId": "A"
+          },
+          {
+            "expr": "rate(shortener_cache_operations_total{operation=\"miss\"}[5m])",
+            "legendFormat": "Misses/s - {{layer}}",
+            "refId": "B"
+          }
+        ],
+        "yaxes": [
+          {"format": "short", "min": 0}
+        ]
+      },
+      {
+        "id": 12,
+        "title": "Cache Warming Operations",
+        "type": "stat",
+        "gridPos": {"x": 12, "y": 40, "w": 12, "h": 8},
+        "targets": [
+          {
+            "expr": "rate(shortener_cache_warm_total[5m])",
+            "legendFormat": "Warm Operations/s",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "graphMode": "area",
+          "orientation": "auto"
+        }
+      }
+    ]
+  }
+}

@@ -15,7 +15,6 @@ import (
 )
 
 // Test token consumption and refill
-// Requirements: 6.2
 func TestTokenBucket_ConsumptionAndRefill(t *testing.T) {
 	rl := NewRateLimiter(10) // 10 requests per minute
 	ip := "192.168.1.1"
@@ -39,7 +38,6 @@ func TestTokenBucket_ConsumptionAndRefill(t *testing.T) {
 }
 
 // Test concurrent access to token bucket
-// Requirements: 6.2
 func TestTokenBucket_ConcurrentAccess(t *testing.T) {
 	rl := NewRateLimiter(100)
 	ip := "192.168.1.1"
@@ -73,7 +71,6 @@ func TestTokenBucket_ConcurrentAccess(t *testing.T) {
 }
 
 // Test token refill after time passes
-// Requirements: 6.2
 func TestTokenBucket_Refill(t *testing.T) {
 	// Create rate limiter with short refill interval
 	rl := &RateLimiter{
@@ -110,7 +107,6 @@ func TestTokenBucket_Refill(t *testing.T) {
 }
 
 // Test independent rate limits for different IPs
-// Requirements: 6.1
 func TestRateLimiter_IndependentIPs(t *testing.T) {
 	rl := NewRateLimiter(10)
 
@@ -140,7 +136,6 @@ func TestRateLimiter_IndependentIPs(t *testing.T) {
 }
 
 // Test gRPC interceptor
-// Requirements: 6.1, 6.2, 6.5
 func TestRateLimiter_UnaryServerInterceptor(t *testing.T) {
 	rl := NewRateLimiter(5)
 	interceptor := rl.UnaryServerInterceptor()
@@ -180,7 +175,6 @@ func TestRateLimiter_UnaryServerInterceptor(t *testing.T) {
 }
 
 // Test HTTP middleware
-// Requirements: 6.1, 6.2, 6.5
 func TestRateLimiter_HTTPMiddleware(t *testing.T) {
 	rl := NewRateLimiter(5)
 
@@ -225,7 +219,6 @@ func TestRateLimiter_HTTPMiddleware(t *testing.T) {
 }
 
 // Test cleanup removes old buckets
-// Requirements: 6.2
 func TestRateLimiter_Cleanup(t *testing.T) {
 	rl := NewRateLimiter(10)
 
@@ -267,7 +260,6 @@ func TestRateLimiter_Cleanup(t *testing.T) {
 }
 
 // Test StartCleanup background goroutine
-// Requirements: 6.2
 func TestRateLimiter_StartCleanup(t *testing.T) {
 	rl := NewRateLimiter(10)
 
@@ -301,7 +293,6 @@ func TestRateLimiter_StartCleanup(t *testing.T) {
 }
 
 // Test extractIPFromHTTPRequest with X-Forwarded-For
-// Requirements: 6.1
 func TestExtractIPFromHTTPRequest_XForwardedFor(t *testing.T) {
 	req := httptest.NewRequest("GET", "/test", nil)
 	req.Header.Set("X-Forwarded-For", "203.0.113.1")
@@ -314,7 +305,6 @@ func TestExtractIPFromHTTPRequest_XForwardedFor(t *testing.T) {
 }
 
 // Test extractIPFromHTTPRequest with X-Real-IP
-// Requirements: 6.1
 func TestExtractIPFromHTTPRequest_XRealIP(t *testing.T) {
 	req := httptest.NewRequest("GET", "/test", nil)
 	req.Header.Set("X-Real-IP", "203.0.113.2")
@@ -327,7 +317,6 @@ func TestExtractIPFromHTTPRequest_XRealIP(t *testing.T) {
 }
 
 // Test extractIPFromHTTPRequest with RemoteAddr fallback
-// Requirements: 6.1
 func TestExtractIPFromHTTPRequest_RemoteAddr(t *testing.T) {
 	req := httptest.NewRequest("GET", "/test", nil)
 	req.RemoteAddr = "192.168.1.1:12345"

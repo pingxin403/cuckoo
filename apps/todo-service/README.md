@@ -109,6 +109,75 @@ The service implements the following gRPC methods:
 
 For detailed API definitions, refer to `api/v1/todo.proto`.
 
+## Health Checks
+
+The service uses the standardized health check library (`libs/health`) providing comprehensive health monitoring:
+
+### Health Check Endpoints
+
+```
+GET /healthz   # Liveness probe (process health only)
+GET /readyz    # Readiness probe (checks all dependencies)
+GET /health    # Full health status (detailed JSON)
+```
+
+**Liveness Probe** (`/healthz`):
+- Checks process health only (heartbeat, memory, goroutines)
+- Returns 200 if process is healthy, 503 if unhealthy
+- Used by Kubernetes to restart unhealthy pods
+
+**Readiness Probe** (`/readyz`):
+- Checks all dependencies (Database)
+- Returns 200 if ready to serve traffic, 503 if not ready
+- Used by Kubernetes to route traffic to healthy pods
+- Implements anti-flapping (requires 3 consecutive failures)
+
+**Full Health Status** (`/health`):
+- Returns detailed JSON with component-level health
+- Includes health score, component status, and response times
+- Useful for debugging and monitoring
+
+**Example:**
+
+```bash
+# Check liveness
+curl http://localhost:8080/healthz
+
+# Check readiness
+curl http://localhost:8080/readyz
+
+# Get detailed health status
+curl http://localhost:8080/health | jq
+```
+
+**Example Response:**
+
+```json
+{
+  "status": "healthy",
+  "health_score": 100,
+  "timestamp": "2026-02-02T10:30:00Z",
+  "components": [
+    {
+      "name": "database",
+      "status": "healthy",
+      "message": "Database connection healthy",
+      "response_time_ms": 5
+    }
+  ]
+}
+```
+
+**Health Check Features:**
+- **Auto-Recovery**: Automatically attempts to reconnect to failed dependencies
+- **Circuit Breaker**: Prevents cascading failures with circuit breaker pattern
+- **Metrics Export**: Exposes health metrics to Prometheus
+- **Graceful Shutdown**: Properly handles in-flight requests during shutdown
+
+For more details, see [Health Check Integration](./HEALTH_CHECK_INTEGRATION.md).
+
+---
+
 ## Observability
 
 The service integrates with the unified observability library providing metrics, structured logging, and optional tracing.

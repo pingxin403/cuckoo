@@ -222,7 +222,6 @@ Always check errors and implement retry logic with exponential backoff.
 
 ## Watch Mechanism for Cache Invalidation
 
-**Status**: ✅ Implemented (Task 6.2)
 
 The Watch mechanism enables real-time cache invalidation when Registry entries change, implementing Requirements 7.9 and 17.3.
 

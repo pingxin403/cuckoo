@@ -10,8 +10,6 @@ package com.pingxin403.cuckoo.flashsale.service.dto;
  *   <li>CAPTCHA - Require captcha verification before proceeding
  *   <li>BLOCK - Block the request immediately
  * </ul>
- *
- * <p>Validates Requirements: 3.4, 3.5, 3.6
  */
 public enum RiskAction {
   /** 允许通过 - Allow request to proceed */

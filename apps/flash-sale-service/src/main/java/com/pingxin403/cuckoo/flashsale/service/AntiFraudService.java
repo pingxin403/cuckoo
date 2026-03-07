@@ -31,8 +31,6 @@ import com.pingxin403.cuckoo.flashsale.service.dto.SeckillRequest;
  *   <li>rate_limit:{key} -> Integer (threshold) -> No TTL
  * </ul>
  *
- * <p>Validates Requirements: 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 7.4
- *
  * @see RiskAssessment
  * @see SeckillRequest
  * @see DeviceFingerprint
@@ -57,8 +55,6 @@ public interface AntiFraudService {
    *   <li>MEDIUM level -> CAPTCHA action (suspicious user, require captcha)
    *   <li>HIGH level -> BLOCK action (high-risk user, reject request)
    * </ul>
-   *
-   * <p>Validates Requirements: 3.4, 3.5, 3.6
    *
    * @param request the seckill request to assess
    * @return RiskAssessment containing risk level, action, and reason

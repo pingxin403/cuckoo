@@ -14,8 +14,6 @@ import com.pingxin403.cuckoo.flashsale.service.dto.ReconciliationReport;
  * <p>Executes full reconciliation every hour to ensure data consistency between Redis stock data
  * and MySQL order data.
  *
- * <p>Validates Requirements: 6.4, 6.5, 6.6
- *
  * <p>Configuration:
  *
  * <ul>

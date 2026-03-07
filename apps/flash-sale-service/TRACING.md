@@ -415,4 +415,3 @@ Run tracing tests:
 - [Micrometer Tracing](https://micrometer.io/docs/tracing)
 - [Jaeger Documentation](https://www.jaegertracing.io/docs/)
 - [W3C Trace Context](https://www.w3.org/TR/trace-context/)
-- [Design Document - Requirement 7.3](../../.kiro/specs/flash-sale-system/design.md#73-distributed-tracing)

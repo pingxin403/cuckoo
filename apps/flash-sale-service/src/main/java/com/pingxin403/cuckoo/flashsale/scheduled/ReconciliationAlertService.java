@@ -11,8 +11,6 @@ import com.pingxin403.cuckoo.flashsale.service.dto.ReconciliationReport;
  * Alert service for reconciliation discrepancies.
  *
  * <p>Handles alert notifications when reconciliation detects data inconsistencies.
- *
- * <p>Validates Requirements: 6.6, 7.2, 7.5
  */
 @Service
 public class ReconciliationAlertService {

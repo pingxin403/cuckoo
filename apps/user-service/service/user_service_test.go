@@ -144,6 +144,7 @@ func (m *MockUserStore) GetGroupMembers(ctx context.Context, groupID string, cur
 	totalCount := m.groupCounts[groupID]
 	// Safe conversion: limit is int32, len is int
 	memberListLen := len(memberList)
+	// #nosec G115 -- memberListLen is bounded by database query results, safe to compare with int32 limit
 	if memberListLen > 0 && limit > 0 && int32(memberListLen) > limit {
 		nextCursor := memberList[limit-1].UserId
 		return memberList[:limit], nextCursor, totalCount, nil
@@ -277,7 +278,7 @@ func TestBatchGetUsers_TooManyIDs(t *testing.T) {
 
 	// Create 101 user IDs
 	userIDs := make([]string, 101)
-	for i := range 101 {
+	for i := 0; i < 101; i++ {
 		userIDs[i] = fmt.Sprintf("user%03d", i)
 	}
 

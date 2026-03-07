@@ -1,0 +1,124 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: shortener-mysql-loadtest
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: shortener
+      MYSQL_USER: shortener
+      MYSQL_PASSWORD: shortenerpass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Redis Standalone
+  redis:
+    image: redis:7-alpine
+    container_name: shortener-redis-loadtest
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 2gb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: shortener-prometheus-loadtest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    depends_on:
+      - shortener-service
+
+  # Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: shortener-grafana-loadtest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ../docs/grafana-redis-dashboard.json:/etc/grafana/provisioning/dashboards/redis-dashboard.json
+    depends_on:
+      - prometheus
+
+  # Shortener Service
+  shortener-service:
+    build:
+      context: ../
+      dockerfile: Dockerfile
+    container_name: shortener-service-loadtest
+    ports:
+      - "8080:8080"
+      - "9091:9091" # Metrics port
+    environment:
+      # Database
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: shortener
+      DB_PASSWORD: shortenerpass
+      DB_NAME: shortener
+      
+      # Redis
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ""
+      REDIS_DB: 0
+      REDIS_POOL_SIZE: 100
+      REDIS_MIN_IDLE_CONNS: 30
+      REDIS_CONN_MAX_LIFETIME: 30m
+      REDIS_DIAL_TIMEOUT: 5s
+      REDIS_READ_TIMEOUT: 3s
+      REDIS_WRITE_TIMEOUT: 3s
+      
+      # Service
+      SERVER_PORT: 8080
+      METRICS_PORT: 9091
+      LOG_LEVEL: info
+      
+      # Cache
+      CACHE_TTL: 604800 # 7 days
+      CACHE_TTL_JITTER: 86400 # ±1 day
+      
+      # Performance
+      MAX_CONCURRENT_REQUESTS: 10000
+      REQUEST_TIMEOUT: 30s
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+  prometheus_data:
+  grafana_data:
