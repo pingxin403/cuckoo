@@ -13,7 +13,7 @@ import (
 
 // TestProperty_CacheInvalidationOnDeletion verifies cache invalidation
 // Property 8: Cache Invalidation on Deletion
-// Requirements: 4.6
+
 func TestProperty_CacheInvalidationOnDeletion(t *testing.T) {
 	// Check if Redis is available
 	// Test config for local Redis (no auth required)

@@ -173,7 +173,7 @@ func TestValidateToken_MalformedToken(t *testing.T) {
 	ctx := context.Background()
 
 	req := &authpb.ValidateTokenRequest{
-		AccessToken: "not.a.valid.jwt.token",
+		AccessToken: "not.a.valid.jwt.token", // #nosec G101 -- This is a test fixture, not a real credential
 	}
 
 	// Act

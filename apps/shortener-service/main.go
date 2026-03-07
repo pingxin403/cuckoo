@@ -122,7 +122,7 @@ func main() {
 	obs.Logger().Info(ctx, "Initialized cache manager")
 
 	// Initialize analytics writer (Kafka) - optional
-	// Requirements: 7.1, 7.2
+
 	var analyticsWriter *analytics.AnalyticsWriter
 	kafkaBrokers := os.Getenv("KAFKA_BROKERS")
 	if kafkaBrokers != "" {
@@ -142,7 +142,7 @@ func main() {
 	svc := service.NewShortenerServiceImpl(store, idGenerator, urlValidator, cacheManager, obs)
 
 	// Initialize rate limiter (100 requests per minute per IP)
-	// Requirements: 6.1, 6.2
+
 	rateLimiter := service.NewRateLimiter(100)
 	obs.Logger().Info(ctx, "Initialized rate limiter", "requests_per_minute", 100)
 
@@ -156,11 +156,11 @@ func main() {
 	httpRouter := redirectHandler.SetupRouter()
 
 	// Wrap HTTP router with rate limiter middleware
-	// Requirements: 6.1, 6.2, 6.5
+
 	httpRouterWithRateLimit := rateLimiter.HTTPMiddleware(httpRouter)
 
 	// Create gRPC server with rate limiter interceptor
-	// Requirements: 6.1, 6.2, 6.5
+
 	grpcServer := grpc.NewServer(
 		grpc.UnaryInterceptor(rateLimiter.UnaryServerInterceptor()),
 	)

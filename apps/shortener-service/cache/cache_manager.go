@@ -25,7 +25,7 @@ type StorageMapping struct {
 }
 
 // CacheManager manages multi-tier caching with singleflight
-// Requirements: 3.2, 3.3, 4.4, 12.1, 12.2, 12.5
+
 type CacheManager struct {
 	l1      *L1Cache
 	l2      *L2Cache
@@ -46,7 +46,7 @@ func NewCacheManager(l1 *L1Cache, l2 *L2Cache, storage Storage, obs observabilit
 
 // Get retrieves a URL mapping with multi-tier fallback and singleflight
 // Flow: L1 → L2 → DB, with backfilling on misses
-// Requirements: 3.2, 3.3, 4.4, 12.1, 12.2, 12.5
+
 func (cm *CacheManager) Get(ctx context.Context, shortCode string) (*URLMapping, error) {
 	// Use singleflight to coalesce concurrent requests for the same key
 	v, err, _ := cm.sf.Do(shortCode, func() (interface{}, error) {
@@ -113,7 +113,7 @@ func (cm *CacheManager) getWithFallback(ctx context.Context, shortCode string) (
 }
 
 // Delete removes a URL mapping from all cache layers
-// Requirements: 4.6
+
 func (cm *CacheManager) Delete(ctx context.Context, shortCode string) error {
 	// Delete from L1
 	cm.l1.Delete(shortCode)
@@ -129,7 +129,7 @@ func (cm *CacheManager) Delete(ctx context.Context, shortCode string) error {
 }
 
 // Set stores a URL mapping in all cache layers
-// Requirements: 4.3
+
 func (cm *CacheManager) Set(ctx context.Context, shortCode string, longURL string, createdAt time.Time) error {
 	// Set in L1
 	cm.l1.Set(shortCode, longURL, createdAt)

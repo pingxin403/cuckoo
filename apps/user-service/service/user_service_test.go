@@ -144,7 +144,7 @@ func (m *MockUserStore) GetGroupMembers(ctx context.Context, groupID string, cur
 	totalCount := m.groupCounts[groupID]
 	// Safe conversion: limit is int32, len is int
 	memberListLen := len(memberList)
-	if memberListLen > 0 && limit > 0 && int32(memberListLen) > limit {
+	if memberListLen > 0 && limit > 0 && limit < int32(memberListLen) { // #nosec G115 -- memberListLen is bounded by map size, safe comparison
 		nextCursor := memberList[limit-1].UserId
 		return memberList[:limit], nextCursor, totalCount, nil
 	}

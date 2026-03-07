@@ -10,7 +10,7 @@ import (
 )
 
 // TestURLValidator_ValidHTTPURLs tests validation of valid HTTP URLs
-// Requirements: 1.4, 14.1
+
 func TestURLValidator_ValidHTTPURLs(t *testing.T) {
 	validator := NewURLValidator()
 
@@ -41,7 +41,7 @@ func TestURLValidator_ValidHTTPURLs(t *testing.T) {
 }
 
 // TestURLValidator_InvalidProtocol tests rejection of non-HTTP/HTTPS protocols
-// Requirements: 14.1
+
 func TestURLValidator_InvalidProtocol(t *testing.T) {
 	validator := NewURLValidator()
 
@@ -69,7 +69,7 @@ func TestURLValidator_InvalidProtocol(t *testing.T) {
 }
 
 // TestURLValidator_URLLength tests URL length validation
-// Requirements: 14.2
+
 func TestURLValidator_URLLength(t *testing.T) {
 	validator := NewURLValidator()
 
@@ -119,7 +119,7 @@ func TestURLValidator_URLLength(t *testing.T) {
 }
 
 // TestURLValidator_MaliciousPatterns tests detection of malicious patterns
-// Requirements: 14.3, 14.7
+
 func TestURLValidator_MaliciousPatterns(t *testing.T) {
 	validator := NewURLValidator()
 
@@ -149,7 +149,7 @@ func TestURLValidator_MaliciousPatterns(t *testing.T) {
 }
 
 // TestURLValidator_CaseInsensitiveMaliciousPatterns tests case-insensitive detection
-// Requirements: 14.3
+
 func TestURLValidator_CaseInsensitiveMaliciousPatterns(t *testing.T) {
 	validator := NewURLValidator()
 
@@ -171,7 +171,7 @@ func TestURLValidator_CaseInsensitiveMaliciousPatterns(t *testing.T) {
 }
 
 // TestURLValidator_EmptyURL tests validation of empty URLs
-// Requirements: 1.4
+
 func TestURLValidator_EmptyURL(t *testing.T) {
 	validator := NewURLValidator()
 
@@ -193,7 +193,7 @@ func TestURLValidator_EmptyURL(t *testing.T) {
 }
 
 // TestURLValidator_MissingHost tests validation of URLs without host
-// Requirements: 1.4
+
 func TestURLValidator_MissingHost(t *testing.T) {
 	validator := NewURLValidator()
 
@@ -214,7 +214,7 @@ func TestURLValidator_MissingHost(t *testing.T) {
 }
 
 // TestURLValidator_Sanitize tests URL sanitization
-// Requirements: 14.3
+
 func TestURLValidator_Sanitize(t *testing.T) {
 	validator := NewURLValidator()
 
@@ -259,7 +259,7 @@ func TestURLValidator_Sanitize(t *testing.T) {
 }
 
 // TestURLValidator_ValidateAndSanitize tests combined validation and sanitization
-// Requirements: 1.4, 14.3
+
 func TestURLValidator_ValidateAndSanitize(t *testing.T) {
 	validator := NewURLValidator()
 
@@ -310,7 +310,7 @@ func TestURLValidator_ValidateAndSanitize(t *testing.T) {
 }
 
 // TestURLValidator_EdgeCases tests various edge cases
-// Requirements: 14.2, 14.3
+
 func TestURLValidator_EdgeCases(t *testing.T) {
 	validator := NewURLValidator()
 
@@ -391,7 +391,7 @@ func TestURLValidator_EdgeCases(t *testing.T) {
 }
 
 // TestURLValidator_BoundaryConditions tests boundary conditions
-// Requirements: 14.2
+
 func TestURLValidator_BoundaryConditions(t *testing.T) {
 	validator := NewURLValidator()
 

@@ -13,7 +13,7 @@ import (
 
 // TestProperty_TTLJitterPreventsThunderingHerd verifies TTL jitter prevents cache stampede
 // Property 16: TTL Jitter Prevents Thundering Herd
-// Requirements: 12.4
+
 func TestProperty_TTLJitterPreventsThunderingHerd(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		cache, err := NewL1Cache()

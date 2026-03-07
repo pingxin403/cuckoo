@@ -21,7 +21,7 @@ import (
 )
 
 // ShortenerServiceImpl implements the ShortenerService gRPC service
-// Requirements: 1.4, 1.5, 2.1, 4.3, 9.3
+
 type ShortenerServiceImpl struct {
 	shortenerpb.UnimplementedShortenerServiceServer
 	storage      storage.Storage
@@ -56,7 +56,7 @@ func NewShortenerServiceImpl(
 }
 
 // CreateShortLink creates a new short link from a long URL
-// Requirements: 1.4, 1.5, 2.1, 4.3, 9.3
+
 func (s *ShortenerServiceImpl) CreateShortLink(
 	ctx context.Context,
 	req *shortenerpb.CreateShortLinkRequest,
@@ -122,7 +122,7 @@ func (s *ShortenerServiceImpl) CreateShortLink(
 	}
 
 	// Write to MySQL (synchronous - wait for confirmation)
-	// Requirements: 2.1, 13.2
+
 	if err := s.storage.Create(ctx, mapping); err != nil {
 		s.obs.Metrics().IncrementCounter("shortener_errors_total", map[string]string{"type": "storage_create"})
 		if strings.Contains(err.Error(), "Duplicate entry") {
@@ -132,7 +132,7 @@ func (s *ShortenerServiceImpl) CreateShortLink(
 	}
 
 	// Audit log: Log creation request with source IP
-	// Requirements: 14.5
+
 	s.obs.Logger().Info(ctx, "Short link created",
 		"short_code", shortCode,
 		"long_url", sanitizedURL,
@@ -141,7 +141,7 @@ func (s *ShortenerServiceImpl) CreateShortLink(
 	)
 
 	// Preheat cache (Redis) - best effort, don't fail if cache write fails
-	// Requirements: 4.3
+
 	if s.cacheManager != nil {
 		_ = s.cacheManager.Set(ctx, shortCode, sanitizedURL, now)
 	}
@@ -166,7 +166,7 @@ func (s *ShortenerServiceImpl) CreateShortLink(
 }
 
 // GetLinkInfo retrieves metadata for a short link
-// Requirements: 9.4
+
 func (s *ShortenerServiceImpl) GetLinkInfo(
 	ctx context.Context,
 	req *shortenerpb.GetLinkInfoRequest,
@@ -210,7 +210,7 @@ func (s *ShortenerServiceImpl) GetLinkInfo(
 }
 
 // DeleteShortLink removes a short link (soft delete)
-// Requirements: 4.6
+
 func (s *ShortenerServiceImpl) DeleteShortLink(
 	ctx context.Context,
 	req *shortenerpb.DeleteShortLinkRequest,
@@ -235,7 +235,7 @@ func (s *ShortenerServiceImpl) DeleteShortLink(
 	}
 
 	// Invalidate all cache layers
-	// Requirements: 4.6
+
 	if s.cacheManager != nil {
 		_ = s.cacheManager.Delete(ctx, req.ShortCode)
 	}
