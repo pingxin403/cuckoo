@@ -3,11 +3,22 @@ package service
 import (
 	"context"
 	"fmt"
+	"math/rand"
+	"regexp"
 	"sync"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"golang.org/x/sync/singleflight"
+)
+
+var (
+	// userIDRegex validates userID format: "user" followed by digits
+	userIDRegex = regexp.MustCompile(`^user\d+$`)
+
+	// groupIDRegex validates groupID format: "group_" or "large_group_" followed by digits
+	groupIDRegex = regexp.MustCompile(`^(large_)?group_\d+$`)
 )
 
 // CacheManager manages local caches for the gateway service.
@@ -30,6 +41,10 @@ type CacheManager struct {
 	// Gateway service reference (for accessing connections)
 	gateway *GatewayService
 
+	// Singleflight groups for preventing cache stampede
+	userSF  singleflight.Group
+	groupSF singleflight.Group
+
 	// Configuration
 	userCacheTTL        time.Duration // Default: 5 minutes
 	groupCacheTTL       time.Duration // Default: 5 minutes
@@ -51,13 +66,15 @@ type CacheEntry struct {
 	GatewayNode string
 	DeviceID    string
 	ExpiresAt   time.Time
+	IsNilMarker bool // True if this is a "not found" marker
 }
 
 // GroupCacheEntry represents a cached group membership.
 type GroupCacheEntry struct {
-	Members   []string
-	ExpiresAt time.Time
-	IsLarge   bool // True if group has >1,000 members
+	Members     []string
+	ExpiresAt   time.Time
+	IsLarge     bool // True if group has >1,000 members
+	IsNilMarker bool // True if this is a "not found" marker
 }
 
 // LocalGroupCacheEntry represents a cached local group membership for large groups.
@@ -111,10 +128,19 @@ func (c *CacheManager) Start() error {
 // GetUserGateway retrieves the gateway node for a user from cache or Registry.
 // Validates: Requirements 17.1
 func (c *CacheManager) GetUserGateway(ctx context.Context, userID string) ([]GatewayLocation, error) {
-	// Check local cache first
+	// Validate userID format to prevent cache penetration attacks
+	if !userIDRegex.MatchString(userID) {
+		return nil, nil // Invalid format, return nil without querying
+	}
+
+	// Check local cache first (fast path, no singleflight needed)
 	if entry, ok := c.userGatewayCache.Load(userID); ok {
 		cacheEntry := entry.(*CacheEntry)
 		if time.Now().Before(cacheEntry.ExpiresAt) {
+			// Check if it's a nil marker (cached "not found")
+			if cacheEntry.IsNilMarker {
+				return nil, nil
+			}
 			return []GatewayLocation{
 				{
 					GatewayNode: cacheEntry.GatewayNode,
@@ -126,21 +152,66 @@ func (c *CacheManager) GetUserGateway(ctx context.Context, userID string) ([]Gat
 		c.userGatewayCache.Delete(userID)
 	}
 
-	// Cache miss, query Registry
-	locations, err := c.registryClient.LookupUser(ctx, userID)
+	// Use singleflight only for Registry lookups (cache miss scenario)
+	v, err, _ := c.userSF.Do(userID, func() (interface{}, error) {
+		return c.fetchUserGateway(ctx, userID)
+	})
+
 	if err != nil {
 		return nil, err
 	}
 
-	// Update cache
-	if len(locations) > 0 {
-		// Cache the first location (for simplicity)
-		c.userGatewayCache.Store(userID, &CacheEntry{
-			GatewayNode: locations[0].GatewayNode,
-			DeviceID:    locations[0].DeviceID,
-			ExpiresAt:   time.Now().Add(c.userCacheTTL),
-		})
+	return v.([]GatewayLocation), nil
+}
+
+// fetchUserGateway fetches user gateway from Registry and updates cache
+// fetchUserGateway fetches user gateway from Registry and updates cache
+func (c *CacheManager) fetchUserGateway(ctx context.Context, userID string) ([]GatewayLocation, error) {
+	// Double-check cache inside singleflight to avoid redundant Registry queries
+	if entry, ok := c.userGatewayCache.Load(userID); ok {
+		cacheEntry := entry.(*CacheEntry)
+		if time.Now().Before(cacheEntry.ExpiresAt) {
+			if cacheEntry.IsNilMarker {
+				return nil, nil
+			}
+			return []GatewayLocation{
+				{
+					GatewayNode: cacheEntry.GatewayNode,
+					DeviceID:    cacheEntry.DeviceID,
+				},
+			}, nil
+		}
 	}
+
+	// Query Registry
+	locations, err := c.registryClient.LookupUser(ctx, userID)
+	if err != nil {
+		// Cache nil marker for not found users (short TTL: 2 minutes)
+		c.userGatewayCache.Store(userID, &CacheEntry{
+			IsNilMarker: true,
+			ExpiresAt:   time.Now().Add(2 * time.Minute),
+		})
+		return nil, err
+	}
+
+	// If no locations found, cache nil marker
+	if len(locations) == 0 {
+		c.userGatewayCache.Store(userID, &CacheEntry{
+			IsNilMarker: true,
+			ExpiresAt:   time.Now().Add(2 * time.Minute),
+		})
+		return nil, nil
+	}
+
+	// Update cache with TTL jitter
+	ttl := c.addJitter(c.userCacheTTL, 0.2)
+
+	c.userGatewayCache.Store(userID, &CacheEntry{
+		GatewayNode: locations[0].GatewayNode,
+		DeviceID:    locations[0].DeviceID,
+		ExpiresAt:   time.Now().Add(ttl),
+		IsNilMarker: false,
+	})
 
 	return locations, nil
 }
@@ -148,11 +219,21 @@ func (c *CacheManager) GetUserGateway(ctx context.Context, userID string) ([]Gat
 // GetGroupMembers retrieves group members from cache or User Service.
 // Validates: Requirements 17.2, 2.10, 2.11, 2.12
 func (c *CacheManager) GetGroupMembers(ctx context.Context, groupID string) ([]string, error) {
-	// Check local cache first
+	// Validate groupID format to prevent cache penetration attacks
+	if !groupIDRegex.MatchString(groupID) {
+		return nil, nil // Invalid format, return nil without querying
+	}
+
+	// Check local cache first (fast path, no singleflight needed)
 	if entry, ok := c.groupMemberCache.Load(groupID); ok {
 		cacheEntry := entry.(*GroupCacheEntry)
 		if time.Now().Before(cacheEntry.ExpiresAt) {
 			c.cacheHits++
+
+			// Check if it's a nil marker (cached "not found")
+			if cacheEntry.IsNilMarker {
+				return nil, nil
+			}
 
 			// For large groups, return locally-connected members only
 			if cacheEntry.IsLarge {
@@ -167,20 +248,61 @@ func (c *CacheManager) GetGroupMembers(ctx context.Context, groupID string) ([]s
 
 	c.cacheMisses++
 
-	// Cache miss, query Redis or User Service
-	members, err := c.fetchGroupMembers(ctx, groupID)
+	// Use singleflight only for external fetches (cache miss scenario)
+	v, err, _ := c.groupSF.Do(groupID, func() (interface{}, error) {
+		return c.fetchAndCacheGroupMembers(ctx, groupID)
+	})
+
 	if err != nil {
 		return nil, err
 	}
 
+	return v.([]string), nil
+}
+
+// fetchAndCacheGroupMembers fetches group members and updates cache
+func (c *CacheManager) fetchAndCacheGroupMembers(ctx context.Context, groupID string) ([]string, error) {
+	// Double-check cache inside singleflight to avoid redundant external fetches
+	if entry, ok := c.groupMemberCache.Load(groupID); ok {
+		cacheEntry := entry.(*GroupCacheEntry)
+		if time.Now().Before(cacheEntry.ExpiresAt) {
+			// Check if it's a nil marker
+			if cacheEntry.IsNilMarker {
+				return nil, nil
+			}
+			// For large groups, return locally-connected members only
+			if cacheEntry.IsLarge {
+				return c.getLocallyConnectedMembers(groupID, cacheEntry.Members)
+			}
+			return cacheEntry.Members, nil
+		}
+	}
+
+	// Fetch from Redis or User Service
+	members, err := c.fetchGroupMembers(ctx, groupID)
+	if err != nil {
+		// Cache nil marker for not found groups (short TTL: 2 minutes)
+		c.groupMemberCache.Store(groupID, &GroupCacheEntry{
+			IsNilMarker: true,
+			ExpiresAt:   time.Now().Add(2 * time.Minute),
+		})
+		return nil, err
+	}
+
+	// Empty result is valid (group exists but has no members)
+	// Cache it normally, not as a nil marker
 	// Determine if group is large
 	isLarge := len(members) > c.largeGroupThreshold
 
+	// Add ±20% jitter to TTL (4-6 minutes for 5 minute base)
+	ttl := c.addJitter(c.groupCacheTTL, 0.2)
+
 	// Update cache
 	c.groupMemberCache.Store(groupID, &GroupCacheEntry{
-		Members:   members,
-		ExpiresAt: time.Now().Add(c.groupCacheTTL),
-		IsLarge:   isLarge,
+		Members:     members,
+		ExpiresAt:   time.Now().Add(ttl),
+		IsLarge:     isLarge,
+		IsNilMarker: false,
 	})
 
 	// Update memory usage estimate
@@ -229,14 +351,30 @@ func (c *CacheManager) getLocallyConnectedMembers(groupID string, allMembers []s
 		})
 	}
 
+	// Add ±20% jitter to TTL
+	ttl := c.addJitter(c.groupCacheTTL, 0.2)
+
 	// Cache the local members
 	c.largeGroupLocalCache.Store(groupID, &LocalGroupCacheEntry{
 		LocalMembers: localMembers,
-		ExpiresAt:    time.Now().Add(c.groupCacheTTL),
+		ExpiresAt:    time.Now().Add(ttl),
 		MemberCount:  len(allMembers),
 	})
 
 	return localMembers, nil
+}
+
+// addJitter adds random jitter to a duration to prevent cache avalanche
+// jitterPercent: percentage of jitter (e.g., 0.2 for ±20%)
+// Returns: baseTTL with random jitter applied
+func (c *CacheManager) addJitter(baseTTL time.Duration, jitterPercent float64) time.Duration {
+	baseSeconds := int(baseTTL.Seconds())
+	jitterRange := int(float64(baseSeconds) * jitterPercent)
+
+	// Generate random jitter: -jitterRange to +jitterRange
+	jitter := rand.Intn(2*jitterRange+1) - jitterRange // #nosec G404 - weak random is acceptable for cache TTL jitter
+
+	return time.Duration(baseSeconds+jitter) * time.Second
 }
 
 // fetchGroupMembers fetches group members from Redis or User Service.

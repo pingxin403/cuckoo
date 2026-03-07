@@ -34,9 +34,10 @@ func (m *mockAuthClient) ValidateToken(ctx context.Context, token string) (*Toke
 }
 
 type mockRegistryClient struct {
-	users       map[string][]GatewayLocation
-	mu          sync.RWMutex
-	lookupError error // For testing error cases
+	users           map[string][]GatewayLocation
+	mu              sync.RWMutex
+	lookupError     error // For testing error cases
+	lookupCallCount int   // Track number of LookupUser calls
 }
 
 func newMockRegistryClient() *mockRegistryClient {
@@ -84,6 +85,10 @@ func (m *mockRegistryClient) RenewLease(ctx context.Context, userID, deviceID st
 }
 
 func (m *mockRegistryClient) LookupUser(ctx context.Context, userID string) ([]GatewayLocation, error) {
+	m.mu.Lock()
+	m.lookupCallCount++
+	m.mu.Unlock()
+
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -95,6 +100,13 @@ func (m *mockRegistryClient) LookupUser(ctx context.Context, userID string) ([]G
 		return locations, nil
 	}
 	return nil, nil
+}
+
+// GetLookupCallCount returns the number of times LookupUser was called
+func (m *mockRegistryClient) GetLookupCallCount() int {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.lookupCallCount
 }
 
 func (m *mockRegistryClient) Watch(ctx context.Context, prefix string, callback func(clientv3.WatchResponse)) error {

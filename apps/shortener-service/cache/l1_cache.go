@@ -96,3 +96,19 @@ func (c *L1Cache) Delete(shortCode string) {
 func (c *L1Cache) Close() {
 	c.cache.Close()
 }
+
+// SetNilMarker caches a "not found" marker to prevent cache penetration
+// TTL: 2 minutes (shorter than normal cache to allow for new creations)
+func (c *L1Cache) SetNilMarker(shortCode string) bool {
+	nilMapping := &URLMapping{
+		ShortCode: "__NIL__",
+		LongURL:   "",
+		CreatedAt: time.Now(),
+	}
+
+	// Short TTL for nil markers (2 minutes)
+	ttl := 2 * time.Minute
+	cost := int64(len(shortCode) + 50) // Smaller cost for nil markers
+
+	return c.cache.SetWithTTL(shortCode, nilMapping, cost, ttl)
+}

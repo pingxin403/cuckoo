@@ -3,10 +3,16 @@ package cache
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"time"
 
 	"github.com/pingxin403/cuckoo/libs/observability"
 	"golang.org/x/sync/singleflight"
+)
+
+var (
+	// shortCodeRegex validates shortCode format: 4-20 alphanumeric characters and hyphens
+	shortCodeRegex = regexp.MustCompile(`^[a-zA-Z0-9-]{4,20}$`)
 )
 
 // Storage interface for database operations
@@ -46,11 +52,30 @@ func NewCacheManager(l1 *L1Cache, l2 *L2Cache, storage Storage, obs observabilit
 
 // Get retrieves a URL mapping with multi-tier fallback and singleflight
 // Flow: L1 → L2 → DB, with backfilling on misses
-
 func (cm *CacheManager) Get(ctx context.Context, shortCode string) (*URLMapping, error) {
-	// Use singleflight to coalesce concurrent requests for the same key
+	// Validate shortCode format to prevent cache penetration attacks
+	if !shortCodeRegex.MatchString(shortCode) {
+		cm.obs.Metrics().IncrementCounter("shortener_invalid_shortcode_total", map[string]string{"reason": "invalid_format"})
+		return nil, nil // Invalid format, return nil without querying
+	}
+
+	// Try L1 cache first (fast path, no singleflight needed)
+	if mapping := cm.l1.Get(shortCode); mapping != nil {
+		// Check if it's a nil marker (cached "not found")
+		if mapping.ShortCode == "__NIL__" {
+			cm.obs.Metrics().IncrementCounter("shortener_cache_hits_total", map[string]string{"layer": "L1", "type": "nil_marker"})
+			return nil, nil
+		}
+		cm.obs.Metrics().IncrementCounter("shortener_cache_hits_total", map[string]string{"layer": "L1"})
+		cm.obs.Metrics().IncrementCounter("shortener_cache_operations_total", map[string]string{"operation": "hit", "layer": "l1"})
+		return mapping, nil
+	}
+	cm.obs.Metrics().IncrementCounter("shortener_cache_misses_total", map[string]string{"layer": "L1"})
+	cm.obs.Metrics().IncrementCounter("shortener_cache_operations_total", map[string]string{"operation": "miss", "layer": "l1"})
+
+	// Use singleflight only for L2 and DB lookups (cache miss scenario)
 	v, err, _ := cm.sf.Do(shortCode, func() (interface{}, error) {
-		return cm.getWithFallback(ctx, shortCode)
+		return cm.getFromL2OrDB(ctx, shortCode)
 	})
 
 	if err != nil {
@@ -64,21 +89,19 @@ func (cm *CacheManager) Get(ctx context.Context, shortCode string) (*URLMapping,
 	return v.(*URLMapping), nil
 }
 
-// getWithFallback implements the multi-tier cache fallback logic
-func (cm *CacheManager) getWithFallback(ctx context.Context, shortCode string) (*URLMapping, error) {
-	// Try L1 cache first
-	if mapping := cm.l1.Get(shortCode); mapping != nil {
-		cm.obs.Metrics().IncrementCounter("shortener_cache_hits_total", map[string]string{"layer": "L1"})
-		cm.obs.Metrics().IncrementCounter("shortener_cache_operations_total", map[string]string{"operation": "hit", "layer": "l1"})
-		return mapping, nil
-	}
-	cm.obs.Metrics().IncrementCounter("shortener_cache_misses_total", map[string]string{"layer": "L1"})
-	cm.obs.Metrics().IncrementCounter("shortener_cache_operations_total", map[string]string{"operation": "miss", "layer": "l1"})
-
+// getFromL2OrDB implements L2 cache and database fallback logic
+func (cm *CacheManager) getFromL2OrDB(ctx context.Context, shortCode string) (*URLMapping, error) {
 	// Try L2 cache
 	if cm.l2 != nil {
 		mapping, err := cm.l2.Get(ctx, shortCode)
 		if err == nil && mapping != nil {
+			// Check if it's a nil marker
+			if mapping.ShortCode == "__NIL__" {
+				cm.obs.Metrics().IncrementCounter("shortener_cache_hits_total", map[string]string{"layer": "L2", "type": "nil_marker"})
+				// Backfill L1 cache with nil marker
+				cm.l1.SetNilMarker(shortCode)
+				return nil, nil
+			}
 			cm.obs.Metrics().IncrementCounter("shortener_cache_hits_total", map[string]string{"layer": "L2"})
 			cm.obs.Metrics().IncrementCounter("shortener_cache_operations_total", map[string]string{"operation": "hit", "layer": "l2"})
 			// Backfill L1 cache
@@ -93,7 +116,23 @@ func (cm *CacheManager) getWithFallback(ctx context.Context, shortCode string) (
 	// Fallback to database
 	storageMapping, err := cm.storage.Get(ctx, shortCode)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get from storage: %w", err)
+		// If storage returns error (not found), cache nil marker
+		cm.obs.Metrics().IncrementCounter("shortener_cache_nil_marker_set_total", map[string]string{"reason": "not_found"})
+		cm.l1.SetNilMarker(shortCode)
+		if cm.l2 != nil {
+			_ = cm.l2.SetNilMarker(ctx, shortCode)
+		}
+		return nil, err
+	}
+
+	// If not found in database (nil without error), cache nil marker
+	if storageMapping == nil {
+		cm.obs.Metrics().IncrementCounter("shortener_cache_nil_marker_set_total", map[string]string{"reason": "not_found"})
+		cm.l1.SetNilMarker(shortCode)
+		if cm.l2 != nil {
+			_ = cm.l2.SetNilMarker(ctx, shortCode)
+		}
+		return nil, nil
 	}
 
 	// Convert storage mapping to cache mapping
