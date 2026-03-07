@@ -11,7 +11,7 @@ import (
 )
 
 // L2Cache represents the Redis cache layer
-// Requirements: 4.2, 4.6
+
 type L2Cache struct {
 	client redis.UniversalClient
 }
@@ -38,7 +38,7 @@ type L2CacheConfig struct {
 
 // NewL2Cache creates a new L2 Redis cache instance
 // Supports both standalone and cluster configurations
-// Requirements: 4.2
+
 func NewL2Cache(config L2CacheConfig) (*L2Cache, error) {
 	if len(config.Addrs) == 0 {
 		return nil, fmt.Errorf("at least one Redis address is required")
@@ -74,7 +74,7 @@ func NewL2Cache(config L2CacheConfig) (*L2Cache, error) {
 
 // Get retrieves a URL mapping from Redis
 // Returns nil if the key is not found
-// Requirements: 4.2
+
 func (c *L2Cache) Get(ctx context.Context, shortCode string) (*URLMapping, error) {
 	// Use Redis Hash to store URL mapping
 	key := fmt.Sprintf("url:%s", shortCode)
@@ -107,7 +107,7 @@ func (c *L2Cache) Get(ctx context.Context, shortCode string) (*URLMapping, error
 
 // Set stores a URL mapping in Redis with TTL jitter
 // TTL: 7 days ±1 day (6-8 days) to prevent cache expiration stampede
-// Requirements: 4.2
+
 func (c *L2Cache) Set(ctx context.Context, shortCode string, longURL string, createdAt time.Time) error {
 	key := fmt.Sprintf("url:%s", shortCode)
 
@@ -143,7 +143,7 @@ func (c *L2Cache) Set(ctx context.Context, shortCode string, longURL string, cre
 }
 
 // Delete removes a URL mapping from Redis
-// Requirements: 4.6
+
 func (c *L2Cache) Delete(ctx context.Context, shortCode string) error {
 	key := fmt.Sprintf("url:%s", shortCode)
 
@@ -156,7 +156,7 @@ func (c *L2Cache) Delete(ctx context.Context, shortCode string) error {
 
 // BatchGet retrieves multiple URL mappings from Redis
 // Returns a map of shortCode -> URLMapping
-// Requirements: 4.2
+
 func (c *L2Cache) BatchGet(ctx context.Context, shortCodes []string) (map[string]*URLMapping, error) {
 	if len(shortCodes) == 0 {
 		return make(map[string]*URLMapping), nil
@@ -204,7 +204,7 @@ func (c *L2Cache) BatchGet(ctx context.Context, shortCodes []string) (map[string
 }
 
 // BatchDelete removes multiple URL mappings from Redis
-// Requirements: 4.6
+
 func (c *L2Cache) BatchDelete(ctx context.Context, shortCodes []string) error {
 	if len(shortCodes) == 0 {
 		return nil
@@ -225,7 +225,7 @@ func (c *L2Cache) BatchDelete(ctx context.Context, shortCodes []string) error {
 }
 
 // Ping checks if Redis is reachable
-// Requirements: 4.2
+
 func (c *L2Cache) Ping(ctx context.Context) error {
 	return c.client.Ping(ctx).Err()
 }

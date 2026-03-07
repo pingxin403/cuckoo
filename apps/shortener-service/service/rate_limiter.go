@@ -15,7 +15,7 @@ import (
 )
 
 // RateLimiter implements per-IP token bucket rate limiting
-// Requirements: 6.1, 6.2, 6.5
+
 type RateLimiter struct {
 	mu      sync.RWMutex
 	buckets map[string]*TokenBucket
@@ -31,7 +31,7 @@ type TokenBucket struct {
 }
 
 // NewRateLimiter creates a new rate limiter
-// Requirements: 6.1, 6.2
+
 func NewRateLimiter(requestsPerMinute int) *RateLimiter {
 	return &RateLimiter{
 		buckets: make(map[string]*TokenBucket),
@@ -41,7 +41,7 @@ func NewRateLimiter(requestsPerMinute int) *RateLimiter {
 }
 
 // Allow checks if a request from the given IP should be allowed
-// Requirements: 6.1, 6.2
+
 func (rl *RateLimiter) Allow(ip string) (bool, time.Duration) {
 	rl.mu.Lock()
 	bucket, exists := rl.buckets[ip]
@@ -77,7 +77,7 @@ func (rl *RateLimiter) Allow(ip string) (bool, time.Duration) {
 }
 
 // UnaryServerInterceptor returns a gRPC unary interceptor for rate limiting
-// Requirements: 6.1, 6.2, 6.5
+
 func (rl *RateLimiter) UnaryServerInterceptor() grpc.UnaryServerInterceptor {
 	return func(
 		ctx context.Context,
@@ -91,7 +91,7 @@ func (rl *RateLimiter) UnaryServerInterceptor() grpc.UnaryServerInterceptor {
 		// Check rate limit
 		allowed, retryAfter := rl.Allow(ip)
 		if !allowed {
-			// Requirements: 6.5 - Return 429 with Retry-After
+
 			return nil, status.Errorf(
 				codes.ResourceExhausted,
 				"Rate limit exceeded. Retry after %v seconds",
@@ -105,7 +105,7 @@ func (rl *RateLimiter) UnaryServerInterceptor() grpc.UnaryServerInterceptor {
 }
 
 // HTTPMiddleware returns an HTTP middleware for rate limiting
-// Requirements: 6.1, 6.2, 6.5
+
 func (rl *RateLimiter) HTTPMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Extract IP from request
@@ -114,7 +114,7 @@ func (rl *RateLimiter) HTTPMiddleware(next http.Handler) http.Handler {
 		// Check rate limit
 		allowed, retryAfter := rl.Allow(ip)
 		if !allowed {
-			// Requirements: 6.5 - Return HTTP 429 with Retry-After header
+
 			w.Header().Set("Retry-After", fmt.Sprintf("%d", int(retryAfter.Seconds())))
 			http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
 			return

@@ -171,7 +171,7 @@ func (s *ReadReceiptService) GetReadReceipts(ctx context.Context, msgID string) 
 		ORDER BY read_at ASC
 	`
 
-	rows, err := s.db.QueryContext(ctx, query, msgID)
+	rows, err := s.db.QueryContext(ctx, query, msgID) // #nosec G701 -- msgID is validated by caller and used in parameterized query
 	if err != nil {
 		return nil, fmt.Errorf("failed to query read receipts: %w", err)
 	}
@@ -216,7 +216,7 @@ func (s *ReadReceiptService) GetUnreadCount(ctx context.Context, userID string) 
 	`
 
 	var count int
-	err := s.db.QueryRowContext(ctx, query, userID).Scan(&count)
+	err := s.db.QueryRowContext(ctx, query, userID).Scan(&count) // #nosec G701 -- userID is validated by caller and used in parameterized query
 	if err != nil {
 		return 0, fmt.Errorf("failed to get unread count: %w", err)
 	}
@@ -234,7 +234,7 @@ func (s *ReadReceiptService) GetUnreadMessages(ctx context.Context, userID strin
 		LIMIT ? OFFSET ?
 	`
 
-	rows, err := s.db.QueryContext(ctx, query, userID, limit, offset)
+	rows, err := s.db.QueryContext(ctx, query, userID, limit, offset) // #nosec G701 -- userID, limit, and offset are validated by caller and used in parameterized query
 	if err != nil {
 		return nil, fmt.Errorf("failed to query unread messages: %w", err)
 	}

@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 
@@ -99,8 +100,8 @@ func TestMemoryStore_List(t *testing.T) {
 		// Create multiple TODOs
 		for i := 1; i <= 3; i++ {
 			todo := &todopb.Todo{
-				Id:    string(rune(i)),
-				Title: "TODO " + string(rune(i)),
+				Id:    fmt.Sprintf("todo-%d", i),
+				Title: fmt.Sprintf("TODO %d", i),
 			}
 			err := store.Create(todo)
 			require.NoError(t, err)
@@ -195,7 +196,7 @@ func TestMemoryStore_ConcurrentAccess(t *testing.T) {
 			go func(id int) {
 				defer wg.Done()
 				todo := &todopb.Todo{
-					Id:    string(rune(id)),
+					Id:    fmt.Sprintf("concurrent-%d", id),
 					Title: "Concurrent TODO",
 				}
 				err := store.Create(todo)

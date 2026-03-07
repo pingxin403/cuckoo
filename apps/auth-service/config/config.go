@@ -21,7 +21,7 @@ type Config struct {
 // JWTConfig holds JWT-specific configuration
 type JWTConfig struct {
 	// Secret is the secret key for signing JWT tokens
-	Secret string `mapstructure:"secret" validate:"required"`
+	Secret string `mapstructure:"secret" validate:"required"` // #nosec G117 -- This is a configuration field, not a hardcoded secret
 }
 
 // Load loads configuration from environment variables and config files

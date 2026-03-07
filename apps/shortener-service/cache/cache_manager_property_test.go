@@ -14,7 +14,7 @@ import (
 
 // TestProperty_CacheFallbackAndBackfill verifies cache fallback and backfill behavior
 // Property 6: Cache Fallback and Backfill
-// Requirements: 3.3, 4.4
+
 func TestProperty_CacheFallbackAndBackfill(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		// Generate random short code and URL
@@ -71,8 +71,7 @@ func TestProperty_CacheFallbackAndBackfill(t *testing.T) {
 
 // TestProperty_SingleflightRequestCoalescing verifies singleflight reduces concurrent queries
 // Property 15: Singleflight Request Coalescing
-// Requirements: 12.1, 12.2, 12.5
-//
+
 // Note: This property test demonstrates singleflight behavior but uses relaxed assertions
 // due to timing sensitivity in concurrent testing. The primary validation is via the
 // unit test TestCacheManagerSingleflight which consistently shows 100 requests → 1 query.
@@ -130,7 +129,7 @@ func TestProperty_SingleflightRequestCoalescing(t *testing.T) {
 
 // TestProperty_GracefulDegradation verifies service continues when L2 is unavailable
 // Property 14: Graceful Degradation on Redis Failure
-// Requirements: 10.1
+
 func TestProperty_GracefulDegradation(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		// Generate random short code and URL

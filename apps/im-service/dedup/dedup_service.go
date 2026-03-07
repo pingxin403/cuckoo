@@ -9,7 +9,7 @@ import (
 )
 
 // DedupService provides message deduplication using Redis SET operations
-// Requirements: 8.1, 8.2, 8.3
+
 type DedupService struct {
 	client *redis.Client
 	ttl    time.Duration
@@ -24,7 +24,7 @@ type Config struct {
 }
 
 // NewDedupService creates a new deduplication service
-// Requirements: 8.1
+
 func NewDedupService(cfg Config) *DedupService {
 	// Set default TTL if not specified
 	if cfg.TTL == 0 {
@@ -45,7 +45,7 @@ func NewDedupService(cfg Config) *DedupService {
 
 // CheckDuplicate checks if a message ID has been processed before
 // Returns true if the message is a duplicate (already exists in Redis)
-// Requirements: 8.1, 8.3 - O(1) lookup using Redis SET
+
 func (d *DedupService) CheckDuplicate(ctx context.Context, msgID string) (bool, error) {
 	key := d.dedupKey(msgID)
 
@@ -60,7 +60,7 @@ func (d *DedupService) CheckDuplicate(ctx context.Context, msgID string) (bool, 
 
 // MarkProcessed marks a message ID as processed in Redis
 // Sets a 7-day TTL on the deduplication record
-// Requirements: 8.2 - 7-day TTL on deduplication records
+
 func (d *DedupService) MarkProcessed(ctx context.Context, msgID string) error {
 	key := d.dedupKey(msgID)
 
@@ -75,7 +75,7 @@ func (d *DedupService) MarkProcessed(ctx context.Context, msgID string) error {
 
 // CheckAndMark atomically checks for duplicate and marks as processed if not duplicate
 // Returns true if the message is a duplicate, false if it's new and has been marked
-// Requirements: 8.1, 8.2, 8.3
+
 func (d *DedupService) CheckAndMark(ctx context.Context, msgID string) (isDuplicate bool, err error) {
 	key := d.dedupKey(msgID)
 

@@ -71,7 +71,7 @@ func (m *MockStorage) ResetCallCount() {
 }
 
 // TestCacheManagerSingleflight verifies singleflight request coalescing
-// Requirements: 12.1, 12.2, 12.5
+
 func TestCacheManagerSingleflight(t *testing.T) {
 	// Create cache manager with mock storage
 	l1, err := NewL1Cache()
@@ -149,7 +149,7 @@ func TestCacheManagerSingleflight(t *testing.T) {
 }
 
 // TestCacheManagerFallback verifies multi-tier cache fallback
-// Requirements: 3.3, 4.4
+
 func TestCacheManagerFallback(t *testing.T) {
 	l1, err := NewL1Cache()
 	if err != nil {
@@ -199,7 +199,7 @@ func TestCacheManagerFallback(t *testing.T) {
 }
 
 // TestCacheManagerDelete verifies cache invalidation
-// Requirements: 4.6
+
 func TestCacheManagerDelete(t *testing.T) {
 	l1, err := NewL1Cache()
 	if err != nil {

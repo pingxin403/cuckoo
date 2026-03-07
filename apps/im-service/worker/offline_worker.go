@@ -38,7 +38,7 @@ type OfflineMessageEvent struct {
 }
 
 // OfflineWorker consumes messages from Kafka and persists them to database
-// Requirements: 4.2, 4.6 - Consume from offline_msg topic and batch persist
+
 type OfflineWorker struct {
 	consumerGroup sarama.ConsumerGroup
 	store         OfflineStorer
@@ -121,7 +121,7 @@ func NewOfflineWorker(
 }
 
 // Start starts the offline worker
-// Requirements: 4.2 - Subscribe to offline_msg topic
+
 func (w *OfflineWorker) Start() error {
 	w.wg.Add(1)
 	go func() {
@@ -267,7 +267,7 @@ type consumerGroupHandler struct {
 }
 
 // Setup is called when a new session is established
-// Requirements: Handle consumer rebalancing
+
 func (h *consumerGroupHandler) Setup(session sarama.ConsumerGroupSession) error {
 	log.Printf("Consumer group session started, member ID: %s, generation ID: %d",
 		session.MemberID(), session.GenerationID())
@@ -281,7 +281,7 @@ func (h *consumerGroupHandler) Cleanup(session sarama.ConsumerGroupSession) erro
 }
 
 // ConsumeClaim processes messages from a partition
-// Requirements: 4.6 - Batch processing with manual offset commit
+
 func (h *consumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	batch := make([]OfflineMessageEvent, 0, h.worker.config.BatchSize)
 	batchTimer := time.NewTimer(h.worker.config.BatchTimeout)
@@ -345,8 +345,7 @@ func (h *consumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession,
 }
 
 // processBatch processes a batch of messages
-// Requirements: 3.9, 3.10, 3.11 - Deduplication before database write
-// Requirements: 4.6 - Batch insert with transaction
+
 func (h *consumerGroupHandler) processBatch(
 	ctx context.Context,
 	events []OfflineMessageEvent,
@@ -358,7 +357,7 @@ func (h *consumerGroupHandler) processBatch(
 	}
 
 	// Step 1: Check for duplicates
-	// Requirements: 3.9, 3.11 - Check Redis dedup set before database write
+
 	uniqueEvents := make([]OfflineMessageEvent, 0, len(events))
 	for _, event := range events {
 		isDuplicate, err := h.worker.dedupService.CheckDuplicate(ctx, event.MsgID)
@@ -370,7 +369,7 @@ func (h *consumerGroupHandler) processBatch(
 		}
 
 		if isDuplicate {
-			// Requirements: 3.10 - Skip if msg_id already exists
+
 			log.Printf("Duplicate message detected: %s, skipping", event.MsgID)
 			h.worker.incrementDeduplicated()
 			continue
@@ -402,7 +401,7 @@ func (h *consumerGroupHandler) processBatch(
 	}
 
 	// Step 3: Batch insert to database with retry
-	// Requirements: 4.6 - Single transaction for batch insert
+
 	var lastErr error
 	for attempt := 0; attempt <= h.worker.config.MaxRetries; attempt++ {
 		if attempt > 0 {
@@ -426,13 +425,13 @@ func (h *consumerGroupHandler) processBatch(
 	}
 
 	if lastErr != nil {
-		// Requirements: Rollback and retry on failure
+
 		// Kafka will redeliver messages since we don't commit offset
 		return fmt.Errorf("failed to insert batch after %d retries: %w", h.worker.config.MaxRetries, lastErr)
 	}
 
 	// Step 4: Mark messages as processed in dedup set
-	// Requirements: 3.11 - Add to dedup set after successful write
+
 	for _, event := range uniqueEvents {
 		if err := h.worker.dedupService.MarkProcessed(ctx, event.MsgID); err != nil {
 			log.Printf("Error marking msg_id %s as processed: %v", event.MsgID, err)
@@ -441,7 +440,7 @@ func (h *consumerGroupHandler) processBatch(
 	}
 
 	// Step 5: Commit Kafka offset
-	// Requirements: Manual offset commit after processing
+
 	session.Commit()
 
 	// Update metrics

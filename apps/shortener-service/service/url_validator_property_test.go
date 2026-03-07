@@ -15,7 +15,7 @@ import (
 // Feature: url-shortener-service, Property 2: URL Validation Rejects Invalid Inputs
 // For any URL that does not use HTTP or HTTPS protocol, or exceeds 2048 characters,
 // or contains malicious patterns, the service SHALL reject it with an appropriate error
-// Requirements: 1.4, 14.1, 14.2, 14.3, 14.7
+
 func TestProperty_URLValidationRejectsInvalidInputs(t *testing.T) {
 	validator := NewURLValidator()
 
@@ -134,7 +134,7 @@ func TestProperty_URLValidationRejectsInvalidInputs(t *testing.T) {
 }
 
 // TestProperty_ValidURLsPassValidation tests that properly formatted URLs pass validation
-// Requirements: 1.4, 14.1
+
 func TestProperty_ValidURLsPassValidation(t *testing.T) {
 	validator := NewURLValidator()
 
@@ -159,7 +159,7 @@ func TestProperty_ValidURLsPassValidation(t *testing.T) {
 }
 
 // TestProperty_SanitizationPreservesValidURLs tests that sanitization doesn't break valid URLs
-// Requirements: 14.3
+
 func TestProperty_SanitizationPreservesValidURLs(t *testing.T) {
 	validator := NewURLValidator()
 
@@ -187,7 +187,7 @@ func TestProperty_SanitizationPreservesValidURLs(t *testing.T) {
 }
 
 // TestProperty_MaliciousPatternsCaseInsensitive tests case-insensitive malicious pattern detection
-// Requirements: 14.3
+
 func TestProperty_MaliciousPatternsCaseInsensitive(t *testing.T) {
 	validator := NewURLValidator()
 
@@ -218,7 +218,7 @@ func TestProperty_MaliciousPatternsCaseInsensitive(t *testing.T) {
 }
 
 // TestProperty_LengthBoundary tests URLs at the 2048 character boundary
-// Requirements: 14.2
+
 func TestProperty_LengthBoundary(t *testing.T) {
 	validator := NewURLValidator()
 
@@ -246,7 +246,7 @@ func TestProperty_LengthBoundary(t *testing.T) {
 }
 
 // TestProperty_EmptyAndWhitespaceURLsRejected tests rejection of empty/whitespace URLs
-// Requirements: 1.4
+
 func TestProperty_EmptyAndWhitespaceURLsRejected(t *testing.T) {
 	validator := NewURLValidator()
 
