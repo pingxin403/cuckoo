@@ -143,6 +143,35 @@ func (h *HLC) GetSequence() int64 {
 	return atomic.LoadInt64(&h.sequence)
 }
 
+// AdjustForDrift adjusts the HLC based on detected clock drift
+// When offset is positive (local clock is ahead), we increase logical counter step
+// to compensate for the drift while maintaining monotonicity
+func (h *HLC) AdjustForDrift(offset time.Duration) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	// Convert offset to milliseconds
+	offsetMs := offset.Milliseconds()
+
+	if offsetMs == 0 {
+		return nil // No adjustment needed
+	}
+
+	// For positive offset (local clock ahead), increase logical counter
+	// This ensures generated IDs remain monotonic even after calibration
+	if offsetMs > 0 {
+		// Increase logical counter by offset amount
+		// This compensates for the physical time being ahead
+		h.logicalTime += offsetMs
+	} else {
+		// For negative offset (local clock behind), we don't adjust
+		// because the next GenerateID will naturally use the higher wall clock time
+		// No action needed - HLC algorithm handles this automatically
+	}
+
+	return nil
+}
+
 // CompareGlobalID compares two GlobalIDs and returns:
 // -1 if id1 < id2
 //
@@ -252,7 +281,7 @@ func ParseGlobalID(s string) (GlobalID, error) {
 
 	// Second to last and third to last are logical and physical time
 	hlc := strings.Join(parts[len(parts)-3:len(parts)-1], "-")
-	
+
 	// Everything before that is regionID
 	regionID := strings.Join(parts[:len(parts)-3], "-")
 

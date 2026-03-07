@@ -50,7 +50,7 @@ func TestL2CacheBasicOperations(t *testing.T) {
 	longURL := "https://example.com"
 	createdAt := time.Now()
 
-	err := cache.Set(ctx, shortCode, longURL, createdAt)
+	err := cache.Set(ctx, shortCode, longURL, createdAt, nil)
 	if err != nil {
 		t.Fatalf("Failed to set value in Redis: %v", err)
 	}

@@ -1,0 +1,193 @@
+# Chaos Mesh 时钟偏移测试配置
+# 验证需求: 9.2.4
+# 测试场景: 注入时钟偏移，验证 HLC 算法的容错能力
+
+apiVersion: chaos-mesh.org/v1alpha1
+kind: TimeChaos
+metadata:
+  name: clock-skew-positive
+  namespace: default
+  annotations:
+    description: "注入正向时钟偏移，验证 HLC 算法容错能力"
+spec:
+  # 应用到一个随机 Pod
+  mode: one
+  
+  # 选择 Region A 的 IM 服务
+  selector:
+    namespaces:
+      - im-region-a
+    labelSelectors:
+      app: im-service
+  
+  # 时钟偏移: +5 秒
+  timeOffset: "5s"
+  
+  # 持续时间: 120 秒
+  duration: "120s"
+  
+  # 时钟模式: 偏移系统时钟
+  clockIds:
+    - CLOCK_REALTIME
+
+---
+# 负向时钟偏移测试
+# 验证需求: 9.2.4
+# 测试场景: 注入负向时钟偏移，验证 HLC 单调性保持
+
+apiVersion: chaos-mesh.org/v1alpha1
+kind: TimeChaos
+metadata:
+  name: clock-skew-negative
+  namespace: default
+  annotations:
+    description: "注入负向时钟偏移，验证 HLC 单调性"
+spec:
+  # 应用到一个随机 Pod
+  mode: one
+  
+  # 选择 Region B 的 IM 服务
+  selector:
+    namespaces:
+      - im-region-b
+    labelSelectors:
+      app: im-service
+  
+  # 时钟偏移: -3 秒
+  timeOffset: "-3s"
+  
+  # 持续时间: 120 秒
+  duration: "120s"
+  
+  # 时钟模式: 偏移系统时钟
+  clockIds:
+    - CLOCK_REALTIME
+
+---
+# 时钟回拨测试
+# 验证需求: 9.2.4
+# 测试场景: 模拟时钟回拨，验证 HLC 逻辑计数器补偿机制
+
+apiVersion: chaos-mesh.org/v1alpha1
+kind: TimeChaos
+metadata:
+  name: clock-backward
+  namespace: default
+  annotations:
+    description: "模拟时钟回拨，验证 HLC 逻辑计数器补偿"
+spec:
+  # 应用到所有匹配的 Pod
+  mode: all
+  
+  # 选择 Region A 的 IM 服务
+  selector:
+    namespaces:
+      - im-region-a
+    labelSelectors:
+      app: im-service
+  
+  # 时钟偏移: -10 秒 (模拟时钟回拨)
+  timeOffset: "-10s"
+  
+  # 持续时间: 60 秒
+  duration: "60s"
+  
+  # 时钟模式: 偏移系统时钟
+  clockIds:
+    - CLOCK_REALTIME
+
+---
+# 跨地域时钟不同步测试
+# 验证需求: 9.2.4
+# 测试场景: 两个地域时钟不同步，验证 HLC 因果排序正确性
+
+apiVersion: chaos-mesh.org/v1alpha1
+kind: TimeChaos
+metadata:
+  name: cross-region-clock-desync
+  namespace: default
+  annotations:
+    description: "跨地域时钟不同步，验证 HLC 因果排序"
+spec:
+  # 应用到所有匹配的 Pod
+  mode: all
+  
+  # 选择 Region A 的 IM 服务
+  selector:
+    namespaces:
+      - im-region-a
+    labelSelectors:
+      app: im-service
+  
+  # Region A 时钟偏移: +5 秒
+  timeOffset: "5s"
+  
+  # 持续时间: 180 秒
+  duration: "180s"
+  
+  # 时钟模式: 偏移系统时钟
+  clockIds:
+    - CLOCK_REALTIME
+
+---
+# Region B 时钟偏移配置 (配合上面的测试)
+apiVersion: chaos-mesh.org/v1alpha1
+kind: TimeChaos
+metadata:
+  name: cross-region-clock-desync-b
+  namespace: default
+  annotations:
+    description: "Region B 时钟偏移，配合跨地域时钟不同步测试"
+spec:
+  # 应用到所有匹配的 Pod
+  mode: all
+  
+  # 选择 Region B 的 IM 服务
+  selector:
+    namespaces:
+      - im-region-b
+    labelSelectors:
+      app: im-service
+  
+  # Region B 时钟偏移: -5 秒 (与 Region A 相差 10 秒)
+  timeOffset: "-5s"
+  
+  # 持续时间: 180 秒
+  duration: "180s"
+  
+  # 时钟模式: 偏移系统时钟
+  clockIds:
+    - CLOCK_REALTIME
+
+---
+# 极端时钟偏移测试
+# 验证需求: 9.2.4
+# 测试场景: 注入极端时钟偏移，验证系统告警和降级机制
+
+apiVersion: chaos-mesh.org/v1alpha1
+kind: TimeChaos
+metadata:
+  name: clock-skew-extreme
+  namespace: default
+  annotations:
+    description: "极端时钟偏移，验证告警和降级机制"
+spec:
+  # 应用到一个随机 Pod
+  mode: one
+  
+  # 选择 Region A 的 IM 服务
+  selector:
+    namespaces:
+      - im-region-a
+    labelSelectors:
+      app: im-service
+  
+  # 时钟偏移: +30 秒 (超过阈值)
+  timeOffset: "30s"
+  
+  # 持续时间: 60 秒
+  duration: "60s"
+  
+  # 时钟模式: 偏移系统时钟
+  clockIds:
+    - CLOCK_REALTIME

@@ -1,0 +1,184 @@
+# Docker Compose 配置用于本地混沌工程测试
+# 使用 tc (traffic control) 模拟网络故障
+
+version: '3.8'
+
+services:
+  # Region A IM Service
+  im-service-region-a:
+    build:
+      context: ../..
+      dockerfile: apps/im-service/Dockerfile
+    container_name: im-service-region-a
+    environment:
+      - REGION_ID=region-a
+      - REGION_NAME=Primary Region
+      - CROSS_REGION_ENABLED=true
+      - PEER_REGIONS=region-b
+      - REDIS_ADDR=redis-region-a:6379
+      - MYSQL_HOST=mysql-region-a
+      - KAFKA_BROKERS=kafka-region-a:9092
+    networks:
+      - region-a-net
+      - cross-region-net
+    depends_on:
+      - redis-region-a
+      - mysql-region-a
+      - kafka-region-a
+    cap_add:
+      - NET_ADMIN  # 允许使用 tc 命令
+    ports:
+      - "8080:8080"
+
+  # Region B IM Service
+  im-service-region-b:
+    build:
+      context: ../..
+      dockerfile: apps/im-service/Dockerfile
+    container_name: im-service-region-b
+    environment:
+      - REGION_ID=region-b
+      - REGION_NAME=Secondary Region
+      - CROSS_REGION_ENABLED=true
+      - PEER_REGIONS=region-a
+      - REDIS_ADDR=redis-region-b:6379
+      - MYSQL_HOST=mysql-region-b
+      - KAFKA_BROKERS=kafka-region-b:9092
+    networks:
+      - region-b-net
+      - cross-region-net
+    depends_on:
+      - redis-region-b
+      - mysql-region-b
+      - kafka-region-b
+    cap_add:
+      - NET_ADMIN  # 允许使用 tc 命令
+    ports:
+      - "8081:8080"
+
+  # Region A Redis
+  redis-region-a:
+    image: redis:7-alpine
+    container_name: redis-region-a
+    networks:
+      - region-a-net
+    ports:
+      - "6379:6379"
+
+  # Region B Redis
+  redis-region-b:
+    image: redis:7-alpine
+    container_name: redis-region-b
+    networks:
+      - region-b-net
+    ports:
+      - "6380:6379"
+
+  # Region A MySQL
+  mysql-region-a:
+    image: mysql:8.0
+    container_name: mysql-region-a
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=im_chat
+      - MYSQL_USER=im_service
+      - MYSQL_PASSWORD=password
+    networks:
+      - region-a-net
+    ports:
+      - "3306:3306"
+
+  # Region B MySQL
+  mysql-region-b:
+    image: mysql:8.0
+    container_name: mysql-region-b
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=im_chat
+      - MYSQL_USER=im_service
+      - MYSQL_PASSWORD=password
+    networks:
+      - region-b-net
+    ports:
+      - "3307:3306"
+
+  # Region A Kafka
+  kafka-region-a:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka-region-a
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper-region-a:2181
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka-region-a:9092
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+    networks:
+      - region-a-net
+    depends_on:
+      - zookeeper-region-a
+    ports:
+      - "9092:9092"
+
+  # Region B Kafka
+  kafka-region-b:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka-region-b
+    environment:
+      - KAFKA_BROKER_ID=2
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper-region-b:2181
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka-region-b:9092
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+    networks:
+      - region-b-net
+    depends_on:
+      - zookeeper-region-b
+    ports:
+      - "9093:9092"
+
+  # Region A Zookeeper
+  zookeeper-region-a:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: zookeeper-region-a
+    environment:
+      - ZOOKEEPER_CLIENT_PORT=2181
+      - ZOOKEEPER_TICK_TIME=2000
+    networks:
+      - region-a-net
+    ports:
+      - "2181:2181"
+
+  # Region B Zookeeper
+  zookeeper-region-b:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: zookeeper-region-b
+    environment:
+      - ZOOKEEPER_CLIENT_PORT=2181
+      - ZOOKEEPER_TICK_TIME=2000
+    networks:
+      - region-b-net
+    ports:
+      - "2182:2181"
+
+  # Chaos Controller (用于注入故障)
+  chaos-controller:
+    image: alpine:latest
+    container_name: chaos-controller
+    command: sleep infinity
+    networks:
+      - region-a-net
+      - region-b-net
+      - cross-region-net
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - ./chaos-scripts:/chaos-scripts
+    depends_on:
+      - im-service-region-a
+      - im-service-region-b
+
+networks:
+  region-a-net:
+    driver: bridge
+  region-b-net:
+    driver: bridge
+  cross-region-net:
+    driver: bridge

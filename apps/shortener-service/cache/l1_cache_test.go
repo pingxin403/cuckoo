@@ -18,7 +18,7 @@ func TestL1CacheBasicOperations(t *testing.T) {
 	longURL := "https://example.com"
 	createdAt := time.Now()
 
-	success := cache.Set(shortCode, longURL, createdAt)
+	success := cache.Set(shortCode, longURL, createdAt, nil)
 	if !success {
 		t.Error("Failed to set value in cache")
 	}

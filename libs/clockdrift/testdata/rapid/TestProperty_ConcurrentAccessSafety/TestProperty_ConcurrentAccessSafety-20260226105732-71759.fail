@@ -1,0 +1,18 @@
+# 2026/02/26 10:57:32.185268 [TestProperty_ConcurrentAccessSafety] [rapid] draw capacity: 17
+# 2026/02/26 10:57:32.185283 [TestProperty_ConcurrentAccessSafety] [rapid] draw numWriters: 2
+# 2026/02/26 10:57:32.185284 [TestProperty_ConcurrentAccessSafety] [rapid] draw numReaders: 5
+# 2026/02/26 10:57:32.185285 [TestProperty_ConcurrentAccessSafety] [rapid] draw samplesPerWriter: 31
+# 
+v0.4.8#4860136829954137367
+0x0
+0xc05c654ab8669
+0x7
+0xff9f75925086d
+0x197a9adafbc3a9
+0x0
+0x11861756290fd3
+0xe081d7b42cec3
+0x3
+0x1865a5b998197f
+0x1294151250cd68
+0x15

@@ -90,6 +90,7 @@ func (h *RedirectHandler) HandleRedirect(w http.ResponseWriter, r *http.Request)
 				ShortCode: cacheMapping.ShortCode,
 				LongURL:   cacheMapping.LongURL,
 				CreatedAt: cacheMapping.CreatedAt,
+				ExpiresAt: cacheMapping.ExpiresAt,
 			}
 		}
 	} else {

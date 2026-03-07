@@ -18,6 +18,7 @@ type URLMapping struct {
 	ShortCode string
 	LongURL   string
 	CreatedAt time.Time
+	ExpiresAt *time.Time
 }
 
 // NewL1Cache creates a new L1 cache instance with Ristretto
@@ -57,11 +58,12 @@ func (c *L1Cache) Get(shortCode string) *URLMapping {
 // Set stores a URL mapping in the cache with TTL jitter
 // TTL: 1 hour ±10% (54-66 minutes) to prevent thundering herd
 // Cost: estimated size of the mapping in bytes
-func (c *L1Cache) Set(shortCode string, longURL string, createdAt time.Time) bool {
+func (c *L1Cache) Set(shortCode string, longURL string, createdAt time.Time, expiresAt *time.Time) bool {
 	mapping := &URLMapping{
 		ShortCode: shortCode,
 		LongURL:   longURL,
 		CreatedAt: createdAt,
+		ExpiresAt: expiresAt,
 	}
 
 	// Calculate TTL with ±10% jitter to prevent thundering herd

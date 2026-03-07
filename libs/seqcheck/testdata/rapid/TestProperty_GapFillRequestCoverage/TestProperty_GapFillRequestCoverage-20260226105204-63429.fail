@@ -1,0 +1,95 @@
+# 2026/02/26 10:52:04.172804 [TestProperty_GapFillRequestCoverage] [rapid] draw maxSeq: 44
+# 2026/02/26 10:52:04.172821 [TestProperty_GapFillRequestCoverage] [rapid] draw include: false
+# 2026/02/26 10:52:04.172822 [TestProperty_GapFillRequestCoverage] [rapid] draw include: false
+# 2026/02/26 10:52:04.172824 [TestProperty_GapFillRequestCoverage] [rapid] draw include: true
+# 2026/02/26 10:52:04.172825 [TestProperty_GapFillRequestCoverage] [rapid] draw include: true
+# 2026/02/26 10:52:04.172825 [TestProperty_GapFillRequestCoverage] [rapid] draw include: true
+# 2026/02/26 10:52:04.172825 [TestProperty_GapFillRequestCoverage] [rapid] draw include: true
+# 2026/02/26 10:52:04.172825 [TestProperty_GapFillRequestCoverage] [rapid] draw include: true
+# 2026/02/26 10:52:04.172826 [TestProperty_GapFillRequestCoverage] [rapid] draw include: false
+# 2026/02/26 10:52:04.172827 [TestProperty_GapFillRequestCoverage] [rapid] draw include: true
+# 2026/02/26 10:52:04.172827 [TestProperty_GapFillRequestCoverage] [rapid] draw include: true
+# 2026/02/26 10:52:04.172827 [TestProperty_GapFillRequestCoverage] [rapid] draw include: false
+# 2026/02/26 10:52:04.172827 [TestProperty_GapFillRequestCoverage] [rapid] draw include: false
+# 2026/02/26 10:52:04.172827 [TestProperty_GapFillRequestCoverage] [rapid] draw include: false
+# 2026/02/26 10:52:04.172828 [TestProperty_GapFillRequestCoverage] [rapid] draw include: true
+# 2026/02/26 10:52:04.172828 [TestProperty_GapFillRequestCoverage] [rapid] draw include: true
+# 2026/02/26 10:52:04.172830 [TestProperty_GapFillRequestCoverage] [rapid] draw include: false
+# 2026/02/26 10:52:04.172830 [TestProperty_GapFillRequestCoverage] [rapid] draw include: true
+# 2026/02/26 10:52:04.172831 [TestProperty_GapFillRequestCoverage] [rapid] draw include: true
+# 2026/02/26 10:52:04.172831 [TestProperty_GapFillRequestCoverage] [rapid] draw include: false
+# 2026/02/26 10:52:04.172831 [TestProperty_GapFillRequestCoverage] [rapid] draw include: true
+# 2026/02/26 10:52:04.172831 [TestProperty_GapFillRequestCoverage] [rapid] draw include: false
+# 2026/02/26 10:52:04.172831 [TestProperty_GapFillRequestCoverage] [rapid] draw include: true
+# 2026/02/26 10:52:04.172832 [TestProperty_GapFillRequestCoverage] [rapid] draw include: true
+# 2026/02/26 10:52:04.172832 [TestProperty_GapFillRequestCoverage] [rapid] draw include: true
+# 2026/02/26 10:52:04.172832 [TestProperty_GapFillRequestCoverage] [rapid] draw include: true
+# 2026/02/26 10:52:04.172833 [TestProperty_GapFillRequestCoverage] [rapid] draw include: false
+# 2026/02/26 10:52:04.172833 [TestProperty_GapFillRequestCoverage] [rapid] draw include: false
+# 2026/02/26 10:52:04.172833 [TestProperty_GapFillRequestCoverage] [rapid] draw include: false
+# 2026/02/26 10:52:04.172833 [TestProperty_GapFillRequestCoverage] [rapid] draw include: true
+# 2026/02/26 10:52:04.172834 [TestProperty_GapFillRequestCoverage] [rapid] draw include: true
+# 2026/02/26 10:52:04.172834 [TestProperty_GapFillRequestCoverage] [rapid] draw include: false
+# 2026/02/26 10:52:04.172834 [TestProperty_GapFillRequestCoverage] [rapid] draw include: false
+# 2026/02/26 10:52:04.172834 [TestProperty_GapFillRequestCoverage] [rapid] draw include: true
+# 2026/02/26 10:52:04.172836 [TestProperty_GapFillRequestCoverage] [rapid] draw include: true
+# 2026/02/26 10:52:04.172836 [TestProperty_GapFillRequestCoverage] [rapid] draw include: true
+# 2026/02/26 10:52:04.172837 [TestProperty_GapFillRequestCoverage] [rapid] draw include: false
+# 2026/02/26 10:52:04.172837 [TestProperty_GapFillRequestCoverage] [rapid] draw include: true
+# 2026/02/26 10:52:04.172837 [TestProperty_GapFillRequestCoverage] [rapid] draw include: false
+# 2026/02/26 10:52:04.172837 [TestProperty_GapFillRequestCoverage] [rapid] draw include: false
+# 2026/02/26 10:52:04.172837 [TestProperty_GapFillRequestCoverage] [rapid] draw include: true
+# 2026/02/26 10:52:04.172838 [TestProperty_GapFillRequestCoverage] [rapid] draw include: true
+# 2026/02/26 10:52:04.172838 [TestProperty_GapFillRequestCoverage] [rapid] draw include: true
+# 2026/02/26 10:52:04.172838 [TestProperty_GapFillRequestCoverage] [rapid] draw include: false
+# 2026/02/26 10:52:04.172838 [TestProperty_GapFillRequestCoverage] [rapid] draw include: true
+# 2026/02/26 10:52:04.172849 [TestProperty_GapFillRequestCoverage] Request includes sequence 29 that was already received
+# 
+v0.4.8#17514480606717458831
+0x1ff4a563c69b2b
+0x1904eb61e7b03d
+0x18
+0x0
+0x0
+0x1
+0x1
+0x1
+0x1
+0x1
+0x0
+0x1
+0x1
+0x0
+0x0
+0x0
+0x1
+0x1
+0x0
+0x1
+0x1
+0x0
+0x1
+0x0
+0x1
+0x1
+0x1
+0x1
+0x0
+0x0
+0x0
+0x1
+0x1
+0x0
+0x0
+0x1
+0x1
+0x1
+0x0
+0x1
+0x0
+0x0
+0x1
+0x1
+0x1
+0x0
+0x1

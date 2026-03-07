@@ -84,7 +84,7 @@ func (cl *CacheLoader) LoadWithLock(ctx context.Context, shortCode string) (*URL
 		// Set in L2 cache using proper L2Cache.Set method
 		// This ensures the data is stored in the correct format (hash) with TTL jitter
 		if cl.l2Cache != nil {
-			if setErr := cl.l2Cache.Set(ctx, data.ShortCode, data.LongURL, data.CreatedAt); setErr != nil {
+			if setErr := cl.l2Cache.Set(ctx, data.ShortCode, data.LongURL, data.CreatedAt, data.ExpiresAt); setErr != nil {
 				cl.obs.Metrics().IncrementCounter("redis_setnx_cache_set_errors_total", nil)
 				// Return data even if cache set fails (graceful degradation)
 			}
@@ -95,6 +95,7 @@ func (cl *CacheLoader) LoadWithLock(ctx context.Context, shortCode string) (*URL
 			ShortCode: data.ShortCode,
 			LongURL:   data.LongURL,
 			CreatedAt: data.CreatedAt,
+			ExpiresAt: data.ExpiresAt,
 		}, nil
 	}
 

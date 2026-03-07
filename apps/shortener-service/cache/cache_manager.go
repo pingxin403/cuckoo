@@ -40,6 +40,7 @@ func CreateNullEntry(shortCode string) *URLMapping {
 		ShortCode: shortCode,
 		LongURL:   "", // Empty URL indicates null entry
 		CreatedAt: time.Now(),
+		ExpiresAt: nil,
 	}
 }
 
@@ -164,7 +165,7 @@ func (cm *CacheManager) getWithFallback(ctx context.Context, shortCode string) (
 
 		// LoadWithLock already populated L2 cache and returns full mapping
 		// Backfill L1 cache
-		cm.l1.Set(mapping.ShortCode, mapping.LongURL, mapping.CreatedAt)
+		cm.l1.Set(mapping.ShortCode, mapping.LongURL, mapping.CreatedAt, mapping.ExpiresAt)
 		return mapping, nil
 	}
 
@@ -187,13 +188,14 @@ func (cm *CacheManager) getWithFallback(ctx context.Context, shortCode string) (
 		ShortCode: storageMapping.ShortCode,
 		LongURL:   storageMapping.LongURL,
 		CreatedAt: storageMapping.CreatedAt,
+		ExpiresAt: storageMapping.ExpiresAt,
 	}
 
 	// Backfill both cache layers
-	cm.l1.Set(mapping.ShortCode, mapping.LongURL, mapping.CreatedAt)
+	cm.l1.Set(mapping.ShortCode, mapping.LongURL, mapping.CreatedAt, mapping.ExpiresAt)
 	if cm.l2 != nil {
 		// Only backfill L2 if we didn't use LoadWithLock (which already populated it)
-		if err := cm.l2.Set(ctx, mapping.ShortCode, mapping.LongURL, mapping.CreatedAt); err != nil {
+		if err := cm.l2.Set(ctx, mapping.ShortCode, mapping.LongURL, mapping.CreatedAt, mapping.ExpiresAt); err != nil {
 			// Log error but don't fail the request (graceful degradation)
 			cm.obs.Logger().Warn(ctx, "Failed to backfill L2 cache",
 				"short_code", mapping.ShortCode,
@@ -250,13 +252,13 @@ func (cm *CacheManager) Delete(ctx context.Context, shortCode string) error {
 }
 
 // Set stores a URL mapping in all cache layers
-func (cm *CacheManager) Set(ctx context.Context, shortCode string, longURL string, createdAt time.Time) error {
+func (cm *CacheManager) Set(ctx context.Context, shortCode string, longURL string, createdAt time.Time, expiresAt *time.Time) error {
 	// Set in L1
-	cm.l1.Set(shortCode, longURL, createdAt)
+	cm.l1.Set(shortCode, longURL, createdAt, expiresAt)
 
 	// Set in L2
 	if cm.l2 != nil {
-		if err := cm.l2.Set(ctx, shortCode, longURL, createdAt); err != nil {
+		if err := cm.l2.Set(ctx, shortCode, longURL, createdAt, expiresAt); err != nil {
 			return fmt.Errorf("failed to set in L2: %w", err)
 		}
 	}

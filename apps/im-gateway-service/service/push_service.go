@@ -154,6 +154,26 @@ func (p *PushService) PushMessage(ctx context.Context, req *PushMessageRequest) 
 // pushToConnection attempts to push a message to a specific connection.
 // Returns true if successful, false otherwise.
 func (p *PushService) pushToConnection(conn *Connection, data []byte, _ string) bool {
+	// Parse the message to extract sequence number and conversation ID
+	var serverMsg ServerMessage
+	if err := json.Unmarshal(data, &serverMsg); err == nil {
+		// Record sequence for gap detection (only for actual messages, not system messages)
+		if serverMsg.Type == "message" && serverMsg.SequenceNumber > 0 {
+			// Determine conversation ID from the message
+			// For private messages, use sender as conversation ID
+			// For group messages, use the group ID (if available in ConversationID field)
+			conversationID := serverMsg.ConversationID
+			if conversationID == "" {
+				// Fallback: use sender as conversation ID for private messages
+				conversationID = serverMsg.Sender
+			}
+
+			if conversationID != "" {
+				conn.recordMessageSequence(conversationID, serverMsg.SequenceNumber)
+			}
+		}
+	}
+
 	// Try to send message
 	select {
 	case conn.Send <- data:
