@@ -249,3 +249,28 @@ func (m *URLMapping) MarshalBinary() ([]byte, error) {
 func (m *URLMapping) UnmarshalBinary(data []byte) error {
 	return json.Unmarshal(data, m)
 }
+
+// SetNilMarker caches a "not found" marker in Redis to prevent cache penetration
+// TTL: 2 minutes (shorter than normal cache to allow for new creations)
+func (c *L2Cache) SetNilMarker(ctx context.Context, shortCode string) error {
+	key := fmt.Sprintf("url:%s", shortCode)
+
+	// Store nil marker
+	fields := map[string]interface{}{
+		"short_code": "__NIL__",
+		"long_url":   "",
+		"created_at": time.Now().Format(time.RFC3339),
+	}
+
+	if err := c.client.HSet(ctx, key, fields).Err(); err != nil {
+		return fmt.Errorf("failed to set nil marker in Redis: %w", err)
+	}
+
+	// Short TTL for nil markers (2 minutes)
+	ttl := 2 * time.Minute
+	if err := c.client.Expire(ctx, key, ttl).Err(); err != nil {
+		return fmt.Errorf("failed to set TTL for nil marker in Redis: %w", err)
+	}
+
+	return nil
+}

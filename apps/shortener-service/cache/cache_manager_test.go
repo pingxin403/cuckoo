@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/pingxin403/cuckoo/libs/observability"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // createTestObservability creates a test observability instance
@@ -232,4 +234,94 @@ func TestCacheManagerDelete(t *testing.T) {
 	if mapping := l1.Get("test789"); mapping != nil {
 		t.Error("Expected mapping to be removed from L1 cache")
 	}
+}
+
+// TestCacheManager_InvalidShortCodeValidation tests shortCode format validation
+func TestCacheManager_InvalidShortCodeValidation(t *testing.T) {
+	l1, err := NewL1Cache()
+	require.NoError(t, err)
+	defer l1.Close()
+
+	storage := NewMockStorage()
+	obs := createTestObservability()
+	cacheManager := NewCacheManager(l1, nil, storage, obs)
+
+	tests := []struct {
+		name        string
+		shortCode   string
+		wantNil     bool
+		expectError bool
+	}{
+		{
+			name:        "valid shortCode not found",
+			shortCode:   "abc123",
+			wantNil:     false,
+			expectError: true, // Storage will return error for not found
+		},
+		{
+			name:      "too short",
+			shortCode: "abc",
+			wantNil:   true,
+		},
+		{
+			name:      "too long",
+			shortCode: "abcdefghijklmnopqrstuvwxyz",
+			wantNil:   true,
+		},
+		{
+			name:      "invalid characters",
+			shortCode: "abc@123",
+			wantNil:   true,
+		},
+		{
+			name:      "sql injection attempt",
+			shortCode: "'; DROP TABLE--",
+			wantNil:   true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			storage.ResetCallCount()
+
+			mapping, err := cacheManager.Get(context.Background(), tt.shortCode)
+
+			if tt.expectError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+
+			if tt.wantNil {
+				assert.Nil(t, mapping)
+				assert.Equal(t, 0, storage.GetCallCount())
+			}
+		})
+	}
+}
+
+// TestCacheManager_NilMarkerCaching tests caching of "not found" results
+func TestCacheManager_NilMarkerCaching(t *testing.T) {
+	l1, err := NewL1Cache()
+	require.NoError(t, err)
+	defer l1.Close()
+
+	storage := NewMockStorage()
+	obs := createTestObservability()
+	cacheManager := NewCacheManager(l1, nil, storage, obs)
+
+	shortCode := "notfound"
+
+	// First call - cache miss, query storage (returns error)
+	_, err = cacheManager.Get(context.Background(), shortCode)
+	require.Error(t, err)
+	assert.Equal(t, 1, storage.GetCallCount())
+
+	time.Sleep(10 * time.Millisecond)
+
+	// Second call - should hit nil marker cache
+	mapping2, err := cacheManager.Get(context.Background(), shortCode)
+	require.NoError(t, err)
+	assert.Nil(t, mapping2)
+	assert.Equal(t, 1, storage.GetCallCount())
 }
