@@ -11,10 +11,33 @@ option java_outer_classname = "ImGatewayServiceProto";
 service UimUgatewayUserviceService {
   // Add your RPC methods here
   rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+  
+  // PushMessage pushes a message to a user's connected device(s)
+  rpc PushMessage(PushMessageRequest) returns (PushMessageResponse);
 }
 
 message HealthCheckRequest {}
 
 message HealthCheckResponse {
   string status = 1;
+}
+
+// PushMessageRequest represents a message push request from IM Service
+message PushMessageRequest {
+  string msg_id = 1;
+  string recipient_id = 2;
+  string device_id = 3;  // Optional: specific device, empty for all devices
+  string sender_id = 4;
+  string content = 5;
+  string message_type = 6;
+  int64 sequence_number = 7;
+  int64 timestamp = 8;
+}
+
+// PushMessageResponse represents the response to a push request
+message PushMessageResponse {
+  bool success = 1;
+  int32 delivered_count = 2;
+  repeated string failed_devices = 3;
+  string error_message = 4;
 }

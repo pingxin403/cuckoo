@@ -24,6 +24,31 @@ type KafkaProducerInterface interface {
 	Close() error
 }
 
+// GatewayClientInterface defines the interface for gateway client operations
+type GatewayClientInterface interface {
+	PushMessage(ctx context.Context, gatewayAddr string, req *GatewayPushRequest) (*GatewayPushResponse, error)
+}
+
+// GatewayPushRequest represents a push request to gateway
+type GatewayPushRequest struct {
+	MsgID          string
+	RecipientID    string
+	DeviceID       string
+	SenderID       string
+	Content        string
+	MessageType    string
+	SequenceNumber int64
+	Timestamp      int64
+}
+
+// GatewayPushResponse represents the response from gateway
+type GatewayPushResponse struct {
+	Success        bool
+	DeliveredCount int32
+	FailedDevices  []string
+	ErrorMessage   string
+}
+
 // IMService implements the IM message routing service.
 type IMService struct {
 	impb.UnimplementedIMServiceServer
@@ -33,6 +58,7 @@ type IMService struct {
 	filter        *filter.SensitiveWordFilter
 	kafkaProducer KafkaProducerInterface
 	encryption    EncryptionInterface
+	gatewayClient GatewayClientInterface
 	config        IMServiceConfig
 }
 
@@ -69,6 +95,7 @@ func NewIMService(
 	filter *filter.SensitiveWordFilter,
 	kafkaProducer KafkaProducerInterface,
 	encryption EncryptionInterface,
+	gatewayClient GatewayClientInterface,
 	config IMServiceConfig,
 ) *IMService {
 	return &IMService{
@@ -78,6 +105,7 @@ func NewIMService(
 		filter:        filter,
 		kafkaProducer: kafkaProducer,
 		encryption:    encryption,
+		gatewayClient: gatewayClient,
 		config:        config,
 	}
 }
@@ -141,7 +169,7 @@ func (s *IMService) RoutePrivateMessage(
 	if len(locations) > 0 {
 		// Fast Path: Recipient is online (Requirement 1.1, 3.1)
 		// Try delivery with retry logic (Requirement 3.2, 3.3, 3.4)
-		delivered := s.deliverWithRetry(ctx, req, locations)
+		delivered := s.deliverWithRetry(ctx, req, locations, seqNum)
 		if delivered {
 			deliveryStatus = impb.DeliveryStatus_DELIVERY_STATUS_DELIVERED
 		} else {
@@ -350,13 +378,15 @@ func (e *IMError) Error() string {
 
 // deliverWithRetry attempts to deliver a message with exponential backoff retry logic.
 // Validates: Requirements 3.2, 3.3, 3.4
-func (s *IMService) deliverWithRetry(ctx context.Context, req *impb.RoutePrivateMessageRequest, locations []registry.GatewayLocation) bool {
+// deliverWithRetry attempts to deliver a message with exponential backoff retry logic.
+// Validates: Requirements 3.2, 3.3, 3.4
+func (s *IMService) deliverWithRetry(ctx context.Context, req *impb.RoutePrivateMessageRequest, locations []registry.GatewayLocation, seqNum int64) bool {
 	for attempt := 0; attempt < s.config.MaxRetries; attempt++ {
 		// Create context with timeout
 		deliveryCtx, cancel := context.WithTimeout(ctx, s.config.DeliveryTimeout)
 
 		// Try to deliver to Gateway nodes
-		delivered := s.tryDelivery(deliveryCtx, req, locations)
+		delivered := s.tryDelivery(deliveryCtx, req, locations, seqNum)
 		cancel()
 
 		if delivered {
@@ -375,16 +405,49 @@ func (s *IMService) deliverWithRetry(ctx context.Context, req *impb.RoutePrivate
 }
 
 // tryDelivery attempts to deliver a message to Gateway nodes.
-func (s *IMService) tryDelivery(ctx context.Context, req *impb.RoutePrivateMessageRequest, locations []registry.GatewayLocation) bool {
-	// TODO: Implement actual gRPC call to Gateway nodes
-	// For now, simulate delivery based on context timeout
-	select {
-	case <-ctx.Done():
+func (s *IMService) tryDelivery(ctx context.Context, req *impb.RoutePrivateMessageRequest, locations []registry.GatewayLocation, seqNum int64) bool {
+	if len(locations) == 0 {
 		return false
-	default:
-		// Simulate successful delivery
-		return true
 	}
+
+	// If no gateway client configured, cannot deliver
+	if s.gatewayClient == nil {
+		return false
+	}
+
+	// Track successful deliveries
+	successCount := 0
+
+	// Try to deliver to each gateway node where the user has devices
+	for _, location := range locations {
+		// Build push request with the real sequence number
+		pushReq := &GatewayPushRequest{
+			MsgID:          req.MsgId,
+			RecipientID:    req.RecipientId,
+			DeviceID:       location.DeviceID,
+			SenderID:       req.SenderId,
+			Content:        req.Content,
+			MessageType:    req.MessageType.String(),
+			SequenceNumber: seqNum,
+			Timestamp:      req.ClientTimestamp.AsTime().UnixMilli(),
+		}
+
+		// Call gateway node to push message
+		resp, err := s.gatewayClient.PushMessage(ctx, location.GatewayNode, pushReq)
+		if err != nil {
+			// Log error and continue to next gateway
+			// TODO: Add proper logging
+			continue
+		}
+
+		// Check if delivery was successful
+		if resp.Success && resp.DeliveredCount > 0 {
+			successCount++
+		}
+	}
+
+	// Return true if at least one device received the message
+	return successCount > 0
 }
 
 // routeToOfflineChannel routes a message to the Kafka offline_msg topic.

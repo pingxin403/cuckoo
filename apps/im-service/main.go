@@ -434,6 +434,12 @@ func initializeIMService(
 	var kafkaProducer service.KafkaProducerInterface = nil
 	var encryption service.EncryptionInterface = nil
 
+	// Create gateway client for message delivery
+	gatewayClient := service.NewGatewayClient(
+		5*time.Second, // dial timeout
+		3*time.Second, // request timeout
+	)
+
 	serviceCfg := service.IMServiceConfig{
 		MaxContentLength: 10000,
 		DeliveryTimeout:  5 * time.Second,
@@ -448,6 +454,7 @@ func initializeIMService(
 		wordFilter,
 		kafkaProducer,
 		encryption,
+		gatewayClient,
 		serviceCfg,
 	), nil
 }

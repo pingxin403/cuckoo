@@ -68,6 +68,7 @@ func setupTestService(t *testing.T) (*IMService, *mockRegistryClient, *mockKafka
 		filterService,
 		mockKafka,
 		nil, // No encryption for basic tests
+		nil, // No gateway client for basic tests
 		DefaultIMServiceConfig(),
 	)
 
@@ -578,6 +579,7 @@ func TestApplyFilter_BlockAction(t *testing.T) {
 		filterService,
 		nil, // No Kafka producer for this test
 		nil, // No encryption for this test
+		nil, // No gateway client for this test
 		DefaultIMServiceConfig(),
 	)
 
@@ -640,6 +642,7 @@ func TestApplyFilter_AuditAction(t *testing.T) {
 		filterService,
 		nil, // No Kafka producer for this test
 		nil, // No encryption for this test
+		nil, // No gateway client for this test
 		DefaultIMServiceConfig(),
 	)
 
@@ -815,7 +818,7 @@ func TestDeliverWithRetry(t *testing.T) {
 	}
 
 	// Test successful delivery (stub always succeeds)
-	delivered := service.deliverWithRetry(context.Background(), req, locations)
+	delivered := service.deliverWithRetry(context.Background(), req, locations, 12345)
 	if !delivered {
 		t.Error("Expected delivery to succeed")
 	}
