@@ -101,6 +101,176 @@ func (x *HealthCheckResponse) GetStatus() string {
 	return ""
 }
 
+// PushMessageRequest represents a message push request from IM Service
+type PushMessageRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	MsgId          string                 `protobuf:"bytes,1,opt,name=msg_id,json=msgId,proto3" json:"msg_id,omitempty"`
+	RecipientId    string                 `protobuf:"bytes,2,opt,name=recipient_id,json=recipientId,proto3" json:"recipient_id,omitempty"`
+	DeviceId       string                 `protobuf:"bytes,3,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"` // Optional: specific device, empty for all devices
+	SenderId       string                 `protobuf:"bytes,4,opt,name=sender_id,json=senderId,proto3" json:"sender_id,omitempty"`
+	Content        string                 `protobuf:"bytes,5,opt,name=content,proto3" json:"content,omitempty"`
+	MessageType    string                 `protobuf:"bytes,6,opt,name=message_type,json=messageType,proto3" json:"message_type,omitempty"`
+	SequenceNumber int64                  `protobuf:"varint,7,opt,name=sequence_number,json=sequenceNumber,proto3" json:"sequence_number,omitempty"`
+	Timestamp      int64                  `protobuf:"varint,8,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *PushMessageRequest) Reset() {
+	*x = PushMessageRequest{}
+	mi := &file_im_gateway_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PushMessageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PushMessageRequest) ProtoMessage() {}
+
+func (x *PushMessageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_im_gateway_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PushMessageRequest.ProtoReflect.Descriptor instead.
+func (*PushMessageRequest) Descriptor() ([]byte, []int) {
+	return file_im_gateway_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *PushMessageRequest) GetMsgId() string {
+	if x != nil {
+		return x.MsgId
+	}
+	return ""
+}
+
+func (x *PushMessageRequest) GetRecipientId() string {
+	if x != nil {
+		return x.RecipientId
+	}
+	return ""
+}
+
+func (x *PushMessageRequest) GetDeviceId() string {
+	if x != nil {
+		return x.DeviceId
+	}
+	return ""
+}
+
+func (x *PushMessageRequest) GetSenderId() string {
+	if x != nil {
+		return x.SenderId
+	}
+	return ""
+}
+
+func (x *PushMessageRequest) GetContent() string {
+	if x != nil {
+		return x.Content
+	}
+	return ""
+}
+
+func (x *PushMessageRequest) GetMessageType() string {
+	if x != nil {
+		return x.MessageType
+	}
+	return ""
+}
+
+func (x *PushMessageRequest) GetSequenceNumber() int64 {
+	if x != nil {
+		return x.SequenceNumber
+	}
+	return 0
+}
+
+func (x *PushMessageRequest) GetTimestamp() int64 {
+	if x != nil {
+		return x.Timestamp
+	}
+	return 0
+}
+
+// PushMessageResponse represents the response to a push request
+type PushMessageResponse struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Success        bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	DeliveredCount int32                  `protobuf:"varint,2,opt,name=delivered_count,json=deliveredCount,proto3" json:"delivered_count,omitempty"`
+	FailedDevices  []string               `protobuf:"bytes,3,rep,name=failed_devices,json=failedDevices,proto3" json:"failed_devices,omitempty"`
+	ErrorMessage   string                 `protobuf:"bytes,4,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *PushMessageResponse) Reset() {
+	*x = PushMessageResponse{}
+	mi := &file_im_gateway_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PushMessageResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PushMessageResponse) ProtoMessage() {}
+
+func (x *PushMessageResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_im_gateway_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PushMessageResponse.ProtoReflect.Descriptor instead.
+func (*PushMessageResponse) Descriptor() ([]byte, []int) {
+	return file_im_gateway_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *PushMessageResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *PushMessageResponse) GetDeliveredCount() int32 {
+	if x != nil {
+		return x.DeliveredCount
+	}
+	return 0
+}
+
+func (x *PushMessageResponse) GetFailedDevices() []string {
+	if x != nil {
+		return x.FailedDevices
+	}
+	return nil
+}
+
+func (x *PushMessageResponse) GetErrorMessage() string {
+	if x != nil {
+		return x.ErrorMessage
+	}
+	return ""
+}
+
 var File_im_gateway_proto protoreflect.FileDescriptor
 
 const file_im_gateway_proto_rawDesc = "" +
@@ -108,9 +278,24 @@ const file_im_gateway_proto_rawDesc = "" +
 	"\x10im-gateway.proto\x12\x14im_gateway_servicepb\"\x14\n" +
 	"\x12HealthCheckRequest\"-\n" +
 	"\x13HealthCheckResponse\x12\x16\n" +
-	"\x06status\x18\x01 \x01(\tR\x06status2\x80\x01\n" +
+	"\x06status\x18\x01 \x01(\tR\x06status\"\x8c\x02\n" +
+	"\x12PushMessageRequest\x12\x15\n" +
+	"\x06msg_id\x18\x01 \x01(\tR\x05msgId\x12!\n" +
+	"\frecipient_id\x18\x02 \x01(\tR\vrecipientId\x12\x1b\n" +
+	"\tdevice_id\x18\x03 \x01(\tR\bdeviceId\x12\x1b\n" +
+	"\tsender_id\x18\x04 \x01(\tR\bsenderId\x12\x18\n" +
+	"\acontent\x18\x05 \x01(\tR\acontent\x12!\n" +
+	"\fmessage_type\x18\x06 \x01(\tR\vmessageType\x12'\n" +
+	"\x0fsequence_number\x18\a \x01(\x03R\x0esequenceNumber\x12\x1c\n" +
+	"\ttimestamp\x18\b \x01(\x03R\ttimestamp\"\xa4\x01\n" +
+	"\x13PushMessageResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12'\n" +
+	"\x0fdelivered_count\x18\x02 \x01(\x05R\x0edeliveredCount\x12%\n" +
+	"\x0efailed_devices\x18\x03 \x03(\tR\rfailedDevices\x12#\n" +
+	"\rerror_message\x18\x04 \x01(\tR\ferrorMessage2\xe4\x01\n" +
 	"\x1aUimUgatewayUserviceService\x12b\n" +
-	"\vHealthCheck\x12(.im_gateway_servicepb.HealthCheckRequest\x1a).im_gateway_servicepb.HealthCheckResponseBt\n" +
+	"\vHealthCheck\x12(.im_gateway_servicepb.HealthCheckRequest\x1a).im_gateway_servicepb.HealthCheckResponse\x12b\n" +
+	"\vPushMessage\x12(.im_gateway_servicepb.PushMessageRequest\x1a).im_gateway_servicepb.PushMessageResponseBt\n" +
 	"#com.pingxin403.cuckoo.im.gateway.v1B\x15ImGatewayServiceProtoP\x01Z4github.com/pingxin403/cuckoo/api/gen/go/im-gatewaypbb\x06proto3"
 
 var (
@@ -125,16 +310,20 @@ func file_im_gateway_proto_rawDescGZIP() []byte {
 	return file_im_gateway_proto_rawDescData
 }
 
-var file_im_gateway_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_im_gateway_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_im_gateway_proto_goTypes = []any{
 	(*HealthCheckRequest)(nil),  // 0: im_gateway_servicepb.HealthCheckRequest
 	(*HealthCheckResponse)(nil), // 1: im_gateway_servicepb.HealthCheckResponse
+	(*PushMessageRequest)(nil),  // 2: im_gateway_servicepb.PushMessageRequest
+	(*PushMessageResponse)(nil), // 3: im_gateway_servicepb.PushMessageResponse
 }
 var file_im_gateway_proto_depIdxs = []int32{
 	0, // 0: im_gateway_servicepb.UimUgatewayUserviceService.HealthCheck:input_type -> im_gateway_servicepb.HealthCheckRequest
-	1, // 1: im_gateway_servicepb.UimUgatewayUserviceService.HealthCheck:output_type -> im_gateway_servicepb.HealthCheckResponse
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
+	2, // 1: im_gateway_servicepb.UimUgatewayUserviceService.PushMessage:input_type -> im_gateway_servicepb.PushMessageRequest
+	1, // 2: im_gateway_servicepb.UimUgatewayUserviceService.HealthCheck:output_type -> im_gateway_servicepb.HealthCheckResponse
+	3, // 3: im_gateway_servicepb.UimUgatewayUserviceService.PushMessage:output_type -> im_gateway_servicepb.PushMessageResponse
+	2, // [2:4] is the sub-list for method output_type
+	0, // [0:2] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -151,7 +340,7 @@ func file_im_gateway_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_im_gateway_proto_rawDesc), len(file_im_gateway_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
