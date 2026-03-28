@@ -9,14 +9,39 @@ import (
 
 // PushService implements the gRPC service for pushing messages to clients.
 type PushService struct {
-	gateway *GatewayService
+	gateway         *GatewayService
+	remoteForwarder RemoteForwarder
+}
+
+type RemoteForwarder interface {
+	ForwardMessage(ctx context.Context, gatewayNode string, req *PushMessageRequest) (*PushMessageResponse, error)
+	ForwardReadReceipt(ctx context.Context, gatewayNode string, req *PushReadReceiptRequest) (*PushMessageResponse, error)
+}
+
+type noOpRemoteForwarder struct{}
+
+func (f *noOpRemoteForwarder) ForwardMessage(ctx context.Context, gatewayNode string, req *PushMessageRequest) (*PushMessageResponse, error) {
+	return &PushMessageResponse{Success: false}, nil
+}
+
+func (f *noOpRemoteForwarder) ForwardReadReceipt(ctx context.Context, gatewayNode string, req *PushReadReceiptRequest) (*PushMessageResponse, error) {
+	return &PushMessageResponse{Success: false}, nil
 }
 
 // NewPushService creates a new push service instance.
 func NewPushService(gateway *GatewayService) *PushService {
 	return &PushService{
-		gateway: gateway,
+		gateway:         gateway,
+		remoteForwarder: &noOpRemoteForwarder{},
 	}
+}
+
+func (p *PushService) SetRemoteForwarder(forwarder RemoteForwarder) {
+	if forwarder == nil {
+		p.remoteForwarder = &noOpRemoteForwarder{}
+		return
+	}
+	p.remoteForwarder = forwarder
 }
 
 // PushMessageRequest represents a message push request from IM Service.
@@ -115,10 +140,14 @@ func (p *PushService) PushMessage(ctx context.Context, req *PushMessageRequest) 
 					failedDevices = append(failedDevices, location.DeviceID)
 				}
 			} else {
-				// Device is on a remote gateway node
-				// For now, mark as failed (cross-gateway delivery requires gRPC)
-				// TODO: Implement cross-gateway message delivery via gRPC
-				failedDevices = append(failedDevices, location.DeviceID)
+				forwardReq := *req
+				forwardReq.DeviceID = location.DeviceID
+				forwardResp, forwardErr := p.remoteForwarder.ForwardMessage(ctx, location.GatewayNode, &forwardReq)
+				if forwardErr != nil || forwardResp == nil || !forwardResp.Success || forwardResp.DeliveredCount <= 0 {
+					failedDevices = append(failedDevices, location.DeviceID)
+					continue
+				}
+				deliveredCount += forwardResp.DeliveredCount
 			}
 		}
 
@@ -219,9 +248,52 @@ func (g *GatewayService) getGroupMembers(ctx context.Context, groupID string) ([
 		}
 	}
 
-	// TODO: Fetch from User Service if not in cache
-	// For now, return empty list
+	if g.groupMemberProvider != nil {
+		members, err := g.groupMemberProvider.GetGroupMembers(ctx, groupID)
+		if err != nil {
+			return nil, err
+		}
+		if g.redisClient != nil && len(members) > 0 {
+			values := make([]interface{}, 0, len(members))
+			for _, member := range members {
+				values = append(values, member)
+			}
+			if len(values) > 0 {
+				_ = g.redisClient.SAdd(ctx, cacheKey, values...).Err()
+				_ = g.redisClient.Expire(ctx, cacheKey, 5*time.Minute).Err()
+			}
+		}
+		return members, nil
+	}
+
 	return []string{}, nil
+}
+
+func (g *GatewayService) SetGroupMemberProvider(provider GroupMemberProvider) {
+	g.groupMemberProvider = provider
+	if g.cacheManager != nil {
+		g.cacheManager.SetGroupMemberProvider(provider)
+	}
+}
+
+func (g *GatewayService) SetRemoteForwarder(forwarder RemoteForwarder) {
+	if g.pushService != nil {
+		g.pushService.SetRemoteForwarder(forwarder)
+	}
+}
+
+func (g *GatewayService) PushMessage(ctx context.Context, req *PushMessageRequest) (*PushMessageResponse, error) {
+	if g.pushService == nil {
+		return nil, fmt.Errorf("push service is not initialized")
+	}
+	return g.pushService.PushMessage(ctx, req)
+}
+
+func (g *GatewayService) PushReadReceipt(ctx context.Context, req *PushReadReceiptRequest) (*PushMessageResponse, error) {
+	if g.pushService == nil {
+		return nil, fmt.Errorf("push service is not initialized")
+	}
+	return g.pushService.PushReadReceipt(ctx, req)
 }
 
 // InvalidateGroupCache invalidates the group membership cache.
@@ -304,10 +376,12 @@ func (p *PushService) PushReadReceipt(ctx context.Context, req *PushReadReceiptR
 				failedDevices = append(failedDevices, location.DeviceID)
 			}
 		} else {
-			// Device is on a remote gateway node
-			// For now, mark as failed (cross-gateway delivery requires gRPC)
-			// TODO: Implement cross-gateway read receipt delivery via gRPC
-			failedDevices = append(failedDevices, location.DeviceID)
+			forwardResp, forwardErr := p.remoteForwarder.ForwardReadReceipt(ctx, location.GatewayNode, req)
+			if forwardErr != nil || forwardResp == nil || !forwardResp.Success || forwardResp.DeliveredCount <= 0 {
+				failedDevices = append(failedDevices, location.DeviceID)
+				continue
+			}
+			deliveredCount += forwardResp.DeliveredCount
 		}
 	}
 

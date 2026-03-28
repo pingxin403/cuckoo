@@ -456,5 +456,6 @@ func initializeIMService(
 		encryption,
 		gatewayClient,
 		serviceCfg,
+		nil,
 	), nil
 }

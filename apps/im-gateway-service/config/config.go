@@ -25,6 +25,8 @@ type Config struct {
 
 	// Service Discovery configuration
 	ServiceDiscovery ServiceDiscoveryConfig `mapstructure:"service_discovery"`
+
+	Security SecurityConfig `mapstructure:"security"`
 }
 
 // ServerConfig holds server-specific configuration
@@ -40,7 +42,13 @@ type ServiceDiscoveryConfig struct {
 	// AuthServiceAddr is the address of the auth service
 	AuthServiceAddr string `mapstructure:"auth_service_addr"`
 	// IMServiceAddr is the address of the IM service
-	IMServiceAddr string `mapstructure:"im_service_addr"`
+	IMServiceAddr string            `mapstructure:"im_service_addr"`
+	GatewayNodes  map[string]string `mapstructure:"gateway_nodes"`
+}
+
+type SecurityConfig struct {
+	AllowedOrigins   []string `mapstructure:"allowed_origins"`
+	AllowEmptyOrigin bool     `mapstructure:"allow_empty_origin"`
 }
 
 // Load loads configuration from environment variables and config files
@@ -88,6 +96,10 @@ func setIMGatewayServiceDefaults(loader *config.Loader) {
 	// Service Discovery defaults
 	loader.SetDefault("service_discovery.auth_service_addr", "localhost:9095")
 	loader.SetDefault("service_discovery.im_service_addr", "localhost:9094")
+	loader.SetDefault("service_discovery.gateway_nodes", map[string]string{})
+
+	loader.SetDefault("security.allowed_origins", []string{})
+	loader.SetDefault("security.allow_empty_origin", false)
 
 	// Observability defaults
 	loader.SetDefault("observability.service_name", "im-gateway-service")

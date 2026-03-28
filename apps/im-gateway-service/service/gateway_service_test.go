@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -213,6 +214,7 @@ func TestHandleWebSocket_InvalidToken(t *testing.T) {
 // TestHandleWebSocket_ValidToken tests successful WebSocket upgrade
 func TestHandleWebSocket_ValidToken(t *testing.T) {
 	gateway, _, registryClient, _ := setupTestGateway(t)
+	gateway.config.AllowedOrigins = []string{"https://app.example.com"}
 
 	// Create test server
 	server := httptest.NewServer(http.HandlerFunc(gateway.HandleWebSocket))
@@ -222,7 +224,9 @@ func TestHandleWebSocket_ValidToken(t *testing.T) {
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http") + "?token=valid_token"
 
 	// Connect as client
-	ws, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	headers := http.Header{}
+	headers.Set("Origin", "https://app.example.com")
+	ws, _, err := websocket.DefaultDialer.Dial(wsURL, headers)
 	require.NoError(t, err)
 	defer func() { _ = ws.Close() }()
 
@@ -416,9 +420,101 @@ func TestConnection_HandleSendMessage(t *testing.T) {
 	}
 }
 
+func TestConnection_HandleSendMessage_GroupMessage(t *testing.T) {
+	gateway, _, _, imClient := setupTestGateway(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	connection := &Connection{
+		UserID:   "user123",
+		DeviceID: "550e8400-e29b-41d4-a716-446655440000",
+		Send:     make(chan []byte, 256),
+		Gateway:  gateway,
+		ctx:      ctx,
+		cancel:   cancel,
+	}
+
+	msg := &ClientMessage{
+		Type:      "send_msg",
+		MsgID:     "msg-group-001",
+		Recipient: "group_789",
+		Content:   "Hello group",
+		Timestamp: time.Now().Unix(),
+	}
+
+	var routedReq *RouteGroupMessageRequest
+	imClient.routeGroupFunc = func(ctx context.Context, req *RouteGroupMessageRequest) (*RouteGroupMessageResponse, error) {
+		routedReq = req
+		return &RouteGroupMessageResponse{
+			SequenceNumber:     888,
+			ServerTimestamp:    time.Now().Unix(),
+			OnlineMemberCount:  2,
+			OfflineMemberCount: 1,
+		}, nil
+	}
+
+	connection.handleSendMessage(msg)
+
+	require.NotNil(t, routedReq)
+	assert.Equal(t, "msg-group-001", routedReq.MsgID)
+	assert.Equal(t, "user123", routedReq.SenderID)
+	assert.Equal(t, "group_789", routedReq.GroupID)
+
+	select {
+	case data := <-connection.Send:
+		var serverMsg ServerMessage
+		err := json.Unmarshal(data, &serverMsg)
+		require.NoError(t, err)
+		assert.Equal(t, "ack", serverMsg.Type)
+		assert.Equal(t, "msg-group-001", serverMsg.MsgID)
+		assert.Equal(t, int64(888), serverMsg.SequenceNumber)
+	case <-time.After(1 * time.Second):
+		t.Fatal("Timeout waiting for group ACK")
+	}
+}
+
+func TestConnection_HandleSendMessage_InvalidRecipient(t *testing.T) {
+	gateway, _, _, _ := setupTestGateway(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	connection := &Connection{
+		UserID:   "user123",
+		DeviceID: "550e8400-e29b-41d4-a716-446655440000",
+		Send:     make(chan []byte, 256),
+		Gateway:  gateway,
+		ctx:      ctx,
+		cancel:   cancel,
+	}
+
+	msg := &ClientMessage{
+		Type:      "send_msg",
+		MsgID:     "msg-invalid-001",
+		Recipient: "invalid-recipient",
+		Content:   "Hello",
+		Timestamp: time.Now().Unix(),
+	}
+
+	connection.handleSendMessage(msg)
+
+	select {
+	case data := <-connection.Send:
+		var serverMsg ServerMessage
+		err := json.Unmarshal(data, &serverMsg)
+		require.NoError(t, err)
+		assert.Equal(t, "error", serverMsg.Type)
+		assert.Equal(t, "INVALID_RECIPIENT", serverMsg.ErrorCode)
+	case <-time.After(1 * time.Second):
+		t.Fatal("Timeout waiting for error response")
+	}
+}
+
 // TestConnection_Close tests connection cleanup
 func TestConnection_Close(t *testing.T) {
 	gateway, _, registryClient, _ := setupTestGateway(t)
+	gateway.config.AllowedOrigins = []string{"https://app.example.com"}
 
 	// Create test server
 	server := httptest.NewServer(http.HandlerFunc(gateway.HandleWebSocket))
@@ -428,7 +524,9 @@ func TestConnection_Close(t *testing.T) {
 	wsURL := "ws" + strings.TrimPrefix(server.URL, "http") + "?token=valid_token"
 
 	// Connect as client
-	ws, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	headers := http.Header{}
+	headers.Set("Origin", "https://app.example.com")
+	ws, _, err := websocket.DefaultDialer.Dial(wsURL, headers)
 	require.NoError(t, err)
 
 	// Give time for registration
@@ -460,6 +558,7 @@ func TestGatewayService_Shutdown(t *testing.T) {
 
 	// Add some connections
 	ctx1, cancel1 := context.WithCancel(context.Background())
+	defer cancel1()
 	conn1 := &Connection{
 		UserID:   "user1",
 		DeviceID: "550e8400-e29b-41d4-a716-446655440001",
@@ -471,6 +570,7 @@ func TestGatewayService_Shutdown(t *testing.T) {
 	gateway.connections.Store("user1_550e8400-e29b-41d4-a716-446655440001", conn1)
 
 	ctx2, cancel2 := context.WithCancel(context.Background())
+	defer cancel2()
 	conn2 := &Connection{
 		UserID:   "user2",
 		DeviceID: "550e8400-e29b-41d4-a716-446655440002",
@@ -520,4 +620,127 @@ func TestGetGatewayNodeID(t *testing.T) {
 
 	nodeID := gateway.getGatewayNodeID()
 	assert.NotEmpty(t, nodeID)
+}
+
+func TestGetGatewayNodeID_UsesEnvOverride(t *testing.T) {
+	t.Setenv("GATEWAY_NODE_ID", "gateway-node-test")
+
+	gateway, _, _, _ := setupTestGateway(t)
+
+	nodeID := gateway.getGatewayNodeID()
+	assert.Equal(t, "gateway-node-test", nodeID)
+}
+
+func TestGetGatewayNodeID_FallbackUsesHostname(t *testing.T) {
+	t.Setenv("GATEWAY_NODE_ID", "")
+
+	gateway, _, _, _ := setupTestGateway(t)
+
+	nodeID := gateway.getGatewayNodeID()
+	hostname, err := os.Hostname()
+	require.NoError(t, err)
+	assert.Equal(t, "gateway-"+hostname, nodeID)
+}
+
+func TestGatewayService_CheckOrigin_Allowed(t *testing.T) {
+	gateway, _, _, _ := setupTestGateway(t)
+	gateway.config.AllowedOrigins = []string{"https://app.example.com"}
+
+	req := httptest.NewRequest("GET", "/ws", nil)
+	req.Header.Set("Origin", "https://app.example.com")
+
+	assert.True(t, gateway.upgrader.CheckOrigin(req))
+}
+
+func TestGatewayService_CheckOrigin_Disallowed(t *testing.T) {
+	gateway, _, _, _ := setupTestGateway(t)
+	gateway.config.AllowedOrigins = []string{"https://app.example.com"}
+
+	req := httptest.NewRequest("GET", "/ws", nil)
+	req.Header.Set("Origin", "https://evil.example.com")
+
+	assert.False(t, gateway.upgrader.CheckOrigin(req))
+}
+
+func TestGatewayService_CheckOrigin_EmptyOriginPolicy(t *testing.T) {
+	gateway, _, _, _ := setupTestGateway(t)
+	gateway.config.AllowedOrigins = []string{"https://app.example.com"}
+
+	req := httptest.NewRequest("GET", "/ws", nil)
+	assert.False(t, gateway.upgrader.CheckOrigin(req))
+
+	gateway.config.AllowEmptyOrigin = true
+	assert.True(t, gateway.upgrader.CheckOrigin(req))
+}
+
+func TestGatewayService_AckLifecycle_Delivered(t *testing.T) {
+	gateway, _, _, _ := setupTestGateway(t)
+	gateway.config.AckTimeout = 50 * time.Millisecond
+
+	gateway.registerPendingAck("msg-ack-1", "user123", "550e8400-e29b-41d4-a716-446655440000")
+	assert.Equal(t, "pending", gateway.getAckStatus("msg-ack-1", "user123", "550e8400-e29b-41d4-a716-446655440000"))
+
+	resolved := gateway.resolveAck("msg-ack-1", "user123", "550e8400-e29b-41d4-a716-446655440000")
+	assert.True(t, resolved)
+	assert.Equal(t, "delivered", gateway.getAckStatus("msg-ack-1", "user123", "550e8400-e29b-41d4-a716-446655440000"))
+}
+
+func TestGatewayService_AckLifecycle_Timeout(t *testing.T) {
+	gateway, _, _, _ := setupTestGateway(t)
+	gateway.config.AckTimeout = 20 * time.Millisecond
+
+	gateway.registerPendingAck("msg-ack-2", "user123", "550e8400-e29b-41d4-a716-446655440000")
+	time.Sleep(40 * time.Millisecond)
+
+	assert.Equal(t, "timeout", gateway.getAckStatus("msg-ack-2", "user123", "550e8400-e29b-41d4-a716-446655440000"))
+}
+
+func TestConnection_HandleAck_NotFound(t *testing.T) {
+	gateway, _, _, _ := setupTestGateway(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	connection := &Connection{
+		UserID:   "user123",
+		DeviceID: "550e8400-e29b-41d4-a716-446655440000",
+		Send:     make(chan []byte, 256),
+		Gateway:  gateway,
+		ctx:      ctx,
+		cancel:   cancel,
+	}
+
+	connection.handleAck(&ClientMessage{Type: "ack", MsgID: "unknown-msg"})
+
+	select {
+	case data := <-connection.Send:
+		var msg ServerMessage
+		err := json.Unmarshal(data, &msg)
+		require.NoError(t, err)
+		assert.Equal(t, "error", msg.Type)
+		assert.Equal(t, "ACK_NOT_FOUND", msg.ErrorCode)
+	case <-time.After(1 * time.Second):
+		t.Fatal("timeout waiting for ack not found error")
+	}
+}
+
+func TestConnection_HandleAck_ResolvesPending(t *testing.T) {
+	gateway, _, _, _ := setupTestGateway(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	connection := &Connection{
+		UserID:   "user123",
+		DeviceID: "550e8400-e29b-41d4-a716-446655440000",
+		Send:     make(chan []byte, 256),
+		Gateway:  gateway,
+		ctx:      ctx,
+		cancel:   cancel,
+	}
+
+	gateway.registerPendingAck("msg-ack-3", connection.UserID, connection.DeviceID)
+	connection.handleAck(&ClientMessage{Type: "ack", MsgID: "msg-ack-3"})
+
+	assert.Equal(t, "delivered", gateway.getAckStatus("msg-ack-3", connection.UserID, connection.DeviceID))
 }

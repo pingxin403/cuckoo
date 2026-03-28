@@ -90,14 +90,14 @@ func TestCacheManager_LargeGroupOptimization(t *testing.T) {
 	}
 
 	// Store in cache
-	cacheManager.groupMemberCache.Store("large_group", &GroupCacheEntry{
+	cacheManager.groupMemberCache.Store("large_group_1", &GroupCacheEntry{
 		Members:   largeGroupMembers,
 		ExpiresAt: time.Now().Add(5 * time.Minute),
 		IsLarge:   true,
 	})
 
 	// Get group members - should return only locally-connected members
-	members, err := cacheManager.GetGroupMembers(context.Background(), "large_group")
+	members, err := cacheManager.GetGroupMembers(context.Background(), "large_group_1")
 	require.NoError(t, err)
 
 	// Should only return user_1 and user_2 (locally connected)
@@ -115,14 +115,14 @@ func TestCacheManager_SmallGroupNoOptimization(t *testing.T) {
 	smallGroupMembers := []string{"user_1", "user_2", "user_3", "user_4", "user_5"}
 
 	// Store in cache
-	cacheManager.groupMemberCache.Store("small_group", &GroupCacheEntry{
+	cacheManager.groupMemberCache.Store("group_1", &GroupCacheEntry{
 		Members:   smallGroupMembers,
 		ExpiresAt: time.Now().Add(5 * time.Minute),
 		IsLarge:   false,
 	})
 
 	// Get group members - should return all members
-	members, err := cacheManager.GetGroupMembers(context.Background(), "small_group")
+	members, err := cacheManager.GetGroupMembers(context.Background(), "group_1")
 	require.NoError(t, err)
 
 	// Should return all 5 members

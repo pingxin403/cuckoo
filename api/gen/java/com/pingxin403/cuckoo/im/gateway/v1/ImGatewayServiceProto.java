@@ -36,6 +36,16 @@ public final class ImGatewayServiceProto extends com.google.protobuf.GeneratedFi
   static final 
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_im_gateway_servicepb_HealthCheckResponse_fieldAccessorTable;
+  static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_im_gateway_servicepb_PushMessageRequest_descriptor;
+  static final 
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_im_gateway_servicepb_PushMessageRequest_fieldAccessorTable;
+  static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_im_gateway_servicepb_PushMessageResponse_descriptor;
+  static final 
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_im_gateway_servicepb_PushMessageResponse_fieldAccessorTable;
 
   public static com.google.protobuf.Descriptors.FileDescriptor
       getDescriptor() {
@@ -47,13 +57,23 @@ public final class ImGatewayServiceProto extends com.google.protobuf.GeneratedFi
     java.lang.String[] descriptorData = {
       "\n\020im-gateway.proto\022\024im_gateway_servicepb" +
       "\"\024\n\022HealthCheckRequest\"%\n\023HealthCheckRes" +
-      "ponse\022\016\n\006status\030\001 \001(\t2\200\001\n\032UimUgatewayUse" +
-      "rviceService\022b\n\013HealthCheck\022(.im_gateway" +
-      "_servicepb.HealthCheckRequest\032).im_gatew" +
-      "ay_servicepb.HealthCheckResponseBt\n#com." +
-      "pingxin403.cuckoo.im.gateway.v1B\025ImGatew" +
-      "ayServiceProtoP\001Z4github.com/pingxin403/" +
-      "cuckoo/api/gen/go/im-gatewaypbb\006proto3"
+      "ponse\022\016\n\006status\030\001 \001(\t\"\263\001\n\022PushMessageReq" +
+      "uest\022\016\n\006msg_id\030\001 \001(\t\022\024\n\014recipient_id\030\002 \001" +
+      "(\t\022\021\n\tdevice_id\030\003 \001(\t\022\021\n\tsender_id\030\004 \001(\t" +
+      "\022\017\n\007content\030\005 \001(\t\022\024\n\014message_type\030\006 \001(\t\022" +
+      "\027\n\017sequence_number\030\007 \001(\003\022\021\n\ttimestamp\030\010 " +
+      "\001(\003\"n\n\023PushMessageResponse\022\017\n\007success\030\001 " +
+      "\001(\010\022\027\n\017delivered_count\030\002 \001(\005\022\026\n\016failed_d" +
+      "evices\030\003 \003(\t\022\025\n\rerror_message\030\004 \001(\t2\344\001\n\032" +
+      "UimUgatewayUserviceService\022b\n\013HealthChec" +
+      "k\022(.im_gateway_servicepb.HealthCheckRequ" +
+      "est\032).im_gateway_servicepb.HealthCheckRe" +
+      "sponse\022b\n\013PushMessage\022(.im_gateway_servi" +
+      "cepb.PushMessageRequest\032).im_gateway_ser" +
+      "vicepb.PushMessageResponseBt\n#com.pingxi" +
+      "n403.cuckoo.im.gateway.v1B\025ImGatewayServ" +
+      "iceProtoP\001Z4github.com/pingxin403/cuckoo" +
+      "/api/gen/go/im-gatewaypbb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
@@ -71,6 +91,18 @@ public final class ImGatewayServiceProto extends com.google.protobuf.GeneratedFi
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_im_gateway_servicepb_HealthCheckResponse_descriptor,
         new java.lang.String[] { "Status", });
+    internal_static_im_gateway_servicepb_PushMessageRequest_descriptor =
+      getDescriptor().getMessageType(2);
+    internal_static_im_gateway_servicepb_PushMessageRequest_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+        internal_static_im_gateway_servicepb_PushMessageRequest_descriptor,
+        new java.lang.String[] { "MsgId", "RecipientId", "DeviceId", "SenderId", "Content", "MessageType", "SequenceNumber", "Timestamp", });
+    internal_static_im_gateway_servicepb_PushMessageResponse_descriptor =
+      getDescriptor().getMessageType(3);
+    internal_static_im_gateway_servicepb_PushMessageResponse_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+        internal_static_im_gateway_servicepb_PushMessageResponse_descriptor,
+        new java.lang.String[] { "Success", "DeliveredCount", "FailedDevices", "ErrorMessage", });
     descriptor.resolveAllFeaturesImmutable();
   }
 

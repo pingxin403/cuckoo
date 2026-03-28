@@ -2,12 +2,24 @@ package service
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type mockGroupMemberProvider struct {
+	getGroupMembersFunc func(ctx context.Context, groupID string) ([]string, error)
+}
+
+func (m *mockGroupMemberProvider) GetGroupMembers(ctx context.Context, groupID string) ([]string, error) {
+	if m.getGroupMembersFunc != nil {
+		return m.getGroupMembersFunc(ctx, groupID)
+	}
+	return []string{}, nil
+}
 
 // TestCacheManager_GetUserGateway_CacheMiss tests cache miss scenario
 func TestCacheManager_GetUserGateway_CacheMiss(t *testing.T) {
@@ -368,6 +380,42 @@ func TestCacheManager_GroupNilMarkerCaching(t *testing.T) {
 	assert.Equal(t, initialMisses, thirdMisses, "Third query should use cached result (no new miss)")
 
 	t.Logf("Empty group caching: 3 queries resulted in 1 cache miss (66.7%% reduction)")
+}
+
+func TestCacheManager_GetGroupMembers_UsesProviderOnCacheMiss(t *testing.T) {
+	registryClient := newMockRegistryClient()
+	cacheManager := NewCacheManager(nil, registryClient, 5*time.Minute, 5*time.Minute)
+
+	cacheManager.SetGroupMemberProvider(&mockGroupMemberProvider{
+		getGroupMembersFunc: func(ctx context.Context, groupID string) ([]string, error) {
+			assert.Equal(t, "group_123", groupID)
+			return []string{"user_1", "user_2"}, nil
+		},
+	})
+
+	members, err := cacheManager.GetGroupMembers(context.Background(), "group_123")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"user_1", "user_2"}, members)
+
+	cachedMembers, err := cacheManager.GetGroupMembers(context.Background(), "group_123")
+	require.NoError(t, err)
+	assert.Equal(t, []string{"user_1", "user_2"}, cachedMembers)
+}
+
+func TestCacheManager_GetGroupMembers_ProviderError(t *testing.T) {
+	registryClient := newMockRegistryClient()
+	cacheManager := NewCacheManager(nil, registryClient, 5*time.Minute, 5*time.Minute)
+
+	cacheManager.SetGroupMemberProvider(&mockGroupMemberProvider{
+		getGroupMembersFunc: func(ctx context.Context, groupID string) ([]string, error) {
+			return nil, errors.New("user service unavailable")
+		},
+	})
+
+	members, err := cacheManager.GetGroupMembers(context.Background(), "group_123")
+	require.Error(t, err)
+	assert.Nil(t, members)
+	assert.Contains(t, err.Error(), "user service unavailable")
 }
 
 // TestCacheManager_NilMarkerExpiration tests that nil markers expire after their TTL

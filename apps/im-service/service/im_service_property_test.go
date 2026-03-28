@@ -71,6 +71,7 @@ func setupPropertyTestService() (*IMService, *mockRegistryClient, *miniredis.Min
 		nil, // No encryption for property tests
 		nil, // No gateway client for property tests
 		DefaultIMServiceConfig(),
+		nil,
 	)
 
 	cleanup := func() {

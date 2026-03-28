@@ -14,6 +14,8 @@ service UimUgatewayUserviceService {
   
   // PushMessage pushes a message to a user's connected device(s)
   rpc PushMessage(PushMessageRequest) returns (PushMessageResponse);
+
+  rpc PushReadReceipt(PushReadReceiptRequest) returns (PushMessageResponse);
 }
 
 message HealthCheckRequest {}
@@ -40,4 +42,12 @@ message PushMessageResponse {
   int32 delivered_count = 2;
   repeated string failed_devices = 3;
   string error_message = 4;
+}
+
+message PushReadReceiptRequest {
+  string msg_id = 1;
+  string sender_id = 2;
+  string reader_id = 3;
+  string conversation_id = 4;
+  int64 read_at = 5;
 }

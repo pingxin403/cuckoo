@@ -16,8 +16,12 @@ CREATE TABLE IF NOT EXISTS users (
     INDEX idx_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+ALTER TABLE group_members
+    ADD COLUMN group_display_name VARCHAR(256) NULL,
+    ADD COLUMN is_muted BOOLEAN NOT NULL DEFAULT FALSE;
+
 -- Groups table: stores group metadata
-CREATE TABLE IF NOT EXISTS groups (
+CREATE TABLE IF NOT EXISTS `groups` (
     group_id VARCHAR(64) PRIMARY KEY,
     name VARCHAR(256) NOT NULL,
     creator_id VARCHAR(64) NOT NULL,
@@ -44,39 +48,39 @@ CREATE TABLE IF NOT EXISTS group_members (
     INDEX idx_group_role (group_id, role),
     INDEX idx_joined_at (joined_at),
     
-    FOREIGN KEY (group_id) REFERENCES groups(group_id) ON DELETE CASCADE,
+    FOREIGN KEY (group_id) REFERENCES `groups`(group_id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Insert sample data for testing
-INSERT INTO users (user_id, username, display_name, avatar_url, status) VALUES
-('user001', 'alice', 'Alice Smith', 'https://example.com/avatars/alice.jpg', 1),
-('user002', 'bob', 'Bob Johnson', 'https://example.com/avatars/bob.jpg', 2),
-('user003', 'charlie', 'Charlie Brown', 'https://example.com/avatars/charlie.jpg', 1),
-('user004', 'diana', 'Diana Prince', 'https://example.com/avatars/diana.jpg', 3),
-('user005', 'eve', 'Eve Wilson', 'https://example.com/avatars/eve.jpg', 2)
+INSERT INTO users (user_id, username, email, display_name, avatar_url, status) VALUES
+('user001', 'alice', 'alice@example.com', 'Alice Smith', 'https://example.com/avatars/alice.jpg', 1),
+('user002', 'bob', 'bob@example.com', 'Bob Johnson', 'https://example.com/avatars/bob.jpg', 2),
+('user003', 'charlie', 'charlie@example.com', 'Charlie Brown', 'https://example.com/avatars/charlie.jpg', 1),
+('user004', 'diana', 'diana@example.com', 'Diana Prince', 'https://example.com/avatars/diana.jpg', 3),
+('user005', 'eve', 'eve@example.com', 'Eve Wilson', 'https://example.com/avatars/eve.jpg', 2)
 ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP;
 
-INSERT INTO groups (group_id, name, creator_id, member_count) VALUES
+INSERT INTO `groups` (group_id, name, creator_id, member_count) VALUES
 ('group001', 'Engineering Team', 'user001', 3),
 ('group002', 'Product Team', 'user002', 2),
 ('group003', 'Large Group Test', 'user001', 5)
 ON DUPLICATE KEY UPDATE updated_at = CURRENT_TIMESTAMP;
 
 INSERT INTO group_members (group_id, user_id, role, group_display_name, is_muted) VALUES
-('group001', 'user001', 3, NULL, FALSE),  -- Alice is owner
-('group001', 'user002', 2, NULL, FALSE),  -- Bob is admin
-('group001', 'user003', 1, NULL, FALSE),  -- Charlie is member
-('group002', 'user002', 3, NULL, FALSE),  -- Bob is owner
-('group002', 'user004', 1, 'Wonder Woman', FALSE),  -- Diana with custom name
-('group003', 'user001', 3, NULL, FALSE),  -- Alice is owner
-('group003', 'user002', 1, NULL, FALSE),
-('group003', 'user003', 1, NULL, FALSE),
-('group003', 'user004', 1, NULL, FALSE),
-('group003', 'user005', 1, NULL, TRUE)   -- Eve is muted
+('group001', 'user001', 'owner', NULL, FALSE),  -- Alice is owner
+('group001', 'user002', 'admin', NULL, FALSE),  -- Bob is admin
+('group001', 'user003', 'member', NULL, FALSE),  -- Charlie is member
+('group002', 'user002', 'owner', NULL, FALSE),  -- Bob is owner
+('group002', 'user004', 'member', 'Wonder Woman', FALSE),  -- Diana with custom name
+('group003', 'user001', 'owner', NULL, FALSE),  -- Alice is owner
+('group003', 'user002', 'member', NULL, FALSE),
+('group003', 'user003', 'member', NULL, FALSE),
+('group003', 'user004', 'member', NULL, FALSE),
+('group003', 'user005', 'member', NULL, TRUE)   -- Eve is muted
 ON DUPLICATE KEY UPDATE joined_at = CURRENT_TIMESTAMP;
 
 -- Update member counts
-UPDATE groups g SET member_count = (
+UPDATE `groups` g SET member_count = (
     SELECT COUNT(*) FROM group_members gm WHERE gm.group_id = g.group_id
 );

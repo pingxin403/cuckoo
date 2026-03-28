@@ -22,13 +22,13 @@ CREATE TABLE offline_messages (
     metadata JSON,
     
     PRIMARY KEY (id, user_id),  -- Composite key required for partitioning
-    UNIQUE KEY idx_msg_id (msg_id),
+    UNIQUE KEY idx_msg_id_user (msg_id, user_id),
     KEY idx_user_timestamp (user_id, timestamp),
     KEY idx_conversation_seq (conversation_id, sequence_number),
     KEY idx_expires_at (expires_at),
     KEY idx_user_conversation (user_id, conversation_id, sequence_number)
 ) ENGINE=InnoDB
-PARTITION BY HASH(CRC32(user_id))
+PARTITION BY KEY(user_id)
 PARTITIONS 16;
 
 -- Create index on msg_id for deduplication checks

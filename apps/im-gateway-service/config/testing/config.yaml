@@ -30,6 +30,11 @@ service_discovery:
   im_service_addr: "im-service:9094"
   user_service_addr: "user-service:9096"
 
+security:
+  allowed_origins:
+    - "https://app.example.com"
+  allow_empty_origin: true
+
 connection:
   max_connections: 5000
   heartbeat_interval: 30s

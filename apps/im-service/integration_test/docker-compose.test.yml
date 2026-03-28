@@ -7,6 +7,8 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: password
       MYSQL_DATABASE: im_chat
+      MYSQL_USER: im_service
+      MYSQL_PASSWORD: im_service_password
     ports:
       - "3306:3306"
     healthcheck:
@@ -116,4 +118,3 @@ services:
 networks:
   default:
     name: im-integration-test
-

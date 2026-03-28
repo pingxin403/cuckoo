@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"regexp"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -41,6 +42,8 @@ type CacheManager struct {
 	// Gateway service reference (for accessing connections)
 	gateway *GatewayService
 
+	groupMemberProvider GroupMemberProvider
+
 	// Singleflight groups for preventing cache stampede
 	userSF  singleflight.Group
 	groupSF singleflight.Group
@@ -51,14 +54,18 @@ type CacheManager struct {
 	largeGroupThreshold int           // Default: 1000 members
 
 	// Metrics
-	cacheHits   int64
-	cacheMisses int64
-	memoryUsage int64 // Approximate memory usage in bytes
+	cacheHits   atomic.Int64
+	cacheMisses atomic.Int64
+	memoryUsage atomic.Int64 // Approximate memory usage in bytes
 
 	// Lifecycle
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
+}
+
+type GroupMemberProvider interface {
+	GetGroupMembers(ctx context.Context, groupID string) ([]string, error)
 }
 
 // CacheEntry represents a cached user-to-gateway mapping.
@@ -92,16 +99,14 @@ func NewCacheManager(
 	userCacheTTL time.Duration,
 	groupCacheTTL time.Duration,
 ) *CacheManager {
-	ctx, cancel := context.WithCancel(context.Background())
-
 	return &CacheManager{
 		redisClient:         redisClient,
 		registryClient:      registryClient,
 		userCacheTTL:        userCacheTTL,
 		groupCacheTTL:       groupCacheTTL,
 		largeGroupThreshold: 1000, // Default threshold for large groups
-		ctx:                 ctx,
-		cancel:              cancel,
+		ctx:                 context.Background(),
+		cancel:              func() {},
 	}
 }
 
@@ -111,9 +116,16 @@ func (c *CacheManager) SetGateway(gateway *GatewayService) {
 	c.gateway = gateway
 }
 
+func (c *CacheManager) SetGroupMemberProvider(provider GroupMemberProvider) {
+	c.groupMemberProvider = provider
+}
+
 // Start starts the cache manager and watch mechanisms.
 // Validates: Requirements 17.3
 func (c *CacheManager) Start() error {
+	//nolint:gosec // G118: cancel is intentionally stored and invoked in Stop().
+	c.ctx, c.cancel = context.WithCancel(context.Background())
+
 	// Start watching Registry for changes
 	c.wg.Add(1)
 	go c.watchRegistryChanges()
@@ -228,7 +240,7 @@ func (c *CacheManager) GetGroupMembers(ctx context.Context, groupID string) ([]s
 	if entry, ok := c.groupMemberCache.Load(groupID); ok {
 		cacheEntry := entry.(*GroupCacheEntry)
 		if time.Now().Before(cacheEntry.ExpiresAt) {
-			c.cacheHits++
+			c.cacheHits.Add(1)
 
 			// Check if it's a nil marker (cached "not found")
 			if cacheEntry.IsNilMarker {
@@ -246,7 +258,7 @@ func (c *CacheManager) GetGroupMembers(ctx context.Context, groupID string) ([]s
 		c.groupMemberCache.Delete(groupID)
 	}
 
-	c.cacheMisses++
+	c.cacheMisses.Add(1)
 
 	// Use singleflight only for external fetches (cache miss scenario)
 	v, err, _ := c.groupSF.Do(groupID, func() (interface{}, error) {
@@ -388,8 +400,28 @@ func (c *CacheManager) fetchGroupMembers(ctx context.Context, groupID string) ([
 		}
 	}
 
-	// TODO: Fetch from User Service
-	// For now, return empty list
+	if c.groupMemberProvider != nil {
+		members, err := c.groupMemberProvider.GetGroupMembers(ctx, groupID)
+		if err != nil {
+			return nil, err
+		}
+
+		if c.redisClient != nil && len(members) > 0 {
+			cacheKey := fmt.Sprintf("group_members:%s", groupID)
+			values := make([]interface{}, 0, len(members))
+			for _, member := range members {
+				values = append(values, member)
+			}
+
+			if len(values) > 0 {
+				_ = c.redisClient.SAdd(ctx, cacheKey, values...).Err()
+				_ = c.redisClient.Expire(ctx, cacheKey, c.groupCacheTTL).Err()
+			}
+		}
+
+		return members, nil
+	}
+
 	return []string{}, nil
 }
 
@@ -423,19 +455,19 @@ func (c *CacheManager) updateMemoryUsage(groupID string, memberCount int) {
 
 	// Use atomic operations for thread-safe updates
 	// Note: This is a rough estimate, not exact memory usage
-	c.memoryUsage += estimatedBytes
+	c.memoryUsage.Add(estimatedBytes)
 }
 
 // GetMemoryUsage returns the approximate memory usage in bytes.
 // Validates: Requirements 2.11
 func (c *CacheManager) GetMemoryUsage() int64 {
-	return c.memoryUsage
+	return c.memoryUsage.Load()
 }
 
 // GetCacheStats returns cache hit/miss statistics.
 func (c *CacheManager) GetCacheStats() (hits int64, misses int64, hitRate float64) {
-	hits = c.cacheHits
-	misses = c.cacheMisses
+	hits = c.cacheHits.Load()
+	misses = c.cacheMisses.Load()
 	total := hits + misses
 	if total > 0 {
 		hitRate = float64(hits) / float64(total)

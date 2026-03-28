@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -19,12 +20,14 @@ type GatewayService struct {
 	// Connection management
 	connections sync.Map // map[string]*Connection (userID -> Connection)
 	upgrader    websocket.Upgrader
+	ackStates   sync.Map
 
 	// External services
-	authClient     AuthServiceClient
-	registryClient RegistryClient
-	imClient       IMServiceClient
-	redisClient    *redis.Client
+	authClient          AuthServiceClient
+	registryClient      RegistryClient
+	imClient            IMServiceClient
+	redisClient         *redis.Client
+	groupMemberProvider GroupMemberProvider
 
 	// Internal services
 	pushService   *PushService
@@ -60,6 +63,10 @@ type GatewayConfig struct {
 
 	// Rate limiting
 	MaxMessagesPerSecond int // Default: 100
+
+	AllowedOrigins   []string
+	AllowEmptyOrigin bool
+	AckTimeout       time.Duration
 }
 
 // DefaultGatewayConfig returns default configuration.
@@ -76,7 +83,16 @@ func DefaultGatewayConfig() GatewayConfig {
 		RegistryTTL:           90 * time.Second,
 		RegistryRenewInterval: 30 * time.Second,
 		MaxMessagesPerSecond:  100,
+		AllowedOrigins:        []string{},
+		AllowEmptyOrigin:      false,
+		AckTimeout:            5 * time.Second,
 	}
+}
+
+type ackState struct {
+	mu     sync.RWMutex
+	status string
+	timer  *time.Timer
 }
 
 // Connection represents a WebSocket connection.
@@ -205,24 +221,22 @@ func NewGatewayService(
 	redisClient *redis.Client,
 	config GatewayConfig,
 ) *GatewayService {
-	ctx, cancel := context.WithCancel(context.Background())
-
 	gateway := &GatewayService{
 		authClient:     authClient,
 		registryClient: registryClient,
 		imClient:       imClient,
 		redisClient:    redisClient,
 		config:         config,
-		ctx:            ctx,
-		cancel:         cancel,
+		ctx:            context.Background(),
+		cancel:         func() {},
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  config.ReadBufferSize,
 			WriteBufferSize: config.WriteBufferSize,
-			CheckOrigin: func(r *http.Request) bool {
-				// TODO: Implement proper origin checking
-				return true
-			},
 		},
+	}
+
+	gateway.upgrader.CheckOrigin = func(r *http.Request) bool {
+		return gateway.isOriginAllowed(strings.TrimSpace(r.Header.Get("Origin")))
 	}
 
 	// Initialize internal services
@@ -242,6 +256,9 @@ func NewGatewayService(
 
 // Start starts the gateway service and all internal components.
 func (g *GatewayService) Start(kafkaConfig KafkaConfig) error {
+	//nolint:gosec // G118: cancel is intentionally stored and invoked in Shutdown().
+	g.ctx, g.cancel = context.WithCancel(context.Background())
+
 	// Start cache manager
 	if err := g.cacheManager.Start(); err != nil {
 		return fmt.Errorf("failed to start cache manager: %w", err)
@@ -294,8 +311,6 @@ func (g *GatewayService) HandleWebSocket(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Create connection context
-	ctx, cancel := context.WithCancel(g.ctx)
-
 	// Create connection object
 	connection := &Connection{
 		UserID:   claims.UserID,
@@ -303,12 +318,12 @@ func (g *GatewayService) HandleWebSocket(w http.ResponseWriter, r *http.Request)
 		Conn:     conn,
 		Send:     make(chan []byte, 256),
 		Gateway:  g,
-		ctx:      ctx,
-		cancel:   cancel,
+		ctx:      g.ctx,
+		cancel:   func() {},
 	}
 
 	// Register user in Registry (Requirement 7.1, 7.2, 15.10)
-	if err := g.registryClient.RegisterUser(ctx, claims.UserID, claims.DeviceID, g.getGatewayNodeID()); err != nil {
+	if err := g.registryClient.RegisterUser(g.ctx, claims.UserID, claims.DeviceID, g.getGatewayNodeID()); err != nil {
 		_ = conn.Close()
 		// Check if it's a max devices error
 		if strings.Contains(err.Error(), "maximum number of devices") {
@@ -334,8 +349,96 @@ func (g *GatewayService) HandleWebSocket(w http.ResponseWriter, r *http.Request)
 
 // getGatewayNodeID returns the unique identifier for this gateway node.
 func (g *GatewayService) getGatewayNodeID() string {
-	// TODO: Implement proper node ID generation (e.g., hostname, pod name)
-	return "gateway-node-1"
+	if configured := strings.TrimSpace(os.Getenv("GATEWAY_NODE_ID")); configured != "" {
+		return configured
+	}
+
+	hostname, err := os.Hostname()
+	if err != nil || strings.TrimSpace(hostname) == "" {
+		return "gateway-node-1"
+	}
+
+	return "gateway-" + hostname
+}
+
+func (g *GatewayService) isOriginAllowed(origin string) bool {
+	if origin == "" {
+		return g.config.AllowEmptyOrigin
+	}
+
+	for _, allowed := range g.config.AllowedOrigins {
+		normalized := strings.TrimSpace(allowed)
+		if normalized == "" {
+			continue
+		}
+		if normalized == "*" || origin == normalized {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (g *GatewayService) ackKey(msgID, userID, deviceID string) string {
+	return msgID + "|" + userID + "|" + deviceID
+}
+
+func (g *GatewayService) registerPendingAck(msgID, userID, deviceID string) {
+	if msgID == "" || userID == "" || deviceID == "" {
+		return
+	}
+
+	key := g.ackKey(msgID, userID, deviceID)
+	timeout := g.config.AckTimeout
+	if timeout <= 0 {
+		timeout = 5 * time.Second
+	}
+
+	state := &ackState{status: "pending"}
+	state.timer = time.AfterFunc(timeout, func() {
+		if value, ok := g.ackStates.Load(key); ok {
+			ack := value.(*ackState)
+			ack.mu.Lock()
+			defer ack.mu.Unlock()
+			if ack.status == "pending" {
+				ack.status = "timeout"
+			}
+		}
+	})
+
+	g.ackStates.Store(key, state)
+}
+
+func (g *GatewayService) resolveAck(msgID, userID, deviceID string) bool {
+	if msgID == "" || userID == "" || deviceID == "" {
+		return false
+	}
+
+	key := g.ackKey(msgID, userID, deviceID)
+	value, ok := g.ackStates.Load(key)
+	if !ok {
+		return false
+	}
+
+	ack := value.(*ackState)
+	ack.mu.Lock()
+	defer ack.mu.Unlock()
+	if ack.timer != nil {
+		ack.timer.Stop()
+	}
+	ack.status = "delivered"
+	return true
+}
+
+func (g *GatewayService) getAckStatus(msgID, userID, deviceID string) string {
+	key := g.ackKey(msgID, userID, deviceID)
+	if value, ok := g.ackStates.Load(key); ok {
+		ack := value.(*ackState)
+		ack.mu.RLock()
+		defer ack.mu.RUnlock()
+		return ack.status
+	}
+	return ""
 }
 
 // Shutdown gracefully shuts down the gateway service.
@@ -513,11 +616,7 @@ func (c *Connection) handleSendMessage(msg *ClientMessage) {
 		return
 	}
 
-	// TODO: Determine if this is a private or group message
-	// For now, assume private message if recipient starts with "user_"
-	// and group message if it starts with "group_"
-
-	if len(msg.Recipient) > 5 && msg.Recipient[:5] == "user_" {
+	if strings.HasPrefix(msg.Recipient, "user_") {
 		// Private message
 		req := &RoutePrivateMessageRequest{
 			MsgID:       msg.MsgID,
@@ -541,7 +640,7 @@ func (c *Connection) handleSendMessage(msg *ClientMessage) {
 
 		// Send ACK to sender
 		c.sendAck(msg.MsgID, resp.SequenceNumber)
-	} else {
+	} else if strings.HasPrefix(msg.Recipient, "group_") {
 		// Group message
 		req := &RouteGroupMessageRequest{
 			MsgID:       msg.MsgID,
@@ -565,13 +664,21 @@ func (c *Connection) handleSendMessage(msg *ClientMessage) {
 
 		// Send ACK to sender
 		c.sendAck(msg.MsgID, resp.SequenceNumber)
+	} else {
+		c.sendError("INVALID_RECIPIENT", "Recipient must start with user_ or group_")
+		return
 	}
 }
 
 // handleAck handles an acknowledgment from the client.
-func (c *Connection) handleAck(_ *ClientMessage) {
-	// TODO: Implement ACK handling
-	// This would update delivery status in the system
+func (c *Connection) handleAck(msg *ClientMessage) {
+	if msg == nil || msg.MsgID == "" {
+		return
+	}
+
+	if !c.Gateway.resolveAck(msg.MsgID, c.UserID, c.DeviceID) {
+		c.sendError("ACK_NOT_FOUND", "No pending delivery found for ack")
+	}
 }
 
 // handleHeartbeat handles a heartbeat message from the client.

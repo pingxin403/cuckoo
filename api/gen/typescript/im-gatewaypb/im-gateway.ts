@@ -16,6 +16,27 @@ export interface HealthCheckResponse {
   status: string;
 }
 
+/** PushMessageRequest represents a message push request from IM Service */
+export interface PushMessageRequest {
+  msgId: string;
+  recipientId: string;
+  /** Optional: specific device, empty for all devices */
+  deviceId: string;
+  senderId: string;
+  content: string;
+  messageType: string;
+  sequenceNumber: number;
+  timestamp: number;
+}
+
+/** PushMessageResponse represents the response to a push request */
+export interface PushMessageResponse {
+  success: boolean;
+  deliveredCount: number;
+  failedDevices: string[];
+  errorMessage: string;
+}
+
 function createBaseHealthCheckRequest(): HealthCheckRequest {
   return {};
 }
@@ -117,10 +138,337 @@ export const HealthCheckResponse: MessageFns<HealthCheckResponse> = {
   },
 };
 
+function createBasePushMessageRequest(): PushMessageRequest {
+  return {
+    msgId: "",
+    recipientId: "",
+    deviceId: "",
+    senderId: "",
+    content: "",
+    messageType: "",
+    sequenceNumber: 0,
+    timestamp: 0,
+  };
+}
+
+export const PushMessageRequest: MessageFns<PushMessageRequest> = {
+  encode(message: PushMessageRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.msgId !== "") {
+      writer.uint32(10).string(message.msgId);
+    }
+    if (message.recipientId !== "") {
+      writer.uint32(18).string(message.recipientId);
+    }
+    if (message.deviceId !== "") {
+      writer.uint32(26).string(message.deviceId);
+    }
+    if (message.senderId !== "") {
+      writer.uint32(34).string(message.senderId);
+    }
+    if (message.content !== "") {
+      writer.uint32(42).string(message.content);
+    }
+    if (message.messageType !== "") {
+      writer.uint32(50).string(message.messageType);
+    }
+    if (message.sequenceNumber !== 0) {
+      writer.uint32(56).int64(message.sequenceNumber);
+    }
+    if (message.timestamp !== 0) {
+      writer.uint32(64).int64(message.timestamp);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): PushMessageRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBasePushMessageRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.msgId = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.recipientId = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.deviceId = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.senderId = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 42) {
+            break;
+          }
+
+          message.content = reader.string();
+          continue;
+        }
+        case 6: {
+          if (tag !== 50) {
+            break;
+          }
+
+          message.messageType = reader.string();
+          continue;
+        }
+        case 7: {
+          if (tag !== 56) {
+            break;
+          }
+
+          message.sequenceNumber = longToNumber(reader.int64());
+          continue;
+        }
+        case 8: {
+          if (tag !== 64) {
+            break;
+          }
+
+          message.timestamp = longToNumber(reader.int64());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): PushMessageRequest {
+    return {
+      msgId: isSet(object.msgId)
+        ? globalThis.String(object.msgId)
+        : isSet(object.msg_id)
+        ? globalThis.String(object.msg_id)
+        : "",
+      recipientId: isSet(object.recipientId)
+        ? globalThis.String(object.recipientId)
+        : isSet(object.recipient_id)
+        ? globalThis.String(object.recipient_id)
+        : "",
+      deviceId: isSet(object.deviceId)
+        ? globalThis.String(object.deviceId)
+        : isSet(object.device_id)
+        ? globalThis.String(object.device_id)
+        : "",
+      senderId: isSet(object.senderId)
+        ? globalThis.String(object.senderId)
+        : isSet(object.sender_id)
+        ? globalThis.String(object.sender_id)
+        : "",
+      content: isSet(object.content) ? globalThis.String(object.content) : "",
+      messageType: isSet(object.messageType)
+        ? globalThis.String(object.messageType)
+        : isSet(object.message_type)
+        ? globalThis.String(object.message_type)
+        : "",
+      sequenceNumber: isSet(object.sequenceNumber)
+        ? globalThis.Number(object.sequenceNumber)
+        : isSet(object.sequence_number)
+        ? globalThis.Number(object.sequence_number)
+        : 0,
+      timestamp: isSet(object.timestamp) ? globalThis.Number(object.timestamp) : 0,
+    };
+  },
+
+  toJSON(message: PushMessageRequest): unknown {
+    const obj: any = {};
+    if (message.msgId !== "") {
+      obj.msgId = message.msgId;
+    }
+    if (message.recipientId !== "") {
+      obj.recipientId = message.recipientId;
+    }
+    if (message.deviceId !== "") {
+      obj.deviceId = message.deviceId;
+    }
+    if (message.senderId !== "") {
+      obj.senderId = message.senderId;
+    }
+    if (message.content !== "") {
+      obj.content = message.content;
+    }
+    if (message.messageType !== "") {
+      obj.messageType = message.messageType;
+    }
+    if (message.sequenceNumber !== 0) {
+      obj.sequenceNumber = Math.round(message.sequenceNumber);
+    }
+    if (message.timestamp !== 0) {
+      obj.timestamp = Math.round(message.timestamp);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<PushMessageRequest>, I>>(base?: I): PushMessageRequest {
+    return PushMessageRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<PushMessageRequest>, I>>(object: I): PushMessageRequest {
+    const message = createBasePushMessageRequest();
+    message.msgId = object.msgId ?? "";
+    message.recipientId = object.recipientId ?? "";
+    message.deviceId = object.deviceId ?? "";
+    message.senderId = object.senderId ?? "";
+    message.content = object.content ?? "";
+    message.messageType = object.messageType ?? "";
+    message.sequenceNumber = object.sequenceNumber ?? 0;
+    message.timestamp = object.timestamp ?? 0;
+    return message;
+  },
+};
+
+function createBasePushMessageResponse(): PushMessageResponse {
+  return { success: false, deliveredCount: 0, failedDevices: [], errorMessage: "" };
+}
+
+export const PushMessageResponse: MessageFns<PushMessageResponse> = {
+  encode(message: PushMessageResponse, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.success !== false) {
+      writer.uint32(8).bool(message.success);
+    }
+    if (message.deliveredCount !== 0) {
+      writer.uint32(16).int32(message.deliveredCount);
+    }
+    for (const v of message.failedDevices) {
+      writer.uint32(26).string(v!);
+    }
+    if (message.errorMessage !== "") {
+      writer.uint32(34).string(message.errorMessage);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): PushMessageResponse {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBasePushMessageResponse();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 8) {
+            break;
+          }
+
+          message.success = reader.bool();
+          continue;
+        }
+        case 2: {
+          if (tag !== 16) {
+            break;
+          }
+
+          message.deliveredCount = reader.int32();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.failedDevices.push(reader.string());
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.errorMessage = reader.string();
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): PushMessageResponse {
+    return {
+      success: isSet(object.success) ? globalThis.Boolean(object.success) : false,
+      deliveredCount: isSet(object.deliveredCount)
+        ? globalThis.Number(object.deliveredCount)
+        : isSet(object.delivered_count)
+        ? globalThis.Number(object.delivered_count)
+        : 0,
+      failedDevices: globalThis.Array.isArray(object?.failedDevices)
+        ? object.failedDevices.map((e: any) => globalThis.String(e))
+        : globalThis.Array.isArray(object?.failed_devices)
+        ? object.failed_devices.map((e: any) => globalThis.String(e))
+        : [],
+      errorMessage: isSet(object.errorMessage)
+        ? globalThis.String(object.errorMessage)
+        : isSet(object.error_message)
+        ? globalThis.String(object.error_message)
+        : "",
+    };
+  },
+
+  toJSON(message: PushMessageResponse): unknown {
+    const obj: any = {};
+    if (message.success !== false) {
+      obj.success = message.success;
+    }
+    if (message.deliveredCount !== 0) {
+      obj.deliveredCount = Math.round(message.deliveredCount);
+    }
+    if (message.failedDevices?.length) {
+      obj.failedDevices = message.failedDevices;
+    }
+    if (message.errorMessage !== "") {
+      obj.errorMessage = message.errorMessage;
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<PushMessageResponse>, I>>(base?: I): PushMessageResponse {
+    return PushMessageResponse.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<PushMessageResponse>, I>>(object: I): PushMessageResponse {
+    const message = createBasePushMessageResponse();
+    message.success = object.success ?? false;
+    message.deliveredCount = object.deliveredCount ?? 0;
+    message.failedDevices = object.failedDevices?.map((e) => e) || [];
+    message.errorMessage = object.errorMessage ?? "";
+    return message;
+  },
+};
+
 /** im-gateway-service service */
 export interface UimUgatewayUserviceService {
   /** Add your RPC methods here */
   HealthCheck(request: HealthCheckRequest): Promise<HealthCheckResponse>;
+  /** PushMessage pushes a message to a user's connected device(s) */
+  PushMessage(request: PushMessageRequest): Promise<PushMessageResponse>;
 }
 
 export const UimUgatewayUserviceServiceServiceName = "im_gateway_servicepb.UimUgatewayUserviceService";
@@ -131,11 +479,18 @@ export class UimUgatewayUserviceServiceClientImpl implements UimUgatewayUservice
     this.service = opts?.service || UimUgatewayUserviceServiceServiceName;
     this.rpc = rpc;
     this.HealthCheck = this.HealthCheck.bind(this);
+    this.PushMessage = this.PushMessage.bind(this);
   }
   HealthCheck(request: HealthCheckRequest): Promise<HealthCheckResponse> {
     const data = HealthCheckRequest.encode(request).finish();
     const promise = this.rpc.request(this.service, "HealthCheck", data);
     return promise.then((data) => HealthCheckResponse.decode(new BinaryReader(data)));
+  }
+
+  PushMessage(request: PushMessageRequest): Promise<PushMessageResponse> {
+    const data = PushMessageRequest.encode(request).finish();
+    const promise = this.rpc.request(this.service, "PushMessage", data);
+    return promise.then((data) => PushMessageResponse.decode(new BinaryReader(data)));
   }
 }
 
@@ -154,6 +509,17 @@ export type DeepPartial<T> = T extends Builtin ? T
 type KeysOfUnion<T> = T extends T ? keyof T : never;
 export type Exact<P, I extends P> = P extends Builtin ? P
   : P & { [K in keyof P]: Exact<P[K], I[K]> } & { [K in Exclude<keyof I, KeysOfUnion<P>>]: never };
+
+function longToNumber(int64: { toString(): string }): number {
+  const num = globalThis.Number(int64.toString());
+  if (num > globalThis.Number.MAX_SAFE_INTEGER) {
+    throw new globalThis.Error("Value is larger than Number.MAX_SAFE_INTEGER");
+  }
+  if (num < globalThis.Number.MIN_SAFE_INTEGER) {
+    throw new globalThis.Error("Value is smaller than Number.MIN_SAFE_INTEGER");
+  }
+  return num;
+}
 
 function isSet(value: any): boolean {
   return value !== null && value !== undefined;

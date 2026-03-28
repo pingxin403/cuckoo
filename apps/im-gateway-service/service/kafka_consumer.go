@@ -16,6 +16,7 @@ type KafkaConsumer struct {
 	membershipChangeReader  *kafka.Reader
 	gateway                 *GatewayService
 	pushService             *PushService
+	persistReadReceipt      func(ctx context.Context, event *ReadReceiptEvent) error
 	ctx                     context.Context
 	cancel                  context.CancelFunc
 	readReceiptEnabled      bool
@@ -91,6 +92,7 @@ func NewKafkaConsumer(config KafkaConfig, gateway *GatewayService, pushService *
 		readReceiptEnabled:      config.EnableReadReceipts,
 		membershipChangeEnabled: config.EnableMembershipChange,
 	}
+	consumer.persistReadReceipt = consumer.persistReadReceiptOffline
 
 	// Create read receipt reader if enabled
 	if config.EnableReadReceipts && config.ReadReceiptTopic != "" {
@@ -450,10 +452,28 @@ func (k *KafkaConsumer) processReadReceiptEvent(data []byte) error {
 	// If sender is offline (no devices delivered), store for later retrieval
 	// This is handled by the offline message system
 	if !resp.Success || resp.DeliveredCount == 0 {
-		// TODO: Store read receipt in offline storage for later retrieval
-		// For now, just log that sender is offline
-		fmt.Printf("Sender %s is offline, read receipt will be delivered when they reconnect\n", event.SenderID)
+		if err := k.persistReadReceipt(k.ctx, &event); err != nil {
+			return fmt.Errorf("failed to persist offline read receipt: %w", err)
+		}
 	}
 
 	return nil
+}
+
+func (k *KafkaConsumer) persistReadReceiptOffline(ctx context.Context, event *ReadReceiptEvent) error {
+	if k.gateway == nil || k.gateway.redisClient == nil || event == nil {
+		return nil
+	}
+
+	payload, err := json.Marshal(event)
+	if err != nil {
+		return err
+	}
+
+	key := fmt.Sprintf("offline_read_receipt:%s", event.SenderID)
+	if err := k.gateway.redisClient.RPush(ctx, key, string(payload)).Err(); err != nil {
+		return err
+	}
+
+	return k.gateway.redisClient.Expire(ctx, key, 7*24*time.Hour).Err()
 }

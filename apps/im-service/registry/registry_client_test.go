@@ -116,10 +116,21 @@ func (mrc *MockRegistryClient) RegisterUser(ctx context.Context, userID, deviceI
 		return 0, fmt.Errorf("gateway node cannot be empty")
 	}
 
-	leaseID := mrc.mock.CreateLease()
+	prefix := fmt.Sprintf("/registry/users/%s/", userID)
+	data, err := mrc.mock.Get(prefix)
+	if err != nil {
+		return 0, err
+	}
+
 	key := fmt.Sprintf("/registry/users/%s/%s", userID, deviceID)
+	_, exists := data[key]
+	if !exists && len(data) >= MaxDevicesPerUser {
+		return 0, fmt.Errorf("maximum number of devices (%d) reached for user", MaxDevicesPerUser)
+	}
+
+	leaseID := mrc.mock.CreateLease()
 	value := fmt.Sprintf("%s|%d", gatewayNode, time.Now().Unix())
-	err := mrc.mock.Put(key, value, leaseID)
+	err = mrc.mock.Put(key, value, leaseID)
 	if err != nil {
 		return 0, err
 	}
@@ -661,35 +672,41 @@ func TestWatch_NilCallback(t *testing.T) {
 // TestRegisterUser_MaxDevicesLimit tests the max 5 devices per user enforcement
 // Validates: Requirement 15.10
 func TestRegisterUser_MaxDevicesLimit(t *testing.T) {
-	// This test requires a real etcd client or a more sophisticated mock
-	// For now, we'll create a simple test that verifies the logic
+	rc := NewMockRegistryClient(90 * time.Second)
+	ctx := context.Background()
 
-	// Skip if no etcd available
-	t.Skip("Requires etcd cluster for integration testing")
+	for i := 1; i <= MaxDevicesPerUser; i++ {
+		_, err := rc.RegisterUser(ctx, "user-max", fmt.Sprintf("device-%d", i), "gateway-1:8080")
+		require.NoError(t, err)
+	}
 
-	// TODO: Implement with real etcd or enhanced mock
-	// The test should:
-	// 1. Register 5 devices for a user
-	// 2. Attempt to register a 6th device
-	// 3. Verify that the 6th registration fails with max devices error
-	// 4. Unregister one device
-	// 5. Verify that a new device can now be registered
+	_, err := rc.RegisterUser(ctx, "user-max", "device-6", "gateway-1:8080")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "maximum number of devices")
+
+	err = rc.UnregisterUser(ctx, "user-max", "device-1")
+	require.NoError(t, err)
+
+	_, err = rc.RegisterUser(ctx, "user-max", "device-6", "gateway-1:8080")
+	require.NoError(t, err)
 }
 
 // TestRegisterUser_ExistingDeviceDoesNotCountTowardLimit tests that re-registering
 // an existing device does not count toward the max devices limit
 // Validates: Requirement 15.10
 func TestRegisterUser_ExistingDeviceDoesNotCountTowardLimit(t *testing.T) {
-	// This test requires a real etcd client or a more sophisticated mock
-	// For now, we'll create a simple test that verifies the logic
+	rc := NewMockRegistryClient(90 * time.Second)
+	ctx := context.Background()
 
-	// Skip if no etcd available
-	t.Skip("Requires etcd cluster for integration testing")
+	for i := 1; i <= MaxDevicesPerUser; i++ {
+		_, err := rc.RegisterUser(ctx, "user-rereg", fmt.Sprintf("device-%d", i), "gateway-1:8080")
+		require.NoError(t, err)
+	}
 
-	// TODO: Implement with real etcd or enhanced mock
-	// The test should:
-	// 1. Register 5 devices for a user
-	// 2. Re-register one of the existing devices (e.g., after reconnection)
-	// 3. Verify that the re-registration succeeds
-	// 4. Verify that the device count is still 5
+	_, err := rc.RegisterUser(ctx, "user-rereg", "device-3", "gateway-2:8080")
+	require.NoError(t, err)
+
+	locations, err := rc.LookupUser(ctx, "user-rereg")
+	require.NoError(t, err)
+	assert.Len(t, locations, MaxDevicesPerUser)
 }

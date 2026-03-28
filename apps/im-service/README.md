@@ -527,3 +527,25 @@ If you previously deployed offline-worker as a separate service:
 5. Remove obsolete offline-worker deployment files
 
 See [.kiro/specs/im-chat-system/ARCHITECTURE_CLARIFICATION.md](../../.kiro/specs/im-chat-system/ARCHITECTURE_CLARIFICATION.md) for detailed architecture explanation.
+
+## Progress Snapshot (2026-03-28)
+
+### ✅ Implemented
+
+- Private message routing with online/offline branch and retry path is implemented in `service/im_service.go`.
+- Group message route now includes Kafka publish path for group events in `service/im_service.go`.
+- `GetMessageStatus` minimal query behavior is implemented in `service/im_service.go` and covered by tests.
+- Delivery failure structured logging path is implemented and covered by unit tests.
+- Registry max-device limit behavior is implemented in test harness and validated by tests.
+- Local lint/test/build for IM Service pass.
+
+### ⚠️ Partial / Not Fully Closed
+
+- Runtime wiring still keeps Kafka producer as nil in `main.go`, so some publish paths are code-complete but runtime-incomplete unless producer wiring is enabled.
+- Several integration/property tests remain skipped due to environment/dependency assumptions.
+
+### Next Priorities
+
+- Complete producer wiring in runtime path and add fail-fast checks for required topics in non-dev environments.
+- Increase integration assertions for Kafka-backed paths (including group message topic behavior).
+- Continue P1 reliability/observability hardening (timeouts, retries, circuit-breaker, richer metrics).

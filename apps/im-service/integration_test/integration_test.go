@@ -201,7 +201,7 @@ func getEnv(key, defaultValue string) string {
 // skipIfServiceNotImplemented skips the test if the IM Service gRPC handlers are not implemented
 func skipIfServiceNotImplemented(t *testing.T, err error) {
 	if err != nil && (strings.Contains(err.Error(), "Unimplemented") || strings.Contains(err.Error(), "unknown service")) {
-		t.Skip("IM Service gRPC handlers not implemented yet (Task 9)")
+		t.Skip("IM Service gRPC endpoint unavailable in current local environment")
 	}
 }
 

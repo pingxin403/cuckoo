@@ -1,7 +1,7 @@
 # IM Gateway Service - Local Development Environment
 
 server:
-  http_port: 8080
+  http_port: 8081
   grpc_port: 9097
   host: "0.0.0.0"
 
@@ -24,11 +24,17 @@ observability:
   environment: "local"
   log_level: "debug"
   log_format: "text"
+  metrics_port: 9091
 
 service_discovery:
   auth_service_addr: "localhost:9095"
   im_service_addr: "localhost:9094"
   user_service_addr: "localhost:9096"
+
+security:
+  allowed_origins:
+    - "https://app.example.com"
+  allow_empty_origin: true
 
 connection:
   max_connections: 1000

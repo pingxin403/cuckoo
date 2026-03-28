@@ -19,8 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	UimUgatewayUserviceService_HealthCheck_FullMethodName = "/im_gateway_servicepb.UimUgatewayUserviceService/HealthCheck"
-	UimUgatewayUserviceService_PushMessage_FullMethodName = "/im_gateway_servicepb.UimUgatewayUserviceService/PushMessage"
+	UimUgatewayUserviceService_HealthCheck_FullMethodName     = "/im_gateway_servicepb.UimUgatewayUserviceService/HealthCheck"
+	UimUgatewayUserviceService_PushMessage_FullMethodName     = "/im_gateway_servicepb.UimUgatewayUserviceService/PushMessage"
+	UimUgatewayUserviceService_PushReadReceipt_FullMethodName = "/im_gateway_servicepb.UimUgatewayUserviceService/PushReadReceipt"
 )
 
 // UimUgatewayUserviceServiceClient is the client API for UimUgatewayUserviceService service.
@@ -33,6 +34,7 @@ type UimUgatewayUserviceServiceClient interface {
 	HealthCheck(ctx context.Context, in *HealthCheckRequest, opts ...grpc.CallOption) (*HealthCheckResponse, error)
 	// PushMessage pushes a message to a user's connected device(s)
 	PushMessage(ctx context.Context, in *PushMessageRequest, opts ...grpc.CallOption) (*PushMessageResponse, error)
+	PushReadReceipt(ctx context.Context, in *PushReadReceiptRequest, opts ...grpc.CallOption) (*PushMessageResponse, error)
 }
 
 type uimUgatewayUserviceServiceClient struct {
@@ -63,6 +65,16 @@ func (c *uimUgatewayUserviceServiceClient) PushMessage(ctx context.Context, in *
 	return out, nil
 }
 
+func (c *uimUgatewayUserviceServiceClient) PushReadReceipt(ctx context.Context, in *PushReadReceiptRequest, opts ...grpc.CallOption) (*PushMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PushMessageResponse)
+	err := c.cc.Invoke(ctx, UimUgatewayUserviceService_PushReadReceipt_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UimUgatewayUserviceServiceServer is the server API for UimUgatewayUserviceService service.
 // All implementations must embed UnimplementedUimUgatewayUserviceServiceServer
 // for forward compatibility.
@@ -73,6 +85,7 @@ type UimUgatewayUserviceServiceServer interface {
 	HealthCheck(context.Context, *HealthCheckRequest) (*HealthCheckResponse, error)
 	// PushMessage pushes a message to a user's connected device(s)
 	PushMessage(context.Context, *PushMessageRequest) (*PushMessageResponse, error)
+	PushReadReceipt(context.Context, *PushReadReceiptRequest) (*PushMessageResponse, error)
 	mustEmbedUnimplementedUimUgatewayUserviceServiceServer()
 }
 
@@ -88,6 +101,9 @@ func (UnimplementedUimUgatewayUserviceServiceServer) HealthCheck(context.Context
 }
 func (UnimplementedUimUgatewayUserviceServiceServer) PushMessage(context.Context, *PushMessageRequest) (*PushMessageResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PushMessage not implemented")
+}
+func (UnimplementedUimUgatewayUserviceServiceServer) PushReadReceipt(context.Context, *PushReadReceiptRequest) (*PushMessageResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PushReadReceipt not implemented")
 }
 func (UnimplementedUimUgatewayUserviceServiceServer) mustEmbedUnimplementedUimUgatewayUserviceServiceServer() {
 }
@@ -147,6 +163,24 @@ func _UimUgatewayUserviceService_PushMessage_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UimUgatewayUserviceService_PushReadReceipt_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PushReadReceiptRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UimUgatewayUserviceServiceServer).PushReadReceipt(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UimUgatewayUserviceService_PushReadReceipt_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UimUgatewayUserviceServiceServer).PushReadReceipt(ctx, req.(*PushReadReceiptRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UimUgatewayUserviceService_ServiceDesc is the grpc.ServiceDesc for UimUgatewayUserviceService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -161,6 +195,10 @@ var UimUgatewayUserviceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "PushMessage",
 			Handler:    _UimUgatewayUserviceService_PushMessage_Handler,
+		},
+		{
+			MethodName: "PushReadReceipt",
+			Handler:    _UimUgatewayUserviceService_PushReadReceipt_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

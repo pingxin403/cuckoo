@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v6.33.4
-// source: auth.proto
+// source: api/v1/cuckoo_auth.proto
 
 package authpb
 
@@ -169,5 +169,5 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "auth.proto",
+	Metadata: "api/v1/cuckoo_auth.proto",
 }

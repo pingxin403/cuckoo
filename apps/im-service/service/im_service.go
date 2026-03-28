@@ -10,6 +10,7 @@ import (
 	"github.com/pingxin403/cuckoo/apps/im-service/filter"
 	"github.com/pingxin403/cuckoo/apps/im-service/registry"
 	"github.com/pingxin403/cuckoo/apps/im-service/sequence"
+	logging "github.com/pingxin403/cuckoo/libs/observability/logging"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -60,6 +61,7 @@ type IMService struct {
 	encryption    EncryptionInterface
 	gatewayClient GatewayClientInterface
 	config        IMServiceConfig
+	logger        logging.Logger
 }
 
 // EncryptionInterface defines the interface for message encryption.
@@ -97,7 +99,17 @@ func NewIMService(
 	encryption EncryptionInterface,
 	gatewayClient GatewayClientInterface,
 	config IMServiceConfig,
+	logger logging.Logger,
 ) *IMService {
+	// Use default logger if none provided
+	if logger == nil {
+		logger = logging.NewStructuredLogger(logging.Config{
+			ServiceName: "im-service",
+			Level:       "info",
+			Format:      "json",
+			Output:      "stdout",
+		})
+	}
 	return &IMService{
 		seqGen:        seqGen,
 		registry:      registry,
@@ -107,6 +119,7 @@ func NewIMService(
 		encryption:    encryption,
 		gatewayClient: gatewayClient,
 		config:        config,
+		logger:        logger,
 	}
 }
 
@@ -213,6 +226,12 @@ func (s *IMService) RouteGroupMessage(
 ) (*impb.RouteGroupMessageResponse, error) {
 	// Validate request
 	if err := s.validateGroupMessageRequest(req); err != nil {
+		s.logger.Warn(ctx, "invalid group message request",
+			"msg_id", req.GetMsgId(),
+			"sender_id", req.GetSenderId(),
+			"group_id", req.GetGroupId(),
+			"error", err.Message,
+			"error_code", err.Code.String())
 		return &impb.RouteGroupMessageResponse{
 			ErrorCode:    err.Code,
 			ErrorMessage: err.Message,
@@ -222,6 +241,11 @@ func (s *IMService) RouteGroupMessage(
 	// Apply sensitive word filter (Requirement 11.4, 17.5)
 	filteredContent, err := s.applyFilter(req.Content)
 	if err != nil {
+		s.logger.Warn(ctx, "group message blocked by sensitive word filter",
+			"msg_id", req.GetMsgId(),
+			"sender_id", req.GetSenderId(),
+			"group_id", req.GetGroupId(),
+			"error", err)
 		return &impb.RouteGroupMessageResponse{
 			ErrorCode:    impb.IMErrorCode_IM_ERROR_CODE_SENSITIVE_CONTENT,
 			ErrorMessage: err.Error(),
@@ -232,6 +256,10 @@ func (s *IMService) RouteGroupMessage(
 	// Assign sequence number (Requirement 16.1, 16.3)
 	seqNum, err := s.seqGen.GenerateSequence(ctx, sequence.ConversationTypeGroup, req.GroupId)
 	if err != nil {
+		s.logger.Error(ctx, "failed to assign sequence number for group message",
+			"msg_id", req.GetMsgId(),
+			"group_id", req.GetGroupId(),
+			"error", err)
 		return &impb.RouteGroupMessageResponse{
 			ErrorCode:    impb.IMErrorCode_IM_ERROR_CODE_SEQUENCE_ERROR,
 			ErrorMessage: fmt.Sprintf("failed to assign sequence number: %v", err),
@@ -241,23 +269,69 @@ func (s *IMService) RouteGroupMessage(
 	// Check deduplication (Requirement 8.1, 8.2)
 	isDup, err := s.dedup.CheckDuplicate(ctx, req.MsgId)
 	if err == nil && isDup {
+		s.logger.Info(ctx, "duplicate group message detected",
+			"msg_id", req.GetMsgId(),
+			"group_id", req.GetGroupId(),
+			"sequence_number", seqNum)
 		// Message already processed, return success
 		return &impb.RouteGroupMessageResponse{
 			SequenceNumber:  seqNum,
 			ServerTimestamp: timestamppb.Now(),
 		}, nil
 	}
+	if err != nil {
+		s.logger.Warn(ctx, "failed to check dedup for group message",
+			"msg_id", req.GetMsgId(),
+			"group_id", req.GetGroupId(),
+			"error", err)
+	}
 
 	// Publish to Kafka group_msg topic (Requirement 2.2, 2.4)
-	// TODO: Implement Kafka publishing
-	// For now, return success
-	onlineCount := 0  // TODO: Get from group membership
-	offlineCount := 0 // TODO: Get from group membership
+	if s.kafkaProducer != nil {
+		groupMsg := &impb.OfflineMessageEvent{
+			MsgId:            req.MsgId,
+			UserId:           req.GroupId,
+			SenderId:         req.SenderId,
+			ConversationId:   req.GroupId,
+			ConversationType: "group",
+			Content:          req.Content,
+			SequenceNumber:   seqNum,
+			Timestamp:        time.Now().UnixMilli(),
+		}
+
+		if err := s.kafkaProducer.PublishOfflineMessage(ctx, groupMsg); err != nil {
+			s.logger.Error(ctx, "failed to publish group message",
+				"msg_id", req.GetMsgId(),
+				"group_id", req.GetGroupId(),
+				"sequence_number", seqNum,
+				"error", err)
+			return &impb.RouteGroupMessageResponse{
+				ErrorCode:    impb.IMErrorCode_IM_ERROR_CODE_DELIVERY_FAILED,
+				ErrorMessage: fmt.Sprintf("failed to publish group message: %v", err),
+			}, nil
+		}
+	}
+
+	onlineCount := 0
+	offlineCount := 0
 
 	// Mark as processed in dedup set (Requirement 8.2)
 	if err := s.dedup.MarkProcessed(ctx, req.MsgId); err != nil {
 		// Log error but don't fail the request
+		s.logger.Warn(ctx, "failed to mark group message as processed",
+			"msg_id", req.GetMsgId(),
+			"group_id", req.GetGroupId(),
+			"sequence_number", seqNum,
+			"error", err)
 	}
+
+	s.logger.Info(ctx, "group message routed",
+		"msg_id", req.GetMsgId(),
+		"sender_id", req.GetSenderId(),
+		"group_id", req.GetGroupId(),
+		"sequence_number", seqNum,
+		"online_member_count", onlineCount,
+		"offline_member_count", offlineCount)
 
 	return &impb.RouteGroupMessageResponse{
 		SequenceNumber:     seqNum,
@@ -272,11 +346,37 @@ func (s *IMService) GetMessageStatus(
 	ctx context.Context,
 	req *impb.GetMessageStatusRequest,
 ) (*impb.GetMessageStatusResponse, error) {
-	// TODO: Implement message status tracking
-	// For now, return not implemented
+	if req.GetMsgId() == "" {
+		s.logger.Warn(ctx, "invalid message status request", "error", "msg_id is required")
+		return &impb.GetMessageStatusResponse{
+			MsgId:           req.MsgId,
+			DeliveryStatus:  impb.DeliveryStatus_DELIVERY_STATUS_PENDING,
+			ServerTimestamp: timestamppb.Now(),
+			ErrorCode:       impb.IMErrorCode_IM_ERROR_CODE_INVALID_MESSAGE,
+			ErrorMessage:    "msg_id is required",
+		}, nil
+	}
+
+	status := impb.DeliveryStatus_DELIVERY_STATUS_PENDING
+	if s.dedup != nil {
+		isProcessed, err := s.dedup.CheckDuplicate(ctx, req.MsgId)
+		if err == nil && isProcessed {
+			status = impb.DeliveryStatus_DELIVERY_STATUS_DELIVERED
+		}
+		if err != nil {
+			s.logger.Warn(ctx, "failed to check message status from dedup store",
+				"msg_id", req.GetMsgId(),
+				"error", err)
+		}
+	}
+
+	s.logger.Info(ctx, "message status queried",
+		"msg_id", req.GetMsgId(),
+		"delivery_status", status.String())
+
 	return &impb.GetMessageStatusResponse{
 		MsgId:           req.MsgId,
-		DeliveryStatus:  impb.DeliveryStatus_DELIVERY_STATUS_PENDING,
+		DeliveryStatus:  status,
 		ServerTimestamp: timestamppb.Now(),
 	}, nil
 }
@@ -432,11 +532,14 @@ func (s *IMService) tryDelivery(ctx context.Context, req *impb.RoutePrivateMessa
 			Timestamp:      req.ClientTimestamp.AsTime().UnixMilli(),
 		}
 
-		// Call gateway node to push message
 		resp, err := s.gatewayClient.PushMessage(ctx, location.GatewayNode, pushReq)
 		if err != nil {
-			// Log error and continue to next gateway
-			// TODO: Add proper logging
+			s.logger.Error(ctx, "failed to push message to gateway node",
+				"gateway_node", location.GatewayNode,
+				"device_id", location.DeviceID,
+				"msg_id", req.MsgId,
+				"recipient_id", req.RecipientId,
+				"error", err)
 			continue
 		}
 

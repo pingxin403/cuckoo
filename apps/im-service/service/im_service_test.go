@@ -1,8 +1,10 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -13,6 +15,7 @@ import (
 	"github.com/pingxin403/cuckoo/apps/im-service/filter"
 	"github.com/pingxin403/cuckoo/apps/im-service/registry"
 	"github.com/pingxin403/cuckoo/apps/im-service/sequence"
+	logging "github.com/pingxin403/cuckoo/libs/observability/logging"
 	"github.com/redis/go-redis/v9"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -41,6 +44,8 @@ func setupTestService(t *testing.T) (*IMService, *mockRegistryClient, *mockKafka
 		messages: make([]*impb.OfflineMessageEvent, 0),
 	}
 
+	mockGateway := &mockGatewayClient{}
+
 	// Create dedup service
 	dedupService := dedup.NewDedupService(dedup.Config{
 		RedisAddr: mr.Addr(),
@@ -60,16 +65,16 @@ func setupTestService(t *testing.T) (*IMService, *mockRegistryClient, *mockKafka
 	// Add test words manually
 	_ = filterService.UpdateWordList([]string{"badword"})
 
-	// Create IM service
 	service := NewIMService(
 		seqGen,
 		mockRegistry,
 		dedupService,
 		filterService,
 		mockKafka,
-		nil, // No encryption for basic tests
-		nil, // No gateway client for basic tests
+		nil,
+		mockGateway,
 		DefaultIMServiceConfig(),
+		nil,
 	)
 
 	cleanup := func() {
@@ -137,6 +142,38 @@ type mockKafkaProducer struct {
 	messages []*impb.OfflineMessageEvent
 	mu       sync.Mutex
 	failNext bool // For testing failure scenarios
+}
+
+type mockGatewayClient struct {
+	fail bool
+}
+
+type captureLogger struct {
+	errorf func(msg string, keysAndValues ...interface{})
+}
+
+func (l *captureLogger) Debug(ctx context.Context, msg string, keysAndValues ...interface{}) {}
+func (l *captureLogger) Info(ctx context.Context, msg string, keysAndValues ...interface{})  {}
+func (l *captureLogger) Warn(ctx context.Context, msg string, keysAndValues ...interface{})  {}
+func (l *captureLogger) Error(ctx context.Context, msg string, keysAndValues ...interface{}) {
+	if l.errorf != nil {
+		l.errorf(msg, keysAndValues...)
+	}
+}
+func (l *captureLogger) With(keysAndValues ...interface{}) logging.Logger {
+	return l
+}
+func (l *captureLogger) Sync() error { return nil }
+
+func (m *mockGatewayClient) PushMessage(ctx context.Context, gatewayAddr string, req *GatewayPushRequest) (*GatewayPushResponse, error) {
+	if m.fail {
+		return nil, fmt.Errorf("gateway push failed")
+	}
+
+	return &GatewayPushResponse{
+		Success:        true,
+		DeliveredCount: 1,
+	}, nil
 }
 
 func (m *mockKafkaProducer) PublishOfflineMessage(ctx context.Context, msg *impb.OfflineMessageEvent) error {
@@ -520,6 +557,91 @@ func TestRouteGroupMessage_Deduplication(t *testing.T) {
 	}
 }
 
+func TestRouteGroupMessage_PublishesToKafka(t *testing.T) {
+	service, _, mockKafka, _, cleanup := setupTestService(t)
+	defer cleanup()
+
+	req := &impb.RouteGroupMessageRequest{
+		MsgId:           "msg-group-kafka-001",
+		SenderId:        "user1",
+		GroupId:         "group1",
+		Content:         "Hello, group kafka!",
+		MessageType:     impb.MessageType_MESSAGE_TYPE_TEXT,
+		ClientTimestamp: timestamppb.Now(),
+	}
+
+	resp, err := service.RouteGroupMessage(context.Background(), req)
+	if err != nil {
+		t.Fatalf("RouteGroupMessage failed: %v", err)
+	}
+
+	if resp.ErrorCode != impb.IMErrorCode_IM_ERROR_CODE_UNSPECIFIED {
+		t.Fatalf("Expected no error, got %v: %s", resp.ErrorCode, resp.ErrorMessage)
+	}
+
+	messages := mockKafka.GetMessages()
+	if len(messages) != 1 {
+		t.Fatalf("Expected 1 published message, got %d", len(messages))
+	}
+
+	msg := messages[0]
+	if msg.MsgId != req.MsgId {
+		t.Errorf("Expected msg_id %s, got %s", req.MsgId, msg.MsgId)
+	}
+	if msg.UserId != req.GroupId {
+		t.Errorf("Expected user_id/group_id %s, got %s", req.GroupId, msg.UserId)
+	}
+	if msg.ConversationType != "group" {
+		t.Errorf("Expected conversation_type group, got %s", msg.ConversationType)
+	}
+}
+
+func TestGetMessageStatus_PendingForUnknownMessage(t *testing.T) {
+	service, _, _, _, cleanup := setupTestService(t)
+	defer cleanup()
+
+	resp, err := service.GetMessageStatus(context.Background(), &impb.GetMessageStatusRequest{
+		MsgId: "unknown-msg-001",
+	})
+	if err != nil {
+		t.Fatalf("GetMessageStatus failed: %v", err)
+	}
+
+	if resp.DeliveryStatus != impb.DeliveryStatus_DELIVERY_STATUS_PENDING {
+		t.Errorf("Expected PENDING status, got %v", resp.DeliveryStatus)
+	}
+}
+
+func TestGetMessageStatus_DeliveredForProcessedMessage(t *testing.T) {
+	service, _, _, _, cleanup := setupTestService(t)
+	defer cleanup()
+
+	req := &impb.RoutePrivateMessageRequest{
+		MsgId:           "msg-status-001",
+		SenderId:        "user1",
+		RecipientId:     "user2",
+		Content:         "status tracking",
+		MessageType:     impb.MessageType_MESSAGE_TYPE_TEXT,
+		ClientTimestamp: timestamppb.Now(),
+	}
+
+	_, err := service.RoutePrivateMessage(context.Background(), req)
+	if err != nil {
+		t.Fatalf("RoutePrivateMessage failed: %v", err)
+	}
+
+	resp, err := service.GetMessageStatus(context.Background(), &impb.GetMessageStatusRequest{
+		MsgId: req.MsgId,
+	})
+	if err != nil {
+		t.Fatalf("GetMessageStatus failed: %v", err)
+	}
+
+	if resp.DeliveryStatus != impb.DeliveryStatus_DELIVERY_STATUS_DELIVERED {
+		t.Errorf("Expected DELIVERED status, got %v", resp.DeliveryStatus)
+	}
+}
+
 // TestGetPrivateConversationID tests conversation ID generation.
 func TestGetPrivateConversationID(t *testing.T) {
 	service, _, _, _, cleanup := setupTestService(t)
@@ -577,10 +699,11 @@ func TestApplyFilter_BlockAction(t *testing.T) {
 		mockRegistry,
 		dedupService,
 		filterService,
-		nil, // No Kafka producer for this test
-		nil, // No encryption for this test
-		nil, // No gateway client for this test
+		nil,
+		nil,
+		nil,
 		DefaultIMServiceConfig(),
+		nil,
 	)
 
 	req := &impb.RoutePrivateMessageRequest{
@@ -644,6 +767,7 @@ func TestApplyFilter_AuditAction(t *testing.T) {
 		nil, // No encryption for this test
 		nil, // No gateway client for this test
 		DefaultIMServiceConfig(),
+		nil,
 	)
 
 	req := &impb.RoutePrivateMessageRequest{
@@ -821,6 +945,45 @@ func TestDeliverWithRetry(t *testing.T) {
 	delivered := service.deliverWithRetry(context.Background(), req, locations, 12345)
 	if !delivered {
 		t.Error("Expected delivery to succeed")
+	}
+}
+
+func TestTryDelivery_LogsGatewayPushError(t *testing.T) {
+	service, _, _, _, cleanup := setupTestService(t)
+	defer cleanup()
+
+	mockGateway := &mockGatewayClient{fail: true}
+	service.gatewayClient = mockGateway
+
+	var buf bytes.Buffer
+	service.logger = &captureLogger{errorf: func(msg string, keysAndValues ...interface{}) {
+		_, _ = fmt.Fprintf(&buf, "%s %v", msg, keysAndValues)
+	}}
+
+	req := &impb.RoutePrivateMessageRequest{
+		MsgId:       "msg-log-001",
+		SenderId:    "user1",
+		RecipientId: "user2",
+		Content:     "hello",
+		MessageType: impb.MessageType_MESSAGE_TYPE_TEXT,
+	}
+
+	locations := []registry.GatewayLocation{
+		{GatewayNode: "gateway1", DeviceID: "device1"},
+	}
+
+	delivered := service.tryDelivery(context.Background(), req, locations, 1001)
+	if delivered {
+		t.Fatal("expected delivery to fail when gateway push fails")
+	}
+
+	logged := buf.String()
+	if logged == "" {
+		t.Fatal("expected error log output, got empty string")
+	}
+
+	if !strings.Contains(logged, "failed to push message") || !strings.Contains(logged, "msg-log-001") || !strings.Contains(logged, "user2") {
+		t.Fatalf("unexpected log output: %s", logged)
 	}
 }
 

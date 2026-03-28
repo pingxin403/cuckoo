@@ -232,11 +232,17 @@ func (rc *RegistryClient) Watch(ctx context.Context, prefix string, callback Wat
 
 	// Store cancel function
 	rc.watcherMu.Lock()
+	if oldCancel, exists := rc.watchers[prefix]; exists {
+		oldCancel()
+	}
 	rc.watchers[prefix] = cancel
 	rc.watcherMu.Unlock()
 
 	// Start watching in a goroutine
-	go rc.watchLoop(watchCtx, prefix, callback)
+	go func() {
+		defer cancel()
+		rc.watchLoop(watchCtx, prefix, callback)
+	}()
 
 	return nil
 }

@@ -46,6 +46,37 @@ public final class UimUgatewayUserviceServiceGrpc {
     return getHealthCheckMethod;
   }
 
+  private static volatile io.grpc.MethodDescriptor<com.pingxin403.cuckoo.im.gateway.v1.PushMessageRequest,
+      com.pingxin403.cuckoo.im.gateway.v1.PushMessageResponse> getPushMessageMethod;
+
+  @io.grpc.stub.annotations.RpcMethod(
+      fullMethodName = SERVICE_NAME + '/' + "PushMessage",
+      requestType = com.pingxin403.cuckoo.im.gateway.v1.PushMessageRequest.class,
+      responseType = com.pingxin403.cuckoo.im.gateway.v1.PushMessageResponse.class,
+      methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
+  public static io.grpc.MethodDescriptor<com.pingxin403.cuckoo.im.gateway.v1.PushMessageRequest,
+      com.pingxin403.cuckoo.im.gateway.v1.PushMessageResponse> getPushMessageMethod() {
+    io.grpc.MethodDescriptor<com.pingxin403.cuckoo.im.gateway.v1.PushMessageRequest, com.pingxin403.cuckoo.im.gateway.v1.PushMessageResponse> getPushMessageMethod;
+    if ((getPushMessageMethod = UimUgatewayUserviceServiceGrpc.getPushMessageMethod) == null) {
+      synchronized (UimUgatewayUserviceServiceGrpc.class) {
+        if ((getPushMessageMethod = UimUgatewayUserviceServiceGrpc.getPushMessageMethod) == null) {
+          UimUgatewayUserviceServiceGrpc.getPushMessageMethod = getPushMessageMethod =
+              io.grpc.MethodDescriptor.<com.pingxin403.cuckoo.im.gateway.v1.PushMessageRequest, com.pingxin403.cuckoo.im.gateway.v1.PushMessageResponse>newBuilder()
+              .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
+              .setFullMethodName(generateFullMethodName(SERVICE_NAME, "PushMessage"))
+              .setSampledToLocalTracing(true)
+              .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  com.pingxin403.cuckoo.im.gateway.v1.PushMessageRequest.getDefaultInstance()))
+              .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  com.pingxin403.cuckoo.im.gateway.v1.PushMessageResponse.getDefaultInstance()))
+              .setSchemaDescriptor(new UimUgatewayUserviceServiceMethodDescriptorSupplier("PushMessage"))
+              .build();
+        }
+      }
+    }
+    return getPushMessageMethod;
+  }
+
   /**
    * Creates a new async stub that supports all call types for the service
    */
@@ -121,6 +152,16 @@ public final class UimUgatewayUserviceServiceGrpc {
         io.grpc.stub.StreamObserver<com.pingxin403.cuckoo.im.gateway.v1.HealthCheckResponse> responseObserver) {
       io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getHealthCheckMethod(), responseObserver);
     }
+
+    /**
+     * <pre>
+     * PushMessage pushes a message to a user's connected device(s)
+     * </pre>
+     */
+    default void pushMessage(com.pingxin403.cuckoo.im.gateway.v1.PushMessageRequest request,
+        io.grpc.stub.StreamObserver<com.pingxin403.cuckoo.im.gateway.v1.PushMessageResponse> responseObserver) {
+      io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getPushMessageMethod(), responseObserver);
+    }
   }
 
   /**
@@ -166,6 +207,17 @@ public final class UimUgatewayUserviceServiceGrpc {
       io.grpc.stub.ClientCalls.asyncUnaryCall(
           getChannel().newCall(getHealthCheckMethod(), getCallOptions()), request, responseObserver);
     }
+
+    /**
+     * <pre>
+     * PushMessage pushes a message to a user's connected device(s)
+     * </pre>
+     */
+    public void pushMessage(com.pingxin403.cuckoo.im.gateway.v1.PushMessageRequest request,
+        io.grpc.stub.StreamObserver<com.pingxin403.cuckoo.im.gateway.v1.PushMessageResponse> responseObserver) {
+      io.grpc.stub.ClientCalls.asyncUnaryCall(
+          getChannel().newCall(getPushMessageMethod(), getCallOptions()), request, responseObserver);
+    }
   }
 
   /**
@@ -196,6 +248,16 @@ public final class UimUgatewayUserviceServiceGrpc {
       return io.grpc.stub.ClientCalls.blockingV2UnaryCall(
           getChannel(), getHealthCheckMethod(), getCallOptions(), request);
     }
+
+    /**
+     * <pre>
+     * PushMessage pushes a message to a user's connected device(s)
+     * </pre>
+     */
+    public com.pingxin403.cuckoo.im.gateway.v1.PushMessageResponse pushMessage(com.pingxin403.cuckoo.im.gateway.v1.PushMessageRequest request) throws io.grpc.StatusException {
+      return io.grpc.stub.ClientCalls.blockingV2UnaryCall(
+          getChannel(), getPushMessageMethod(), getCallOptions(), request);
+    }
   }
 
   /**
@@ -225,6 +287,16 @@ public final class UimUgatewayUserviceServiceGrpc {
     public com.pingxin403.cuckoo.im.gateway.v1.HealthCheckResponse healthCheck(com.pingxin403.cuckoo.im.gateway.v1.HealthCheckRequest request) {
       return io.grpc.stub.ClientCalls.blockingUnaryCall(
           getChannel(), getHealthCheckMethod(), getCallOptions(), request);
+    }
+
+    /**
+     * <pre>
+     * PushMessage pushes a message to a user's connected device(s)
+     * </pre>
+     */
+    public com.pingxin403.cuckoo.im.gateway.v1.PushMessageResponse pushMessage(com.pingxin403.cuckoo.im.gateway.v1.PushMessageRequest request) {
+      return io.grpc.stub.ClientCalls.blockingUnaryCall(
+          getChannel(), getPushMessageMethod(), getCallOptions(), request);
     }
   }
 
@@ -257,9 +329,21 @@ public final class UimUgatewayUserviceServiceGrpc {
       return io.grpc.stub.ClientCalls.futureUnaryCall(
           getChannel().newCall(getHealthCheckMethod(), getCallOptions()), request);
     }
+
+    /**
+     * <pre>
+     * PushMessage pushes a message to a user's connected device(s)
+     * </pre>
+     */
+    public com.google.common.util.concurrent.ListenableFuture<com.pingxin403.cuckoo.im.gateway.v1.PushMessageResponse> pushMessage(
+        com.pingxin403.cuckoo.im.gateway.v1.PushMessageRequest request) {
+      return io.grpc.stub.ClientCalls.futureUnaryCall(
+          getChannel().newCall(getPushMessageMethod(), getCallOptions()), request);
+    }
   }
 
   private static final int METHODID_HEALTH_CHECK = 0;
+  private static final int METHODID_PUSH_MESSAGE = 1;
 
   private static final class MethodHandlers<Req, Resp> implements
       io.grpc.stub.ServerCalls.UnaryMethod<Req, Resp>,
@@ -281,6 +365,10 @@ public final class UimUgatewayUserviceServiceGrpc {
         case METHODID_HEALTH_CHECK:
           serviceImpl.healthCheck((com.pingxin403.cuckoo.im.gateway.v1.HealthCheckRequest) request,
               (io.grpc.stub.StreamObserver<com.pingxin403.cuckoo.im.gateway.v1.HealthCheckResponse>) responseObserver);
+          break;
+        case METHODID_PUSH_MESSAGE:
+          serviceImpl.pushMessage((com.pingxin403.cuckoo.im.gateway.v1.PushMessageRequest) request,
+              (io.grpc.stub.StreamObserver<com.pingxin403.cuckoo.im.gateway.v1.PushMessageResponse>) responseObserver);
           break;
         default:
           throw new AssertionError();
@@ -307,6 +395,13 @@ public final class UimUgatewayUserviceServiceGrpc {
               com.pingxin403.cuckoo.im.gateway.v1.HealthCheckRequest,
               com.pingxin403.cuckoo.im.gateway.v1.HealthCheckResponse>(
                 service, METHODID_HEALTH_CHECK)))
+        .addMethod(
+          getPushMessageMethod(),
+          io.grpc.stub.ServerCalls.asyncUnaryCall(
+            new MethodHandlers<
+              com.pingxin403.cuckoo.im.gateway.v1.PushMessageRequest,
+              com.pingxin403.cuckoo.im.gateway.v1.PushMessageResponse>(
+                service, METHODID_PUSH_MESSAGE)))
         .build();
   }
 
@@ -356,6 +451,7 @@ public final class UimUgatewayUserviceServiceGrpc {
           serviceDescriptor = result = io.grpc.ServiceDescriptor.newBuilder(SERVICE_NAME)
               .setSchemaDescriptor(new UimUgatewayUserviceServiceFileDescriptorSupplier())
               .addMethod(getHealthCheckMethod())
+              .addMethod(getPushMessageMethod())
               .build();
         }
       }

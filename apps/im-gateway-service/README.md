@@ -273,16 +273,29 @@ go test -tags=property ./service
 ./scripts/run-integration-tests.sh
 ```
 
-## TODO
+## Progress Snapshot (2026-03-28)
 
-- [ ] Implement proper origin checking for WebSocket upgrade
-- [ ] Add Bloom filter for large group membership checks
-- [ ] Implement metrics collection (Prometheus)
-- [ ] Add distributed tracing (OpenTelemetry)
-- [ ] Implement connection pooling for gRPC clients
-- [ ] Add circuit breaker for external service calls
-- [ ] Implement backpressure handling
-- [ ] Add comprehensive logging
+### ✅ Implemented
+
+- Origin validation logic and unit tests are implemented in `service/gateway_service.go` and `service/gateway_service_test.go`.
+- ACK lifecycle (pending/resolve/timeout) is implemented with test coverage in `service/gateway_service.go` and `service/gateway_service_test.go`.
+- Cross-gateway message forwarding path is implemented via `service/remote_forwarder.go` and wired in `main.go`.
+- Local fallback persistence path for read receipt is implemented in `service/kafka_consumer.go`.
+- Group member fallback provider path is implemented in `service/push_service.go` and `service/cache_manager.go`.
+- Core build/lint/test checks pass locally for gateway service.
+
+### ⚠️ Partial / Not Fully Closed
+
+- Cross-gateway **read-receipt** remote forwarding is not fully supported by current protocol contract; current remote forwarder returns explicit unsupported error.
+- Metrics infrastructure is initialized, but some business-path instrumentation still needs deeper coverage.
+- gRPC connection pooling and full circuit-breaker strategy are not fully implemented end-to-end.
+- Some integration tests are still skipped due to external dependency constraints.
+
+### Next Priorities
+
+- Extend protocol and implementation for remote read-receipt forwarding.
+- Complete P1 reliability hardening (pooling, circuit-breaker, failure classification).
+- Expand integration coverage in multi-gateway topology and remove current skips where feasible.
 
 ## References
 

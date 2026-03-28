@@ -66,10 +66,14 @@ check_prerequisites() {
 generate_go() {
     local proto_file=$1
     local proto_name=$(basename "$proto_file" .proto)
+    local proto_rel_path=$2
     
     # Map proto file names to package directory names
     local output_subdir
     case "$proto_name" in
+        cuckoo_auth)
+            output_subdir="authpb"
+            ;;
         im-gateway)
             output_subdir="im-gatewaypb"
             ;;
@@ -93,7 +97,7 @@ generate_go() {
         --go-grpc_out="$output_dir" \
         --go-grpc_opt=paths=source_relative \
         -I "$PROTO_DIR" \
-        "$proto_file"; then
+        "$proto_rel_path"; then
         
         # Verify generated files exist
         if [ -f "$output_dir/${proto_name}.pb.go" ] && [ -f "$output_dir/${proto_name}_grpc.pb.go" ]; then
@@ -113,6 +117,7 @@ generate_go() {
 generate_java() {
     local proto_file=$1
     local proto_name=$(basename "$proto_file" .proto)
+    local proto_rel_path=$2
     local output_dir="$API_GEN_DIR/java"
     
     log_info "  [Java] Generating from $proto_file -> $output_dir"
@@ -129,8 +134,9 @@ generate_java() {
     if protoc \
         --java_out="$output_dir" \
         --grpc-java_out="$output_dir" \
+        -I "." \
         -I "$PROTO_DIR" \
-        "$proto_file"; then
+        "$proto_rel_path"; then
         
         log_success "  [Java] Generated code for $proto_name"
         return 0
@@ -144,10 +150,14 @@ generate_java() {
 generate_typescript() {
     local proto_file=$1
     local proto_name=$(basename "$proto_file" .proto)
+    local proto_rel_path=$2
     
     # Map proto file names to package directory names
     local output_subdir
     case "$proto_name" in
+        cuckoo_auth)
+            output_subdir="authpb"
+            ;;
         im-gateway)
             output_subdir="im-gatewaypb"
             ;;
@@ -177,7 +187,7 @@ generate_typescript() {
         --ts_proto_out="$output_dir" \
         --ts_proto_opt=esModuleInterop=true \
         -I "$PROTO_DIR" \
-        "$proto_file"; then
+        "$proto_rel_path"; then
         
         log_success "  [TypeScript] Generated code for $proto_name"
         return 0
@@ -206,34 +216,35 @@ process_proto_files() {
     for proto_file in $proto_files; do
         current=$((current + 1))
         local proto_name=$(basename "$proto_file")
+        local proto_rel_path="${proto_file#${PROTO_DIR}/}"
         
         log_info "[$current/$total_files] Processing $proto_name"
         
         case $lang in
             go)
-                if ! generate_go "$proto_file"; then
+                if ! generate_go "$proto_file" "$proto_rel_path"; then
                     failed_files="$failed_files $proto_name"
                 fi
                 ;;
             java)
-                if ! generate_java "$proto_file"; then
+                if ! generate_java "$proto_file" "$proto_rel_path"; then
                     failed_files="$failed_files $proto_name"
                 fi
                 ;;
             typescript|ts)
-                if ! generate_typescript "$proto_file"; then
+                if ! generate_typescript "$proto_file" "$proto_rel_path"; then
                     failed_files="$failed_files $proto_name"
                 fi
                 ;;
             all)
                 local file_failed=false
-                if ! generate_go "$proto_file"; then
+                if ! generate_go "$proto_file" "$proto_rel_path"; then
                     file_failed=true
                 fi
-                if ! generate_java "$proto_file"; then
+                if ! generate_java "$proto_file" "$proto_rel_path"; then
                     file_failed=true
                 fi
-                if ! generate_typescript "$proto_file"; then
+                if ! generate_typescript "$proto_file" "$proto_rel_path"; then
                     file_failed=true
                 fi
                 if [ "$file_failed" = true ]; then
