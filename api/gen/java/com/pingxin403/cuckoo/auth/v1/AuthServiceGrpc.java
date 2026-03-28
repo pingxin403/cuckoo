@@ -428,7 +428,7 @@ public final class AuthServiceGrpc {
 
     @java.lang.Override
     public com.google.protobuf.Descriptors.FileDescriptor getFileDescriptor() {
-      return com.pingxin403.cuckoo.auth.v1.Auth.getDescriptor();
+      return com.pingxin403.cuckoo.auth.v1.CuckooAuth.getDescriptor();
     }
 
     @java.lang.Override

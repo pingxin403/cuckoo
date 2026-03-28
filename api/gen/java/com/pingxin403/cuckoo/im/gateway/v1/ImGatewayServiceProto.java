@@ -46,6 +46,11 @@ public final class ImGatewayServiceProto extends com.google.protobuf.GeneratedFi
   static final 
     com.google.protobuf.GeneratedMessage.FieldAccessorTable
       internal_static_im_gateway_servicepb_PushMessageResponse_fieldAccessorTable;
+  static final com.google.protobuf.Descriptors.Descriptor
+    internal_static_im_gateway_servicepb_PushReadReceiptRequest_descriptor;
+  static final 
+    com.google.protobuf.GeneratedMessage.FieldAccessorTable
+      internal_static_im_gateway_servicepb_PushReadReceiptRequest_fieldAccessorTable;
 
   public static com.google.protobuf.Descriptors.FileDescriptor
       getDescriptor() {
@@ -64,16 +69,22 @@ public final class ImGatewayServiceProto extends com.google.protobuf.GeneratedFi
       "\027\n\017sequence_number\030\007 \001(\003\022\021\n\ttimestamp\030\010 " +
       "\001(\003\"n\n\023PushMessageResponse\022\017\n\007success\030\001 " +
       "\001(\010\022\027\n\017delivered_count\030\002 \001(\005\022\026\n\016failed_d" +
-      "evices\030\003 \003(\t\022\025\n\rerror_message\030\004 \001(\t2\344\001\n\032" +
-      "UimUgatewayUserviceService\022b\n\013HealthChec" +
-      "k\022(.im_gateway_servicepb.HealthCheckRequ" +
-      "est\032).im_gateway_servicepb.HealthCheckRe" +
-      "sponse\022b\n\013PushMessage\022(.im_gateway_servi" +
-      "cepb.PushMessageRequest\032).im_gateway_ser" +
-      "vicepb.PushMessageResponseBt\n#com.pingxi" +
-      "n403.cuckoo.im.gateway.v1B\025ImGatewayServ" +
-      "iceProtoP\001Z4github.com/pingxin403/cuckoo" +
-      "/api/gen/go/im-gatewaypbb\006proto3"
+      "evices\030\003 \003(\t\022\025\n\rerror_message\030\004 \001(\t\"x\n\026P" +
+      "ushReadReceiptRequest\022\016\n\006msg_id\030\001 \001(\t\022\021\n" +
+      "\tsender_id\030\002 \001(\t\022\021\n\treader_id\030\003 \001(\t\022\027\n\017c" +
+      "onversation_id\030\004 \001(\t\022\017\n\007read_at\030\005 \001(\0032\320\002" +
+      "\n\032UimUgatewayUserviceService\022b\n\013HealthCh" +
+      "eck\022(.im_gateway_servicepb.HealthCheckRe" +
+      "quest\032).im_gateway_servicepb.HealthCheck" +
+      "Response\022b\n\013PushMessage\022(.im_gateway_ser" +
+      "vicepb.PushMessageRequest\032).im_gateway_s" +
+      "ervicepb.PushMessageResponse\022j\n\017PushRead" +
+      "Receipt\022,.im_gateway_servicepb.PushReadR" +
+      "eceiptRequest\032).im_gateway_servicepb.Pus" +
+      "hMessageResponseBt\n#com.pingxin403.cucko" +
+      "o.im.gateway.v1B\025ImGatewayServiceProtoP\001" +
+      "Z4github.com/pingxin403/cuckoo/api/gen/g" +
+      "o/im-gatewaypbb\006proto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
@@ -103,6 +114,12 @@ public final class ImGatewayServiceProto extends com.google.protobuf.GeneratedFi
       com.google.protobuf.GeneratedMessage.FieldAccessorTable(
         internal_static_im_gateway_servicepb_PushMessageResponse_descriptor,
         new java.lang.String[] { "Success", "DeliveredCount", "FailedDevices", "ErrorMessage", });
+    internal_static_im_gateway_servicepb_PushReadReceiptRequest_descriptor =
+      getDescriptor().getMessageType(4);
+    internal_static_im_gateway_servicepb_PushReadReceiptRequest_fieldAccessorTable = new
+      com.google.protobuf.GeneratedMessage.FieldAccessorTable(
+        internal_static_im_gateway_servicepb_PushReadReceiptRequest_descriptor,
+        new java.lang.String[] { "MsgId", "SenderId", "ReaderId", "ConversationId", "ReadAt", });
     descriptor.resolveAllFeaturesImmutable();
   }
 

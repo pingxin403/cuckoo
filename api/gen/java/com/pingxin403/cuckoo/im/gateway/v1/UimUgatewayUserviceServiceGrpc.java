@@ -77,6 +77,37 @@ public final class UimUgatewayUserviceServiceGrpc {
     return getPushMessageMethod;
   }
 
+  private static volatile io.grpc.MethodDescriptor<com.pingxin403.cuckoo.im.gateway.v1.PushReadReceiptRequest,
+      com.pingxin403.cuckoo.im.gateway.v1.PushMessageResponse> getPushReadReceiptMethod;
+
+  @io.grpc.stub.annotations.RpcMethod(
+      fullMethodName = SERVICE_NAME + '/' + "PushReadReceipt",
+      requestType = com.pingxin403.cuckoo.im.gateway.v1.PushReadReceiptRequest.class,
+      responseType = com.pingxin403.cuckoo.im.gateway.v1.PushMessageResponse.class,
+      methodType = io.grpc.MethodDescriptor.MethodType.UNARY)
+  public static io.grpc.MethodDescriptor<com.pingxin403.cuckoo.im.gateway.v1.PushReadReceiptRequest,
+      com.pingxin403.cuckoo.im.gateway.v1.PushMessageResponse> getPushReadReceiptMethod() {
+    io.grpc.MethodDescriptor<com.pingxin403.cuckoo.im.gateway.v1.PushReadReceiptRequest, com.pingxin403.cuckoo.im.gateway.v1.PushMessageResponse> getPushReadReceiptMethod;
+    if ((getPushReadReceiptMethod = UimUgatewayUserviceServiceGrpc.getPushReadReceiptMethod) == null) {
+      synchronized (UimUgatewayUserviceServiceGrpc.class) {
+        if ((getPushReadReceiptMethod = UimUgatewayUserviceServiceGrpc.getPushReadReceiptMethod) == null) {
+          UimUgatewayUserviceServiceGrpc.getPushReadReceiptMethod = getPushReadReceiptMethod =
+              io.grpc.MethodDescriptor.<com.pingxin403.cuckoo.im.gateway.v1.PushReadReceiptRequest, com.pingxin403.cuckoo.im.gateway.v1.PushMessageResponse>newBuilder()
+              .setType(io.grpc.MethodDescriptor.MethodType.UNARY)
+              .setFullMethodName(generateFullMethodName(SERVICE_NAME, "PushReadReceipt"))
+              .setSampledToLocalTracing(true)
+              .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  com.pingxin403.cuckoo.im.gateway.v1.PushReadReceiptRequest.getDefaultInstance()))
+              .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  com.pingxin403.cuckoo.im.gateway.v1.PushMessageResponse.getDefaultInstance()))
+              .setSchemaDescriptor(new UimUgatewayUserviceServiceMethodDescriptorSupplier("PushReadReceipt"))
+              .build();
+        }
+      }
+    }
+    return getPushReadReceiptMethod;
+  }
+
   /**
    * Creates a new async stub that supports all call types for the service
    */
@@ -162,6 +193,13 @@ public final class UimUgatewayUserviceServiceGrpc {
         io.grpc.stub.StreamObserver<com.pingxin403.cuckoo.im.gateway.v1.PushMessageResponse> responseObserver) {
       io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getPushMessageMethod(), responseObserver);
     }
+
+    /**
+     */
+    default void pushReadReceipt(com.pingxin403.cuckoo.im.gateway.v1.PushReadReceiptRequest request,
+        io.grpc.stub.StreamObserver<com.pingxin403.cuckoo.im.gateway.v1.PushMessageResponse> responseObserver) {
+      io.grpc.stub.ServerCalls.asyncUnimplementedUnaryCall(getPushReadReceiptMethod(), responseObserver);
+    }
   }
 
   /**
@@ -218,6 +256,14 @@ public final class UimUgatewayUserviceServiceGrpc {
       io.grpc.stub.ClientCalls.asyncUnaryCall(
           getChannel().newCall(getPushMessageMethod(), getCallOptions()), request, responseObserver);
     }
+
+    /**
+     */
+    public void pushReadReceipt(com.pingxin403.cuckoo.im.gateway.v1.PushReadReceiptRequest request,
+        io.grpc.stub.StreamObserver<com.pingxin403.cuckoo.im.gateway.v1.PushMessageResponse> responseObserver) {
+      io.grpc.stub.ClientCalls.asyncUnaryCall(
+          getChannel().newCall(getPushReadReceiptMethod(), getCallOptions()), request, responseObserver);
+    }
   }
 
   /**
@@ -258,6 +304,13 @@ public final class UimUgatewayUserviceServiceGrpc {
       return io.grpc.stub.ClientCalls.blockingV2UnaryCall(
           getChannel(), getPushMessageMethod(), getCallOptions(), request);
     }
+
+    /**
+     */
+    public com.pingxin403.cuckoo.im.gateway.v1.PushMessageResponse pushReadReceipt(com.pingxin403.cuckoo.im.gateway.v1.PushReadReceiptRequest request) throws io.grpc.StatusException {
+      return io.grpc.stub.ClientCalls.blockingV2UnaryCall(
+          getChannel(), getPushReadReceiptMethod(), getCallOptions(), request);
+    }
   }
 
   /**
@@ -297,6 +350,13 @@ public final class UimUgatewayUserviceServiceGrpc {
     public com.pingxin403.cuckoo.im.gateway.v1.PushMessageResponse pushMessage(com.pingxin403.cuckoo.im.gateway.v1.PushMessageRequest request) {
       return io.grpc.stub.ClientCalls.blockingUnaryCall(
           getChannel(), getPushMessageMethod(), getCallOptions(), request);
+    }
+
+    /**
+     */
+    public com.pingxin403.cuckoo.im.gateway.v1.PushMessageResponse pushReadReceipt(com.pingxin403.cuckoo.im.gateway.v1.PushReadReceiptRequest request) {
+      return io.grpc.stub.ClientCalls.blockingUnaryCall(
+          getChannel(), getPushReadReceiptMethod(), getCallOptions(), request);
     }
   }
 
@@ -340,10 +400,19 @@ public final class UimUgatewayUserviceServiceGrpc {
       return io.grpc.stub.ClientCalls.futureUnaryCall(
           getChannel().newCall(getPushMessageMethod(), getCallOptions()), request);
     }
+
+    /**
+     */
+    public com.google.common.util.concurrent.ListenableFuture<com.pingxin403.cuckoo.im.gateway.v1.PushMessageResponse> pushReadReceipt(
+        com.pingxin403.cuckoo.im.gateway.v1.PushReadReceiptRequest request) {
+      return io.grpc.stub.ClientCalls.futureUnaryCall(
+          getChannel().newCall(getPushReadReceiptMethod(), getCallOptions()), request);
+    }
   }
 
   private static final int METHODID_HEALTH_CHECK = 0;
   private static final int METHODID_PUSH_MESSAGE = 1;
+  private static final int METHODID_PUSH_READ_RECEIPT = 2;
 
   private static final class MethodHandlers<Req, Resp> implements
       io.grpc.stub.ServerCalls.UnaryMethod<Req, Resp>,
@@ -368,6 +437,10 @@ public final class UimUgatewayUserviceServiceGrpc {
           break;
         case METHODID_PUSH_MESSAGE:
           serviceImpl.pushMessage((com.pingxin403.cuckoo.im.gateway.v1.PushMessageRequest) request,
+              (io.grpc.stub.StreamObserver<com.pingxin403.cuckoo.im.gateway.v1.PushMessageResponse>) responseObserver);
+          break;
+        case METHODID_PUSH_READ_RECEIPT:
+          serviceImpl.pushReadReceipt((com.pingxin403.cuckoo.im.gateway.v1.PushReadReceiptRequest) request,
               (io.grpc.stub.StreamObserver<com.pingxin403.cuckoo.im.gateway.v1.PushMessageResponse>) responseObserver);
           break;
         default:
@@ -402,6 +475,13 @@ public final class UimUgatewayUserviceServiceGrpc {
               com.pingxin403.cuckoo.im.gateway.v1.PushMessageRequest,
               com.pingxin403.cuckoo.im.gateway.v1.PushMessageResponse>(
                 service, METHODID_PUSH_MESSAGE)))
+        .addMethod(
+          getPushReadReceiptMethod(),
+          io.grpc.stub.ServerCalls.asyncUnaryCall(
+            new MethodHandlers<
+              com.pingxin403.cuckoo.im.gateway.v1.PushReadReceiptRequest,
+              com.pingxin403.cuckoo.im.gateway.v1.PushMessageResponse>(
+                service, METHODID_PUSH_READ_RECEIPT)))
         .build();
   }
 
@@ -452,6 +532,7 @@ public final class UimUgatewayUserviceServiceGrpc {
               .setSchemaDescriptor(new UimUgatewayUserviceServiceFileDescriptorSupplier())
               .addMethod(getHealthCheckMethod())
               .addMethod(getPushMessageMethod())
+              .addMethod(getPushReadReceiptMethod())
               .build();
         }
       }

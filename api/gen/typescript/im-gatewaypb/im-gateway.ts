@@ -37,6 +37,14 @@ export interface PushMessageResponse {
   errorMessage: string;
 }
 
+export interface PushReadReceiptRequest {
+  msgId: string;
+  senderId: string;
+  readerId: string;
+  conversationId: string;
+  readAt: number;
+}
+
 function createBaseHealthCheckRequest(): HealthCheckRequest {
   return {};
 }
@@ -463,12 +471,157 @@ export const PushMessageResponse: MessageFns<PushMessageResponse> = {
   },
 };
 
+function createBasePushReadReceiptRequest(): PushReadReceiptRequest {
+  return { msgId: "", senderId: "", readerId: "", conversationId: "", readAt: 0 };
+}
+
+export const PushReadReceiptRequest: MessageFns<PushReadReceiptRequest> = {
+  encode(message: PushReadReceiptRequest, writer: BinaryWriter = new BinaryWriter()): BinaryWriter {
+    if (message.msgId !== "") {
+      writer.uint32(10).string(message.msgId);
+    }
+    if (message.senderId !== "") {
+      writer.uint32(18).string(message.senderId);
+    }
+    if (message.readerId !== "") {
+      writer.uint32(26).string(message.readerId);
+    }
+    if (message.conversationId !== "") {
+      writer.uint32(34).string(message.conversationId);
+    }
+    if (message.readAt !== 0) {
+      writer.uint32(40).int64(message.readAt);
+    }
+    return writer;
+  },
+
+  decode(input: BinaryReader | Uint8Array, length?: number): PushReadReceiptRequest {
+    const reader = input instanceof BinaryReader ? input : new BinaryReader(input);
+    const end = length === undefined ? reader.len : reader.pos + length;
+    const message = createBasePushReadReceiptRequest();
+    while (reader.pos < end) {
+      const tag = reader.uint32();
+      switch (tag >>> 3) {
+        case 1: {
+          if (tag !== 10) {
+            break;
+          }
+
+          message.msgId = reader.string();
+          continue;
+        }
+        case 2: {
+          if (tag !== 18) {
+            break;
+          }
+
+          message.senderId = reader.string();
+          continue;
+        }
+        case 3: {
+          if (tag !== 26) {
+            break;
+          }
+
+          message.readerId = reader.string();
+          continue;
+        }
+        case 4: {
+          if (tag !== 34) {
+            break;
+          }
+
+          message.conversationId = reader.string();
+          continue;
+        }
+        case 5: {
+          if (tag !== 40) {
+            break;
+          }
+
+          message.readAt = longToNumber(reader.int64());
+          continue;
+        }
+      }
+      if ((tag & 7) === 4 || tag === 0) {
+        break;
+      }
+      reader.skip(tag & 7);
+    }
+    return message;
+  },
+
+  fromJSON(object: any): PushReadReceiptRequest {
+    return {
+      msgId: isSet(object.msgId)
+        ? globalThis.String(object.msgId)
+        : isSet(object.msg_id)
+        ? globalThis.String(object.msg_id)
+        : "",
+      senderId: isSet(object.senderId)
+        ? globalThis.String(object.senderId)
+        : isSet(object.sender_id)
+        ? globalThis.String(object.sender_id)
+        : "",
+      readerId: isSet(object.readerId)
+        ? globalThis.String(object.readerId)
+        : isSet(object.reader_id)
+        ? globalThis.String(object.reader_id)
+        : "",
+      conversationId: isSet(object.conversationId)
+        ? globalThis.String(object.conversationId)
+        : isSet(object.conversation_id)
+        ? globalThis.String(object.conversation_id)
+        : "",
+      readAt: isSet(object.readAt)
+        ? globalThis.Number(object.readAt)
+        : isSet(object.read_at)
+        ? globalThis.Number(object.read_at)
+        : 0,
+    };
+  },
+
+  toJSON(message: PushReadReceiptRequest): unknown {
+    const obj: any = {};
+    if (message.msgId !== "") {
+      obj.msgId = message.msgId;
+    }
+    if (message.senderId !== "") {
+      obj.senderId = message.senderId;
+    }
+    if (message.readerId !== "") {
+      obj.readerId = message.readerId;
+    }
+    if (message.conversationId !== "") {
+      obj.conversationId = message.conversationId;
+    }
+    if (message.readAt !== 0) {
+      obj.readAt = Math.round(message.readAt);
+    }
+    return obj;
+  },
+
+  create<I extends Exact<DeepPartial<PushReadReceiptRequest>, I>>(base?: I): PushReadReceiptRequest {
+    return PushReadReceiptRequest.fromPartial(base ?? ({} as any));
+  },
+  fromPartial<I extends Exact<DeepPartial<PushReadReceiptRequest>, I>>(object: I): PushReadReceiptRequest {
+    const message = createBasePushReadReceiptRequest();
+    message.msgId = object.msgId ?? "";
+    message.senderId = object.senderId ?? "";
+    message.readerId = object.readerId ?? "";
+    message.conversationId = object.conversationId ?? "";
+    message.readAt = object.readAt ?? 0;
+    return message;
+  },
+};
+
 /** im-gateway-service service */
 export interface UimUgatewayUserviceService {
   /** Add your RPC methods here */
   HealthCheck(request: HealthCheckRequest): Promise<HealthCheckResponse>;
   /** PushMessage pushes a message to a user's connected device(s) */
   PushMessage(request: PushMessageRequest): Promise<PushMessageResponse>;
+  PushReadReceipt(request: PushReadReceiptRequest): Promise<PushMessageResponse>;
 }
 
 export const UimUgatewayUserviceServiceServiceName = "im_gateway_servicepb.UimUgatewayUserviceService";
@@ -480,6 +633,7 @@ export class UimUgatewayUserviceServiceClientImpl implements UimUgatewayUservice
     this.rpc = rpc;
     this.HealthCheck = this.HealthCheck.bind(this);
     this.PushMessage = this.PushMessage.bind(this);
+    this.PushReadReceipt = this.PushReadReceipt.bind(this);
   }
   HealthCheck(request: HealthCheckRequest): Promise<HealthCheckResponse> {
     const data = HealthCheckRequest.encode(request).finish();
@@ -490,6 +644,12 @@ export class UimUgatewayUserviceServiceClientImpl implements UimUgatewayUservice
   PushMessage(request: PushMessageRequest): Promise<PushMessageResponse> {
     const data = PushMessageRequest.encode(request).finish();
     const promise = this.rpc.request(this.service, "PushMessage", data);
+    return promise.then((data) => PushMessageResponse.decode(new BinaryReader(data)));
+  }
+
+  PushReadReceipt(request: PushReadReceiptRequest): Promise<PushMessageResponse> {
+    const data = PushReadReceiptRequest.encode(request).finish();
+    const promise = this.rpc.request(this.service, "PushReadReceipt", data);
     return promise.then((data) => PushMessageResponse.decode(new BinaryReader(data)));
   }
 }
