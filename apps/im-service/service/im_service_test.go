@@ -17,6 +17,8 @@ import (
 	"github.com/pingxin403/cuckoo/apps/im-service/sequence"
 	logging "github.com/pingxin403/cuckoo/libs/observability/logging"
 	"github.com/redis/go-redis/v9"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -146,6 +148,53 @@ type mockKafkaProducer struct {
 
 type mockGatewayClient struct {
 	fail bool
+}
+
+type flakyGatewayClient struct {
+	failUntil int
+	attempts  int
+	errText   string
+}
+
+func (m *flakyGatewayClient) PushMessage(ctx context.Context, gatewayAddr string, req *GatewayPushRequest) (*GatewayPushResponse, error) {
+	_ = ctx
+	_ = gatewayAddr
+	_ = req
+	m.attempts++
+	if m.attempts <= m.failUntil {
+		return nil, fmt.Errorf("%s", m.errText)
+	}
+
+	return &GatewayPushResponse{Success: true, DeliveredCount: 1}, nil
+}
+
+type captureIMServiceMetrics struct {
+	successes []string
+	failures  []string
+	retries   []string
+	timeouts  []string
+	latencies []string
+}
+
+func (m *captureIMServiceMetrics) IncDeliverySuccess(path string) {
+	m.successes = append(m.successes, path)
+}
+
+func (m *captureIMServiceMetrics) IncDeliveryFailure(path string, reason string) {
+	m.failures = append(m.failures, path+":"+reason)
+}
+
+func (m *captureIMServiceMetrics) IncDeliveryRetry(path string) {
+	m.retries = append(m.retries, path)
+}
+
+func (m *captureIMServiceMetrics) IncDeliveryTimeout(path string) {
+	m.timeouts = append(m.timeouts, path)
+}
+
+func (m *captureIMServiceMetrics) ObserveDeliveryLatency(path string, duration time.Duration) {
+	_ = duration
+	m.latencies = append(m.latencies, path)
 }
 
 type captureLogger struct {
@@ -911,9 +960,8 @@ func TestRoutePrivateMessage_KafkaFailure(t *testing.T) {
 		t.Fatalf("RoutePrivateMessage failed: %v", err)
 	}
 
-	// Should return error when Kafka publish fails
-	if resp.ErrorCode != impb.IMErrorCode_IM_ERROR_CODE_DELIVERY_FAILED {
-		t.Errorf("Expected DELIVERY_FAILED error, got %v", resp.ErrorCode)
+	if resp.ErrorCode != impb.IMErrorCode_IM_ERROR_CODE_KAFKA_ERROR {
+		t.Errorf("Expected KAFKA_ERROR, got %v", resp.ErrorCode)
 	}
 }
 
@@ -1014,4 +1062,67 @@ func TestRouteToOfflineChannel(t *testing.T) {
 	if msg.SequenceNumber != 12345 {
 		t.Errorf("Expected sequence number 12345, got %d", msg.SequenceNumber)
 	}
+}
+
+func TestRoutePrivateMessage_RecordsOnlineDeliveryMetrics(t *testing.T) {
+	service, mockReg, _, _, cleanup := setupTestService(t)
+	defer cleanup()
+
+	_ = mockReg.RegisterUser(context.Background(), "user2", "device1", "gateway1")
+
+	metrics := &captureIMServiceMetrics{}
+	service.SetMetrics(metrics)
+
+	req := &impb.RoutePrivateMessageRequest{
+		MsgId:           "msg-metric-online-001",
+		SenderId:        "user1",
+		RecipientId:     "user2",
+		Content:         "hello",
+		MessageType:     impb.MessageType_MESSAGE_TYPE_TEXT,
+		ClientTimestamp: timestamppb.Now(),
+	}
+
+	resp, err := service.RoutePrivateMessage(context.Background(), req)
+	require.NoError(t, err)
+	require.Equal(t, impb.IMErrorCode_IM_ERROR_CODE_UNSPECIFIED, resp.ErrorCode)
+	require.Equal(t, impb.DeliveryStatus_DELIVERY_STATUS_DELIVERED, resp.DeliveryStatus)
+
+	assert.Equal(t, []string{"online"}, metrics.successes)
+	assert.Empty(t, metrics.failures)
+	assert.Empty(t, metrics.retries)
+	assert.Empty(t, metrics.timeouts)
+	assert.Equal(t, []string{"online"}, metrics.latencies)
+}
+
+func TestRoutePrivateMessage_RecordsRetryAndTimeoutMetrics(t *testing.T) {
+	service, mockReg, _, _, cleanup := setupTestService(t)
+	defer cleanup()
+
+	_ = mockReg.RegisterUser(context.Background(), "user2", "device1", "gateway1")
+	service.gatewayClient = &flakyGatewayClient{
+		failUntil: 3,
+		errText:   "context deadline exceeded",
+	}
+
+	metrics := &captureIMServiceMetrics{}
+	service.SetMetrics(metrics)
+
+	req := &impb.RoutePrivateMessageRequest{
+		MsgId:           "msg-metric-retry-001",
+		SenderId:        "user1",
+		RecipientId:     "user2",
+		Content:         "hello",
+		MessageType:     impb.MessageType_MESSAGE_TYPE_TEXT,
+		ClientTimestamp: timestamppb.Now(),
+	}
+
+	resp, err := service.RoutePrivateMessage(context.Background(), req)
+	require.NoError(t, err)
+	require.Equal(t, impb.IMErrorCode_IM_ERROR_CODE_UNSPECIFIED, resp.ErrorCode)
+	require.Equal(t, impb.DeliveryStatus_DELIVERY_STATUS_OFFLINE, resp.DeliveryStatus)
+
+	assert.Equal(t, []string{"offline_fallback"}, metrics.successes)
+	assert.Len(t, metrics.retries, service.config.MaxRetries-1)
+	assert.NotEmpty(t, metrics.timeouts)
+	assert.Equal(t, []string{"offline_fallback"}, metrics.latencies)
 }

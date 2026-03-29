@@ -975,9 +975,25 @@ curl http://localhost:8081/metrics
 - P99 latency > 500ms for 5 minutes (P1)
 - Message loss rate > 0.01% (Circuit Breaker)
 - ACK timeout rate > 5% (P2)
+- Cross-gateway forward failure rate > 5% for 5 minutes (P2)
+- Kafka consumer lag > 5000 for 5 minutes on critical topics (P2)
 - Active connections > 90K per node (Warning)
 - CPU usage > 80% for 10 minutes (Warning)
 - Memory usage > 90% (Critical)
+
+### P1 Reliability Alert Queries
+```promql
+# ACK timeout rate
+rate(im_gateway_ack_timeouts_total[5m]) / rate(im_gateway_messages_delivered_total[5m]) > 0.05
+
+# Cross-gateway forward failure rate
+sum(rate(im_gateway_cross_gateway_forward_total{result="failure"}[5m]))
+/
+clamp_min(sum(rate(im_gateway_cross_gateway_forward_total[5m])), 1) > 0.05
+
+# Kafka consumer lag (critical topics)
+max(im_gateway_kafka_consumer_lag{topic=~"group_msg|read_receipt|membership_change"}) > 5000
+```
 
 ## References
 

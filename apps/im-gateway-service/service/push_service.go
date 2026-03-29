@@ -4,13 +4,24 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
+
+	"github.com/pingxin403/cuckoo/libs/observability/tracing"
 )
 
 // PushService implements the gRPC service for pushing messages to clients.
 type PushService struct {
 	gateway         *GatewayService
 	remoteForwarder RemoteForwarder
+	metrics         CrossGatewayMetrics
+	tracer          tracing.Tracer
+}
+
+type CrossGatewayMetrics interface {
+	IncForwardSuccess(kind string)
+	IncForwardFailure(kind, reason string)
+	ObserveForwardLatency(kind string, duration time.Duration)
 }
 
 type RemoteForwarder interface {
@@ -33,6 +44,7 @@ func NewPushService(gateway *GatewayService) *PushService {
 	return &PushService{
 		gateway:         gateway,
 		remoteForwarder: &noOpRemoteForwarder{},
+		tracer:          tracing.NewNoOpTracer(),
 	}
 }
 
@@ -42,6 +54,18 @@ func (p *PushService) SetRemoteForwarder(forwarder RemoteForwarder) {
 		return
 	}
 	p.remoteForwarder = forwarder
+}
+
+func (p *PushService) SetMetrics(metrics CrossGatewayMetrics) {
+	p.metrics = metrics
+}
+
+func (p *PushService) SetTracer(tracer tracing.Tracer) {
+	if tracer == nil {
+		p.tracer = tracing.NewNoOpTracer()
+		return
+	}
+	p.tracer = tracer
 }
 
 // PushMessageRequest represents a message push request from IM Service.
@@ -142,10 +166,40 @@ func (p *PushService) PushMessage(ctx context.Context, req *PushMessageRequest) 
 			} else {
 				forwardReq := *req
 				forwardReq.DeviceID = location.DeviceID
-				forwardResp, forwardErr := p.remoteForwarder.ForwardMessage(ctx, location.GatewayNode, &forwardReq)
+				spanCtx, span := p.tracer.StartSpan(ctx, "im-gateway.forward.message", tracing.WithSpanKind(tracing.SpanKindClient), tracing.WithAttributes(map[string]interface{}{
+					"msg.id":           req.MsgID,
+					"recipient.id":     req.RecipientID,
+					"target.gateway":   location.GatewayNode,
+					"target.device_id": location.DeviceID,
+				}))
+				forwardStart := time.Now()
+				forwardResp, forwardErr := p.remoteForwarder.ForwardMessage(spanCtx, location.GatewayNode, &forwardReq)
+				if p.metrics != nil {
+					p.metrics.ObserveForwardLatency("message", time.Since(forwardStart))
+				}
 				if forwardErr != nil || forwardResp == nil || !forwardResp.Success || forwardResp.DeliveredCount <= 0 {
+					failureReason := classifyForwardFailureReason(forwardErr, forwardResp)
+					span.SetAttribute("forward.result", "failure")
+					span.SetAttribute("forward.failure_reason", failureReason)
+					span.SetAttribute("forward.latency_ms", time.Since(forwardStart).Milliseconds())
+					if forwardErr != nil {
+						span.RecordError(forwardErr)
+						span.SetStatus(tracing.StatusCodeError, forwardErr.Error())
+					}
+					span.End()
+					if p.metrics != nil {
+						p.metrics.IncForwardFailure("message", failureReason)
+					}
 					failedDevices = append(failedDevices, location.DeviceID)
 					continue
+				}
+				span.SetAttribute("forward.result", "success")
+				span.SetAttribute("forward.delivered_count", forwardResp.DeliveredCount)
+				span.SetAttribute("forward.latency_ms", time.Since(forwardStart).Milliseconds())
+				span.SetStatus(tracing.StatusCodeOK, "")
+				span.End()
+				if p.metrics != nil {
+					p.metrics.IncForwardSuccess("message")
 				}
 				deliveredCount += forwardResp.DeliveredCount
 			}
@@ -376,10 +430,41 @@ func (p *PushService) PushReadReceipt(ctx context.Context, req *PushReadReceiptR
 				failedDevices = append(failedDevices, location.DeviceID)
 			}
 		} else {
-			forwardResp, forwardErr := p.remoteForwarder.ForwardReadReceipt(ctx, location.GatewayNode, req)
+			spanCtx, span := p.tracer.StartSpan(ctx, "im-gateway.forward.read_receipt", tracing.WithSpanKind(tracing.SpanKindClient), tracing.WithAttributes(map[string]interface{}{
+				"msg.id":           req.MsgID,
+				"sender.id":        req.SenderID,
+				"reader.id":        req.ReaderID,
+				"target.gateway":   location.GatewayNode,
+				"target.device_id": location.DeviceID,
+			}))
+			forwardStart := time.Now()
+			forwardResp, forwardErr := p.remoteForwarder.ForwardReadReceipt(spanCtx, location.GatewayNode, req)
+			if p.metrics != nil {
+				p.metrics.ObserveForwardLatency("read_receipt", time.Since(forwardStart))
+			}
 			if forwardErr != nil || forwardResp == nil || !forwardResp.Success || forwardResp.DeliveredCount <= 0 {
+				failureReason := classifyForwardFailureReason(forwardErr, forwardResp)
+				span.SetAttribute("forward.result", "failure")
+				span.SetAttribute("forward.failure_reason", failureReason)
+				span.SetAttribute("forward.latency_ms", time.Since(forwardStart).Milliseconds())
+				if forwardErr != nil {
+					span.RecordError(forwardErr)
+					span.SetStatus(tracing.StatusCodeError, forwardErr.Error())
+				}
+				span.End()
+				if p.metrics != nil {
+					p.metrics.IncForwardFailure("read_receipt", failureReason)
+				}
 				failedDevices = append(failedDevices, location.DeviceID)
 				continue
+			}
+			span.SetAttribute("forward.result", "success")
+			span.SetAttribute("forward.delivered_count", forwardResp.DeliveredCount)
+			span.SetAttribute("forward.latency_ms", time.Since(forwardStart).Milliseconds())
+			span.SetStatus(tracing.StatusCodeOK, "")
+			span.End()
+			if p.metrics != nil {
+				p.metrics.IncForwardSuccess("read_receipt")
 			}
 			deliveredCount += forwardResp.DeliveredCount
 		}
@@ -410,4 +495,35 @@ func (p *PushService) PushReadReceipt(ctx context.Context, req *PushReadReceiptR
 		DeliveredCount: deliveredCount,
 		FailedDevices:  failedDevices,
 	}, nil
+}
+
+func classifyForwardFailureReason(err error, resp *PushMessageResponse) string {
+	if err != nil {
+		errText := strings.ToLower(err.Error())
+		switch {
+		case strings.Contains(errText, "deadline") || strings.Contains(errText, "timeout"):
+			return "timeout"
+		case strings.Contains(errText, "unavailable"):
+			return "unavailable"
+		default:
+			return "transport_error"
+		}
+	}
+
+	if resp == nil {
+		return "empty_response"
+	}
+
+	if !resp.Success {
+		if resp.ErrorMessage != "" {
+			return "remote_error"
+		}
+		return "not_delivered"
+	}
+
+	if resp.DeliveredCount <= 0 {
+		return "zero_delivered"
+	}
+
+	return "unknown"
 }

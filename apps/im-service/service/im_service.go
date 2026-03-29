@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/pingxin403/cuckoo/api/gen/go/impb"
@@ -47,6 +48,7 @@ type GatewayPushResponse struct {
 	Success        bool
 	DeliveredCount int32
 	FailedDevices  []string
+	ErrorCode      string
 	ErrorMessage   string
 }
 
@@ -62,6 +64,15 @@ type IMService struct {
 	gatewayClient GatewayClientInterface
 	config        IMServiceConfig
 	logger        logging.Logger
+	metrics       IMServiceMetrics
+}
+
+type IMServiceMetrics interface {
+	IncDeliverySuccess(path string)
+	IncDeliveryFailure(path string, reason string)
+	IncDeliveryRetry(path string)
+	IncDeliveryTimeout(path string)
+	ObserveDeliveryLatency(path string, duration time.Duration)
 }
 
 // EncryptionInterface defines the interface for message encryption.
@@ -123,14 +134,29 @@ func NewIMService(
 	}
 }
 
+func (s *IMService) SetMetrics(metrics IMServiceMetrics) {
+	s.metrics = metrics
+}
+
 // RoutePrivateMessage routes a private message to a specific user.
 // Validates: Requirements 1.1, 1.2, 3.1
 func (s *IMService) RoutePrivateMessage(
 	ctx context.Context,
 	req *impb.RoutePrivateMessageRequest,
 ) (*impb.RoutePrivateMessageResponse, error) {
+	start := time.Now()
+	path := "offline"
+	defer func() {
+		if s.metrics != nil {
+			s.metrics.ObserveDeliveryLatency(path, time.Since(start))
+		}
+	}()
+
 	// Validate request
 	if err := s.validatePrivateMessageRequest(req); err != nil {
+		if s.metrics != nil {
+			s.metrics.IncDeliveryFailure("validation", err.Code.String())
+		}
 		return &impb.RoutePrivateMessageResponse{
 			ErrorCode:    err.Code,
 			ErrorMessage: err.Message,
@@ -140,6 +166,9 @@ func (s *IMService) RoutePrivateMessage(
 	// Apply sensitive word filter (Requirement 11.4, 17.5)
 	filteredContent, err := s.applyFilter(req.Content)
 	if err != nil {
+		if s.metrics != nil {
+			s.metrics.IncDeliveryFailure("filter", impb.IMErrorCode_IM_ERROR_CODE_SENSITIVE_CONTENT.String())
+		}
 		return &impb.RoutePrivateMessageResponse{
 			ErrorCode:    impb.IMErrorCode_IM_ERROR_CODE_SENSITIVE_CONTENT,
 			ErrorMessage: err.Error(),
@@ -151,6 +180,9 @@ func (s *IMService) RoutePrivateMessage(
 	conversationID := s.getPrivateConversationID(req.SenderId, req.RecipientId)
 	seqNum, err := s.seqGen.GenerateSequence(ctx, sequence.ConversationTypePrivate, conversationID)
 	if err != nil {
+		if s.metrics != nil {
+			s.metrics.IncDeliveryFailure("sequence", impb.IMErrorCode_IM_ERROR_CODE_SEQUENCE_ERROR.String())
+		}
 		return &impb.RoutePrivateMessageResponse{
 			ErrorCode:    impb.IMErrorCode_IM_ERROR_CODE_SEQUENCE_ERROR,
 			ErrorMessage: fmt.Sprintf("failed to assign sequence number: %v", err),
@@ -171,6 +203,9 @@ func (s *IMService) RoutePrivateMessage(
 	// Query Registry for recipient (Requirement 7.3, 7.4)
 	locations, err := s.registry.LookupUser(ctx, req.RecipientId)
 	if err != nil {
+		if s.metrics != nil {
+			s.metrics.IncDeliveryFailure("registry", impb.IMErrorCode_IM_ERROR_CODE_REGISTRY_ERROR.String())
+		}
 		return &impb.RoutePrivateMessageResponse{
 			ErrorCode:    impb.IMErrorCode_IM_ERROR_CODE_REGISTRY_ERROR,
 			ErrorMessage: fmt.Sprintf("failed to lookup recipient: %v", err),
@@ -180,29 +215,48 @@ func (s *IMService) RoutePrivateMessage(
 	// Determine delivery path
 	var deliveryStatus impb.DeliveryStatus
 	if len(locations) > 0 {
-		// Fast Path: Recipient is online (Requirement 1.1, 3.1)
-		// Try delivery with retry logic (Requirement 3.2, 3.3, 3.4)
-		delivered := s.deliverWithRetry(ctx, req, locations, seqNum)
+		path = "online"
+		delivered, deliveryErrCode := s.deliverWithRetryWithCode(ctx, req, locations, seqNum)
 		if delivered {
 			deliveryStatus = impb.DeliveryStatus_DELIVERY_STATUS_DELIVERED
+			if s.metrics != nil {
+				s.metrics.IncDeliverySuccess("online")
+			}
 		} else {
-			// Fallback to Offline Channel after retry exhaustion
 			if err := s.routeToOfflineChannel(ctx, req, seqNum); err != nil {
-				// Log error but return success (message is queued)
-				deliveryStatus = impb.DeliveryStatus_DELIVERY_STATUS_OFFLINE
+				if deliveryErrCode == impb.IMErrorCode_IM_ERROR_CODE_UNSPECIFIED {
+					deliveryErrCode = impb.IMErrorCode_IM_ERROR_CODE_DELIVERY_FAILED
+				}
+				if s.metrics != nil {
+					s.metrics.IncDeliveryFailure("online", deliveryErrCode.String())
+				}
+				return &impb.RoutePrivateMessageResponse{
+					ErrorCode:    deliveryErrCode,
+					ErrorMessage: fmt.Sprintf("delivery retry exhausted and offline fallback failed: %v", err),
+				}, nil
 			} else {
+				path = "offline_fallback"
 				deliveryStatus = impb.DeliveryStatus_DELIVERY_STATUS_OFFLINE
+				if s.metrics != nil {
+					s.metrics.IncDeliverySuccess("offline_fallback")
+				}
 			}
 		}
 	} else {
-		// Slow Path: Recipient is offline (Requirement 1.2, 4.1)
+		path = "offline"
 		if err := s.routeToOfflineChannel(ctx, req, seqNum); err != nil {
+			if s.metrics != nil {
+				s.metrics.IncDeliveryFailure("offline", impb.IMErrorCode_IM_ERROR_CODE_KAFKA_ERROR.String())
+			}
 			return &impb.RoutePrivateMessageResponse{
-				ErrorCode:    impb.IMErrorCode_IM_ERROR_CODE_DELIVERY_FAILED,
+				ErrorCode:    impb.IMErrorCode_IM_ERROR_CODE_KAFKA_ERROR,
 				ErrorMessage: fmt.Sprintf("failed to route to offline channel: %v", err),
 			}, nil
 		}
 		deliveryStatus = impb.DeliveryStatus_DELIVERY_STATUS_OFFLINE
+		if s.metrics != nil {
+			s.metrics.IncDeliverySuccess("offline")
+		}
 	}
 
 	// Mark as processed in dedup set (Requirement 8.2)
@@ -476,51 +530,94 @@ func (e *IMError) Error() string {
 	return e.Message
 }
 
+func mapGatewayErrorCodeToIMErrorCode(code string) impb.IMErrorCode {
+	switch code {
+	case "TIMEOUT":
+		return impb.IMErrorCode_IM_ERROR_CODE_DELIVERY_TIMEOUT
+	case "UNAVAILABLE", "RESOURCE_EXHAUSTED", "CIRCUIT_OPEN", "DIAL_FAILURE":
+		return impb.IMErrorCode_IM_ERROR_CODE_DELIVERY_FAILED
+	default:
+		return impb.IMErrorCode_IM_ERROR_CODE_INTERNAL_ERROR
+	}
+}
+
+func mapGatewayPushFailureToIMError(resp *GatewayPushResponse, err error) impb.IMErrorCode {
+	if resp != nil && resp.ErrorCode != "" {
+		return mapGatewayErrorCodeToIMErrorCode(resp.ErrorCode)
+	}
+
+	if err != nil {
+		errText := strings.ToLower(err.Error())
+		if strings.Contains(errText, "deadline") || strings.Contains(errText, "timeout") {
+			return impb.IMErrorCode_IM_ERROR_CODE_DELIVERY_TIMEOUT
+		}
+	}
+
+	return impb.IMErrorCode_IM_ERROR_CODE_DELIVERY_FAILED
+}
+
 // deliverWithRetry attempts to deliver a message with exponential backoff retry logic.
 // Validates: Requirements 3.2, 3.3, 3.4
 // deliverWithRetry attempts to deliver a message with exponential backoff retry logic.
 // Validates: Requirements 3.2, 3.3, 3.4
 func (s *IMService) deliverWithRetry(ctx context.Context, req *impb.RoutePrivateMessageRequest, locations []registry.GatewayLocation, seqNum int64) bool {
+	delivered, _ := s.deliverWithRetryWithCode(ctx, req, locations, seqNum)
+	return delivered
+}
+
+func (s *IMService) deliverWithRetryWithCode(ctx context.Context, req *impb.RoutePrivateMessageRequest, locations []registry.GatewayLocation, seqNum int64) (bool, impb.IMErrorCode) {
+	lastCode := impb.IMErrorCode_IM_ERROR_CODE_UNSPECIFIED
 	for attempt := 0; attempt < s.config.MaxRetries; attempt++ {
-		// Create context with timeout
 		deliveryCtx, cancel := context.WithTimeout(ctx, s.config.DeliveryTimeout)
 
-		// Try to deliver to Gateway nodes
-		delivered := s.tryDelivery(deliveryCtx, req, locations, seqNum)
+		delivered, failureCode := s.tryDeliveryWithCode(deliveryCtx, req, locations, seqNum)
 		cancel()
 
 		if delivered {
-			return true
+			return true, impb.IMErrorCode_IM_ERROR_CODE_UNSPECIFIED
 		}
 
-		// If not last attempt, wait with exponential backoff
+		if failureCode != impb.IMErrorCode_IM_ERROR_CODE_UNSPECIFIED {
+			lastCode = failureCode
+			if s.metrics != nil && failureCode == impb.IMErrorCode_IM_ERROR_CODE_DELIVERY_TIMEOUT {
+				s.metrics.IncDeliveryTimeout("online")
+			}
+		}
+
 		if attempt < s.config.MaxRetries-1 {
+			if s.metrics != nil {
+				s.metrics.IncDeliveryRetry("online")
+			}
 			backoff := s.config.RetryBackoff[attempt]
 			time.Sleep(backoff)
 		}
 	}
 
-	// All retries exhausted
-	return false
+	if lastCode == impb.IMErrorCode_IM_ERROR_CODE_UNSPECIFIED {
+		lastCode = impb.IMErrorCode_IM_ERROR_CODE_DELIVERY_FAILED
+	}
+
+	return false, lastCode
 }
 
-// tryDelivery attempts to deliver a message to Gateway nodes.
 func (s *IMService) tryDelivery(ctx context.Context, req *impb.RoutePrivateMessageRequest, locations []registry.GatewayLocation, seqNum int64) bool {
+	delivered, _ := s.tryDeliveryWithCode(ctx, req, locations, seqNum)
+	return delivered
+}
+
+func (s *IMService) tryDeliveryWithCode(ctx context.Context, req *impb.RoutePrivateMessageRequest, locations []registry.GatewayLocation, seqNum int64) (bool, impb.IMErrorCode) {
 	if len(locations) == 0 {
-		return false
+		return false, impb.IMErrorCode_IM_ERROR_CODE_UNSPECIFIED
 	}
 
-	// If no gateway client configured, cannot deliver
 	if s.gatewayClient == nil {
-		return false
+		return false, impb.IMErrorCode_IM_ERROR_CODE_DELIVERY_FAILED
 	}
 
-	// Track successful deliveries
 	successCount := 0
+	lastCode := impb.IMErrorCode_IM_ERROR_CODE_UNSPECIFIED
 
-	// Try to deliver to each gateway node where the user has devices
 	for _, location := range locations {
-		// Build push request with the real sequence number
 		pushReq := &GatewayPushRequest{
 			MsgID:          req.MsgId,
 			RecipientID:    req.RecipientId,
@@ -534,23 +631,45 @@ func (s *IMService) tryDelivery(ctx context.Context, req *impb.RoutePrivateMessa
 
 		resp, err := s.gatewayClient.PushMessage(ctx, location.GatewayNode, pushReq)
 		if err != nil {
+			failureCode := mapGatewayPushFailureToIMError(resp, err)
+			if failureCode != impb.IMErrorCode_IM_ERROR_CODE_UNSPECIFIED {
+				lastCode = failureCode
+			}
 			s.logger.Error(ctx, "failed to push message to gateway node",
 				"gateway_node", location.GatewayNode,
 				"device_id", location.DeviceID,
 				"msg_id", req.MsgId,
 				"recipient_id", req.RecipientId,
+				"gateway_error_code", func() string {
+					if resp == nil {
+						return ""
+					}
+					return resp.ErrorCode
+				}(),
 				"error", err)
 			continue
 		}
 
-		// Check if delivery was successful
 		if resp.Success && resp.DeliveredCount > 0 {
 			successCount++
+			continue
+		}
+
+		failureCode := mapGatewayPushFailureToIMError(resp, nil)
+		if failureCode != impb.IMErrorCode_IM_ERROR_CODE_UNSPECIFIED {
+			lastCode = failureCode
 		}
 	}
 
-	// Return true if at least one device received the message
-	return successCount > 0
+	if successCount > 0 {
+		return true, impb.IMErrorCode_IM_ERROR_CODE_UNSPECIFIED
+	}
+
+	if lastCode == impb.IMErrorCode_IM_ERROR_CODE_UNSPECIFIED {
+		lastCode = impb.IMErrorCode_IM_ERROR_CODE_DELIVERY_FAILED
+	}
+
+	return false, lastCode
 }
 
 // routeToOfflineChannel routes a message to the Kafka offline_msg topic.

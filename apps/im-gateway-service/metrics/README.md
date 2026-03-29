@@ -23,7 +23,18 @@ This service was migrated from a custom Prometheus implementation to OpenTelemet
 - `im_gateway_messages_delivered_total` (counter) - Total messages successfully delivered
 - `im_gateway_messages_failed_total` (counter) - Total message delivery failures
 - `im_gateway_ack_timeouts_total` (counter) - Total ACK timeouts
+- `im_gateway_ack_pending_total` (counter) - Total ACK pending registrations
+- `im_gateway_ack_success_total` (counter) - Total ACK successful transitions
+- `im_gateway_ack_late_total` (counter) - Total late ACK transitions (after timeout)
 - `im_gateway_message_delivery_latency_seconds` (histogram) - Message delivery latency distribution
+
+### Cross-Gateway Forwarding Metrics
+- `im_gateway_cross_gateway_forward_total{kind,result,reason}` (counter) - Cross-gateway forwarding totals by kind/result/reason
+- `im_gateway_cross_gateway_forward_latency_seconds{kind}` (histogram) - Cross-gateway forwarding latency distribution
+
+### Kafka Consumer Reliability Metrics
+- `im_gateway_kafka_consumer_lag{topic}` (gauge) - Kafka consumer lag by topic
+- `im_gateway_kafka_consumer_errors_total{topic}` (counter) - Kafka consumer read/process errors by topic
 
 ### Offline Queue Metrics
 - `im_gateway_offline_queue_size` (gauge) - Current size of offline message queue
@@ -86,6 +97,18 @@ histogram_quantile(0.99, rate(im_gateway_message_delivery_latency_seconds_bucket
 **ACK timeout rate:**
 ```promql
 rate(im_gateway_ack_timeouts_total[5m]) / rate(im_gateway_messages_delivered_total[5m])
+```
+
+**Cross-gateway forward failure rate:**
+```promql
+sum(rate(im_gateway_cross_gateway_forward_total{result="failure"}[5m]))
+/
+clamp_min(sum(rate(im_gateway_cross_gateway_forward_total[5m])), 1)
+```
+
+**Kafka consumer lag (max across critical topics):**
+```promql
+max(im_gateway_kafka_consumer_lag{topic=~"group_msg|read_receipt|membership_change"})
 ```
 
 **Cache hit rate:**

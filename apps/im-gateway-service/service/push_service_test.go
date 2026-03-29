@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"net"
+	"sync"
 	"testing"
 	"time"
 
 	im_gatewaypb "github.com/pingxin403/cuckoo/api/gen/go/im-gatewaypb"
+	"github.com/pingxin403/cuckoo/libs/observability/tracing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
@@ -21,6 +23,84 @@ type mockRemoteForwarder struct {
 
 type mockGatewayGroupMemberProvider struct {
 	getGroupMembersFunc func(ctx context.Context, groupID string) ([]string, error)
+}
+
+type captureCrossGatewayMetrics struct {
+	mu             sync.Mutex
+	successKinds   []string
+	failureRecords []string
+	latencyKinds   []string
+}
+
+type capturePushSpan struct {
+	name       string
+	attributes map[string]interface{}
+	statusCode tracing.StatusCode
+	errorCount int
+}
+
+func (s *capturePushSpan) End() {}
+
+func (s *capturePushSpan) SetAttribute(key string, value interface{}) {
+	s.attributes[key] = value
+}
+
+func (s *capturePushSpan) SetAttributes(attributes map[string]interface{}) {
+	for k, v := range attributes {
+		s.attributes[k] = v
+	}
+}
+
+func (s *capturePushSpan) RecordError(err error) {
+	if err != nil {
+		s.errorCount++
+	}
+}
+
+func (s *capturePushSpan) SetStatus(code tracing.StatusCode, description string) {
+	_ = description
+	s.statusCode = code
+}
+
+type capturePushTracer struct {
+	mu    sync.Mutex
+	spans []*capturePushSpan
+}
+
+func (t *capturePushTracer) StartSpan(ctx context.Context, name string, opts ...tracing.SpanOption) (context.Context, tracing.Span) {
+	cfg := &tracing.SpanConfig{Attributes: make(map[string]interface{})}
+	for _, opt := range opts {
+		opt(cfg)
+	}
+	span := &capturePushSpan{name: name, attributes: cfg.Attributes}
+	t.mu.Lock()
+	t.spans = append(t.spans, span)
+	t.mu.Unlock()
+	return ctx, span
+}
+
+func (t *capturePushTracer) Shutdown(ctx context.Context) error {
+	_ = ctx
+	return nil
+}
+
+func (m *captureCrossGatewayMetrics) IncForwardSuccess(kind string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.successKinds = append(m.successKinds, kind)
+}
+
+func (m *captureCrossGatewayMetrics) IncForwardFailure(kind, reason string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.failureRecords = append(m.failureRecords, kind+":"+reason)
+}
+
+func (m *captureCrossGatewayMetrics) ObserveForwardLatency(kind string, duration time.Duration) {
+	_ = duration
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.latencyKinds = append(m.latencyKinds, kind)
 }
 
 func (m *mockGatewayGroupMemberProvider) GetGroupMembers(ctx context.Context, groupID string) ([]string, error) {
@@ -171,6 +251,149 @@ func TestPushService_PushReadReceipt_RemoteGatewayForwarding(t *testing.T) {
 	assert.True(t, resp.Success)
 	assert.Equal(t, int32(1), resp.DeliveredCount)
 	assert.Empty(t, resp.FailedDevices)
+}
+
+func TestPushService_RemoteForwardMetrics_MessageSuccessAndFailure(t *testing.T) {
+	gateway, _, mockRegistry, _ := setupTestGateway(t)
+	metrics := &captureCrossGatewayMetrics{}
+	gateway.pushService.SetMetrics(metrics)
+
+	mockRegistry.SetUserLocations("user123", []GatewayLocation{{
+		GatewayNode: "gateway-node-2",
+		DeviceID:    "device-remote-1",
+		ConnectedAt: time.Now().Unix(),
+	}})
+
+	gateway.pushService.SetRemoteForwarder(&mockRemoteForwarder{
+		forwardMessageFunc: func(ctx context.Context, gatewayNode string, req *PushMessageRequest) (*PushMessageResponse, error) {
+			return &PushMessageResponse{Success: true, DeliveredCount: 1}, nil
+		},
+	})
+
+	resp, err := gateway.pushService.PushMessage(context.Background(), &PushMessageRequest{
+		MsgID:       "msg-metric-1",
+		RecipientID: "user123",
+		SenderID:    "sender1",
+		Content:     "ok",
+		Timestamp:   time.Now().Unix(),
+	})
+	require.NoError(t, err)
+	require.True(t, resp.Success)
+
+	gateway.pushService.SetRemoteForwarder(&mockRemoteForwarder{
+		forwardMessageFunc: func(ctx context.Context, gatewayNode string, req *PushMessageRequest) (*PushMessageResponse, error) {
+			return nil, errors.New("temporary unavailable")
+		},
+	})
+
+	resp, err = gateway.pushService.PushMessage(context.Background(), &PushMessageRequest{
+		MsgID:       "msg-metric-2",
+		RecipientID: "user123",
+		SenderID:    "sender1",
+		Content:     "fail",
+		Timestamp:   time.Now().Unix(),
+	})
+	require.NoError(t, err)
+	require.False(t, resp.Success)
+
+	metrics.mu.Lock()
+	defer metrics.mu.Unlock()
+	assert.Contains(t, metrics.successKinds, "message")
+	assert.Contains(t, metrics.latencyKinds, "message")
+	assert.NotEmpty(t, metrics.failureRecords)
+	assert.Contains(t, metrics.failureRecords[0], "message:")
+}
+
+func TestPushService_RemoteForwardMetrics_ReadReceiptFailureReason(t *testing.T) {
+	gateway, _, mockRegistry, _ := setupTestGateway(t)
+	metrics := &captureCrossGatewayMetrics{}
+	gateway.pushService.SetMetrics(metrics)
+
+	mockRegistry.SetUserLocations("sender123", []GatewayLocation{{
+		GatewayNode: "gateway-node-2",
+		DeviceID:    "device-remote-1",
+		ConnectedAt: time.Now().Unix(),
+	}})
+
+	gateway.pushService.SetRemoteForwarder(&mockRemoteForwarder{
+		forwardReadReceiptFunc: func(ctx context.Context, gatewayNode string, req *PushReadReceiptRequest) (*PushMessageResponse, error) {
+			return &PushMessageResponse{Success: false, DeliveredCount: 0}, nil
+		},
+	})
+
+	resp, err := gateway.pushService.PushReadReceipt(context.Background(), &PushReadReceiptRequest{
+		MsgID:          "msg-rr-metric-1",
+		SenderID:       "sender123",
+		ReaderID:       "reader456",
+		ConversationID: "conv-1",
+		ReadAt:         time.Now().Unix(),
+	})
+	require.NoError(t, err)
+	require.False(t, resp.Success)
+
+	metrics.mu.Lock()
+	defer metrics.mu.Unlock()
+	assert.Contains(t, metrics.latencyKinds, "read_receipt")
+	assert.NotEmpty(t, metrics.failureRecords)
+	assert.Contains(t, metrics.failureRecords[0], "read_receipt:")
+}
+
+func TestPushService_Tracing_RemoteForwardMessageFailureAndSuccess(t *testing.T) {
+	gateway, _, mockRegistry, _ := setupTestGateway(t)
+	tracer := &capturePushTracer{}
+	gateway.pushService.SetTracer(tracer)
+
+	mockRegistry.SetUserLocations("user123", []GatewayLocation{{
+		GatewayNode: "gateway-node-2",
+		DeviceID:    "device-remote-1",
+		ConnectedAt: time.Now().Unix(),
+	}})
+
+	gateway.pushService.SetRemoteForwarder(&mockRemoteForwarder{
+		forwardMessageFunc: func(ctx context.Context, gatewayNode string, req *PushMessageRequest) (*PushMessageResponse, error) {
+			return nil, errors.New("deadline exceeded")
+		},
+	})
+
+	respFail, err := gateway.pushService.PushMessage(context.Background(), &PushMessageRequest{
+		MsgID:       "msg-trace-fail-1",
+		RecipientID: "user123",
+		SenderID:    "sender1",
+		Content:     "fail",
+		Timestamp:   time.Now().Unix(),
+	})
+	require.NoError(t, err)
+	assert.False(t, respFail.Success)
+
+	gateway.pushService.SetRemoteForwarder(&mockRemoteForwarder{
+		forwardMessageFunc: func(ctx context.Context, gatewayNode string, req *PushMessageRequest) (*PushMessageResponse, error) {
+			return &PushMessageResponse{Success: true, DeliveredCount: 1}, nil
+		},
+	})
+
+	respSucc, err := gateway.pushService.PushMessage(context.Background(), &PushMessageRequest{
+		MsgID:       "msg-trace-succ-1",
+		RecipientID: "user123",
+		SenderID:    "sender1",
+		Content:     "ok",
+		Timestamp:   time.Now().Unix(),
+	})
+	require.NoError(t, err)
+	assert.True(t, respSucc.Success)
+
+	tracer.mu.Lock()
+	defer tracer.mu.Unlock()
+	require.Len(t, tracer.spans, 2)
+
+	assert.Equal(t, "im-gateway.forward.message", tracer.spans[0].name)
+	assert.Equal(t, "failure", tracer.spans[0].attributes["forward.result"])
+	assert.Equal(t, "timeout", tracer.spans[0].attributes["forward.failure_reason"])
+	assert.Equal(t, tracing.StatusCodeError, tracer.spans[0].statusCode)
+
+	assert.Equal(t, "im-gateway.forward.message", tracer.spans[1].name)
+	assert.Equal(t, "success", tracer.spans[1].attributes["forward.result"])
+	assert.Equal(t, int32(1), tracer.spans[1].attributes["forward.delivered_count"])
+	assert.Equal(t, tracing.StatusCodeOK, tracer.spans[1].statusCode)
 }
 
 func TestPushService_PushReadReceipt_RemoteGatewayForwarding_EndToEnd(t *testing.T) {

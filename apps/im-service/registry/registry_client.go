@@ -7,6 +7,8 @@ import (
 	"time"
 
 	clientv3 "go.etcd.io/etcd/client/v3"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // WatchEventType represents the type of watch event
@@ -35,6 +37,10 @@ type RegistryClient struct {
 	ttl       time.Duration
 	watchers  map[string]context.CancelFunc
 	watcherMu sync.Mutex
+
+	requestTimeout time.Duration
+	maxRetries     int
+	retryBackoff   time.Duration
 }
 
 // GatewayLocation represents a user's connection location
@@ -62,9 +68,12 @@ func NewRegistryClient(endpoints []string, ttl time.Duration) (*RegistryClient, 
 	}
 
 	return &RegistryClient{
-		client:   client,
-		ttl:      ttl,
-		watchers: make(map[string]context.CancelFunc),
+		client:         client,
+		ttl:            ttl,
+		watchers:       make(map[string]context.CancelFunc),
+		requestTimeout: 2 * time.Second,
+		maxRetries:     2,
+		retryBackoff:   50 * time.Millisecond,
 	}, nil
 }
 
@@ -88,14 +97,24 @@ func (rc *RegistryClient) RegisterUser(ctx context.Context, userID, deviceID, ga
 	// Check current device count for this user
 	// Validates: Requirement 15.10 (enforce max 5 devices per user)
 	prefix := fmt.Sprintf("/registry/users/%s/", userID)
-	resp, err := rc.client.Get(ctx, prefix, clientv3.WithPrefix(), clientv3.WithCountOnly())
+	var resp *clientv3.GetResponse
+	err := rc.withRetry(ctx, func(opCtx context.Context) error {
+		var opErr error
+		resp, opErr = rc.client.Get(opCtx, prefix, clientv3.WithPrefix(), clientv3.WithCountOnly())
+		return opErr
+	})
 	if err != nil {
 		return 0, fmt.Errorf("failed to check device count: %w", err)
 	}
 
 	// Check if this is a new device (not already registered)
 	key := fmt.Sprintf("/registry/users/%s/%s", userID, deviceID)
-	existingResp, err := rc.client.Get(ctx, key)
+	var existingResp *clientv3.GetResponse
+	err = rc.withRetry(ctx, func(opCtx context.Context) error {
+		var opErr error
+		existingResp, opErr = rc.client.Get(opCtx, key)
+		return opErr
+	})
 	if err != nil {
 		return 0, fmt.Errorf("failed to check existing device: %w", err)
 	}
@@ -108,7 +127,12 @@ func (rc *RegistryClient) RegisterUser(ctx context.Context, userID, deviceID, ga
 	}
 
 	// Create lease with TTL
-	leaseResp, err := rc.client.Grant(ctx, int64(rc.ttl.Seconds()))
+	var leaseResp *clientv3.LeaseGrantResponse
+	err = rc.withRetry(ctx, func(opCtx context.Context) error {
+		var opErr error
+		leaseResp, opErr = rc.client.Grant(opCtx, int64(rc.ttl.Seconds()))
+		return opErr
+	})
 	if err != nil {
 		return 0, fmt.Errorf("failed to create lease: %w", err)
 	}
@@ -117,7 +141,10 @@ func (rc *RegistryClient) RegisterUser(ctx context.Context, userID, deviceID, ga
 	value := fmt.Sprintf("%s|%d", gatewayNode, time.Now().Unix())
 
 	// Put with lease
-	_, err = rc.client.Put(ctx, key, value, clientv3.WithLease(leaseResp.ID))
+	err = rc.withRetry(ctx, func(opCtx context.Context) error {
+		_, opErr := rc.client.Put(opCtx, key, value, clientv3.WithLease(leaseResp.ID))
+		return opErr
+	})
 	if err != nil {
 		return 0, fmt.Errorf("failed to register user: %w", err)
 	}
@@ -135,7 +162,10 @@ func (rc *RegistryClient) UnregisterUser(ctx context.Context, userID, deviceID s
 	}
 
 	key := fmt.Sprintf("/registry/users/%s/%s", userID, deviceID)
-	_, err := rc.client.Delete(ctx, key)
+	err := rc.withRetry(ctx, func(opCtx context.Context) error {
+		_, opErr := rc.client.Delete(opCtx, key)
+		return opErr
+	})
 	if err != nil {
 		return fmt.Errorf("failed to unregister user: %w", err)
 	}
@@ -151,7 +181,12 @@ func (rc *RegistryClient) LookupUser(ctx context.Context, userID string) ([]Gate
 
 	// Prefix scan: /registry/users/{user_id}/
 	prefix := fmt.Sprintf("/registry/users/%s/", userID)
-	resp, err := rc.client.Get(ctx, prefix, clientv3.WithPrefix())
+	var resp *clientv3.GetResponse
+	err := rc.withRetry(ctx, func(opCtx context.Context) error {
+		var opErr error
+		resp, opErr = rc.client.Get(opCtx, prefix, clientv3.WithPrefix())
+		return opErr
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to lookup user: %w", err)
 	}
@@ -193,7 +228,10 @@ func (rc *RegistryClient) RenewLease(ctx context.Context, leaseID int64) error {
 		return fmt.Errorf("invalid lease ID")
 	}
 
-	_, err := rc.client.KeepAliveOnce(ctx, clientv3.LeaseID(leaseID))
+	err := rc.withRetry(ctx, func(opCtx context.Context) error {
+		_, opErr := rc.client.KeepAliveOnce(opCtx, clientv3.LeaseID(leaseID))
+		return opErr
+	})
 	if err != nil {
 		return fmt.Errorf("failed to renew lease: %w", err)
 	}
@@ -349,5 +387,70 @@ func (rc *RegistryClient) StopWatch(prefix string) {
 	if cancel, ok := rc.watchers[prefix]; ok {
 		cancel()
 		delete(rc.watchers, prefix)
+	}
+}
+
+func (rc *RegistryClient) withRetry(ctx context.Context, call func(context.Context) error) error {
+	attempts := rc.maxRetries + 1
+	if attempts < 1 {
+		attempts = 1
+	}
+
+	var lastErr error
+	for i := 0; i < attempts; i++ {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+
+		callCtx := ctx
+		cancel := func() {}
+		if rc.requestTimeout > 0 {
+			callCtx, cancel = context.WithTimeout(ctx, rc.requestTimeout)
+		}
+
+		err := call(callCtx)
+		cancel()
+		if err == nil {
+			return nil
+		}
+
+		lastErr = err
+		if !isRetryableRegistryError(err) || i == attempts-1 {
+			return err
+		}
+
+		if rc.retryBackoff > 0 {
+			timer := time.NewTimer(rc.retryBackoff)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return ctx.Err()
+			case <-timer.C:
+			}
+		}
+	}
+
+	return lastErr
+}
+
+func isRetryableRegistryError(err error) bool {
+	if err == nil {
+		return false
+	}
+
+	if err == context.DeadlineExceeded {
+		return true
+	}
+
+	st, ok := status.FromError(err)
+	if !ok {
+		return false
+	}
+
+	switch st.Code() {
+	case codes.Unavailable, codes.DeadlineExceeded, codes.ResourceExhausted:
+		return true
+	default:
+		return false
 	}
 }

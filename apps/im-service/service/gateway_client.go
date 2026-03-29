@@ -2,13 +2,16 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
 	gatewaypb "github.com/pingxin403/cuckoo/api/gen/go/im-gatewaypb"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 )
 
 // GatewayClient implements the GatewayClientInterface for communicating with gateway nodes.
@@ -17,7 +20,28 @@ type GatewayClient struct {
 	connPoolMu     sync.RWMutex
 	dialTimeout    time.Duration
 	requestTimeout time.Duration
+	maxRetries     int
+	retryBackoff   time.Duration
+
+	breakerMu               sync.Mutex
+	breakerStates           map[string]circuitBreakerState
+	breakerFailureThreshold int
+	breakerOpenTimeout      time.Duration
 }
+
+type circuitBreakerState struct {
+	failures  int
+	openUntil time.Time
+}
+
+const (
+	gatewayErrCodeCircuitOpen     = "CIRCUIT_OPEN"
+	gatewayErrCodeDialFailure     = "DIAL_FAILURE"
+	gatewayErrCodeTimeout         = "TIMEOUT"
+	gatewayErrCodeUnavailable     = "UNAVAILABLE"
+	gatewayErrCodeResourceLimited = "RESOURCE_EXHAUSTED"
+	gatewayErrCodeUnknown         = "UNKNOWN"
+)
 
 // NewGatewayClient creates a new gateway client instance.
 func NewGatewayClient(dialTimeout, requestTimeout time.Duration) *GatewayClient {
@@ -25,16 +49,34 @@ func NewGatewayClient(dialTimeout, requestTimeout time.Duration) *GatewayClient 
 		connPool:       make(map[string]*grpc.ClientConn),
 		dialTimeout:    dialTimeout,
 		requestTimeout: requestTimeout,
+		maxRetries:     2,
+		retryBackoff:   50 * time.Millisecond,
+
+		breakerStates:           make(map[string]circuitBreakerState),
+		breakerFailureThreshold: 3,
+		breakerOpenTimeout:      2 * time.Second,
 	}
 }
 
 // PushMessage sends a message to a gateway node for delivery to the client.
 func (gc *GatewayClient) PushMessage(ctx context.Context, gatewayAddr string, req *GatewayPushRequest) (*GatewayPushResponse, error) {
+	if gc.isCircuitOpen(gatewayAddr) {
+		err := fmt.Errorf("%s: circuit breaker open for gateway: %s", gatewayErrCodeCircuitOpen, gatewayAddr)
+		return &GatewayPushResponse{
+			Success:      false,
+			ErrorCode:    gatewayErrCodeCircuitOpen,
+			ErrorMessage: err.Error(),
+		}, err
+	}
+
 	// Get or create connection to gateway node
 	conn, err := gc.getConnection(ctx, gatewayAddr)
 	if err != nil {
+		gc.recordFailure(gatewayAddr)
+		errCode := classifyGatewayError(err)
 		return &GatewayPushResponse{
 			Success:      false,
+			ErrorCode:    errCode,
 			ErrorMessage: fmt.Sprintf("failed to connect to gateway: %v", err),
 		}, err
 	}
@@ -59,21 +101,162 @@ func (gc *GatewayClient) PushMessage(ctx context.Context, gatewayAddr string, re
 	}
 
 	// Call gateway PushMessage RPC
-	grpcResp, err := client.PushMessage(pushCtx, grpcReq)
+	grpcResp, err := gc.callWithRetry(pushCtx, func(callCtx context.Context) (*gatewaypb.PushMessageResponse, error) {
+		return client.PushMessage(callCtx, grpcReq)
+	})
 	if err != nil {
+		gc.recordFailure(gatewayAddr)
+		errCode := classifyGatewayError(err)
 		return &GatewayPushResponse{
 			Success:      false,
+			ErrorCode:    errCode,
 			ErrorMessage: fmt.Sprintf("gateway push failed: %v", err),
 		}, err
 	}
+
+	gc.recordSuccess(gatewayAddr)
 
 	// Convert response
 	return &GatewayPushResponse{
 		Success:        grpcResp.Success,
 		DeliveredCount: grpcResp.DeliveredCount,
 		FailedDevices:  grpcResp.FailedDevices,
+		ErrorCode:      "",
 		ErrorMessage:   grpcResp.ErrorMessage,
 	}, nil
+}
+
+func (gc *GatewayClient) isCircuitOpen(target string) bool {
+	if gc.breakerFailureThreshold <= 0 || gc.breakerOpenTimeout <= 0 {
+		return false
+	}
+
+	now := time.Now()
+	gc.breakerMu.Lock()
+	defer gc.breakerMu.Unlock()
+
+	state, ok := gc.breakerStates[target]
+	if !ok {
+		return false
+	}
+
+	if state.openUntil.After(now) {
+		return true
+	}
+
+	if !state.openUntil.IsZero() {
+		state.openUntil = time.Time{}
+		state.failures = 0
+		gc.breakerStates[target] = state
+	}
+
+	return false
+}
+
+func (gc *GatewayClient) recordFailure(target string) {
+	if gc.breakerFailureThreshold <= 0 || gc.breakerOpenTimeout <= 0 {
+		return
+	}
+
+	gc.breakerMu.Lock()
+	defer gc.breakerMu.Unlock()
+
+	state := gc.breakerStates[target]
+	state.failures++
+	if state.failures >= gc.breakerFailureThreshold {
+		state.openUntil = time.Now().Add(gc.breakerOpenTimeout)
+	}
+	gc.breakerStates[target] = state
+}
+
+func (gc *GatewayClient) recordSuccess(target string) {
+	if gc.breakerFailureThreshold <= 0 || gc.breakerOpenTimeout <= 0 {
+		return
+	}
+
+	gc.breakerMu.Lock()
+	defer gc.breakerMu.Unlock()
+
+	state := gc.breakerStates[target]
+	state.failures = 0
+	state.openUntil = time.Time{}
+	gc.breakerStates[target] = state
+}
+
+func (gc *GatewayClient) callWithRetry(ctx context.Context, call func(context.Context) (*gatewaypb.PushMessageResponse, error)) (*gatewaypb.PushMessageResponse, error) {
+	attempts := gc.maxRetries + 1
+	if attempts < 1 {
+		attempts = 1
+	}
+
+	var lastErr error
+	for i := 0; i < attempts; i++ {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+
+		resp, err := call(ctx)
+		if err == nil {
+			return resp, nil
+		}
+
+		lastErr = err
+		if !isRetryableGatewayError(err) || i == attempts-1 {
+			return nil, err
+		}
+
+		if gc.retryBackoff > 0 {
+			timer := time.NewTimer(gc.retryBackoff)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return nil, ctx.Err()
+			case <-timer.C:
+			}
+		}
+	}
+
+	return nil, lastErr
+}
+
+func isRetryableGatewayError(err error) bool {
+	st, ok := status.FromError(err)
+	if !ok {
+		return false
+	}
+
+	switch st.Code() {
+	case codes.Unavailable, codes.DeadlineExceeded, codes.ResourceExhausted:
+		return true
+	default:
+		return false
+	}
+}
+
+func classifyGatewayError(err error) string {
+	if err == nil {
+		return ""
+	}
+
+	if errors.Is(err, context.DeadlineExceeded) {
+		return gatewayErrCodeTimeout
+	}
+
+	st, ok := status.FromError(err)
+	if !ok {
+		return gatewayErrCodeUnknown
+	}
+
+	switch st.Code() {
+	case codes.DeadlineExceeded:
+		return gatewayErrCodeTimeout
+	case codes.Unavailable:
+		return gatewayErrCodeUnavailable
+	case codes.ResourceExhausted:
+		return gatewayErrCodeResourceLimited
+	default:
+		return gatewayErrCodeUnknown
+	}
 }
 
 // getConnection retrieves or creates a gRPC connection to the gateway node.

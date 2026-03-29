@@ -83,6 +83,9 @@ func TestMessageDeliveryMetrics(t *testing.T) {
 	m.IncrementMessagesDelivered()
 	m.IncrementMessagesFailed()
 	m.IncrementAckTimeouts()
+	m.IncrementAckPending()
+	m.IncrementAckSuccess()
+	m.IncrementAckLate()
 }
 
 func TestLatencyTracking(t *testing.T) {
@@ -293,4 +296,27 @@ func TestShutdown(t *testing.T) {
 
 	// Shutdown observability (may have sync errors on stdout, which is expected in tests)
 	_ = obs.Shutdown(context.Background())
+}
+
+func TestCrossGatewayForwardMetrics(t *testing.T) {
+	obs, err := observability.New(observability.Config{
+		ServiceName:       "test-service",
+		ServiceVersion:    "1.0.0",
+		Environment:       "test",
+		EnableMetrics:     true,
+		UseOTelMetrics:    true,
+		PrometheusEnabled: true,
+		MetricsPort:       0,
+	})
+	require.NoError(t, err)
+	defer func() {
+		_ = obs.Shutdown(context.Background())
+	}()
+
+	m := NewMetrics(obs)
+
+	// Should not panic
+	m.IncForwardSuccess("message")
+	m.IncForwardFailure("read_receipt", "timeout")
+	m.ObserveForwardLatency("message", 25*time.Millisecond)
 }

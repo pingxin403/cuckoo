@@ -379,6 +379,10 @@ func main() {
 		redisClient,
 		gatewayConfig,
 	)
+	gateway.SetTracer(obs.Tracer())
+	gateway.SetAckMetrics(gatewayMetrics)
+	gateway.SetCrossGatewayMetrics(gatewayMetrics)
+	gateway.SetKafkaConsumerMetrics(gatewayMetrics)
 	gateway.SetRemoteForwarder(service.NewGRPCRemoteForwarder(cfg.ServiceDiscovery.GatewayNodes))
 
 	_ = gatewayMetrics

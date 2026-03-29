@@ -4,11 +4,14 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 // MockEtcdClient implements a simple in-memory etcd client for testing
@@ -709,4 +712,50 @@ func TestRegisterUser_ExistingDeviceDoesNotCountTowardLimit(t *testing.T) {
 	locations, err := rc.LookupUser(ctx, "user-rereg")
 	require.NoError(t, err)
 	assert.Len(t, locations, MaxDevicesPerUser)
+}
+
+func TestRegistryClient_WithRetry_RetryableThenSuccess(t *testing.T) {
+	rc := &RegistryClient{
+		requestTimeout: 100 * time.Millisecond,
+		maxRetries:     2,
+		retryBackoff:   5 * time.Millisecond,
+	}
+
+	var attempts int32
+	err := rc.withRetry(context.Background(), func(ctx context.Context) error {
+		_ = ctx
+		if atomic.AddInt32(&attempts, 1) == 1 {
+			return status.Error(codes.Unavailable, "temporary failure")
+		}
+		return nil
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, int32(2), atomic.LoadInt32(&attempts))
+}
+
+func TestRegistryClient_WithRetry_NonRetryableNoRetry(t *testing.T) {
+	rc := &RegistryClient{
+		requestTimeout: 100 * time.Millisecond,
+		maxRetries:     3,
+		retryBackoff:   5 * time.Millisecond,
+	}
+
+	var attempts int32
+	err := rc.withRetry(context.Background(), func(ctx context.Context) error {
+		_ = ctx
+		atomic.AddInt32(&attempts, 1)
+		return status.Error(codes.InvalidArgument, "bad request")
+	})
+
+	require.Error(t, err)
+	assert.Equal(t, int32(1), atomic.LoadInt32(&attempts))
+}
+
+func TestIsRetryableRegistryError(t *testing.T) {
+	assert.True(t, isRetryableRegistryError(context.DeadlineExceeded))
+	assert.True(t, isRetryableRegistryError(status.Error(codes.Unavailable, "u")))
+	assert.True(t, isRetryableRegistryError(status.Error(codes.DeadlineExceeded, "d")))
+	assert.True(t, isRetryableRegistryError(status.Error(codes.ResourceExhausted, "r")))
+	assert.False(t, isRetryableRegistryError(status.Error(codes.InvalidArgument, "i")))
 }

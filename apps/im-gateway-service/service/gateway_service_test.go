@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/pingxin403/cuckoo/libs/observability/tracing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	clientv3 "go.etcd.io/etcd/client/v3"
@@ -121,6 +122,86 @@ func (m *mockRegistryClient) Close() error {
 type mockIMClient struct {
 	routePrivateFunc func(ctx context.Context, req *RoutePrivateMessageRequest) (*RoutePrivateMessageResponse, error)
 	routeGroupFunc   func(ctx context.Context, req *RouteGroupMessageRequest) (*RouteGroupMessageResponse, error)
+}
+
+type captureAckLifecycleMetrics struct {
+	mu           sync.Mutex
+	pendingCount int
+	successCount int
+	timeoutCount int
+	lateCount    int
+}
+
+type captureAckSpan struct {
+	name       string
+	attributes map[string]interface{}
+}
+
+func (s *captureAckSpan) End() {}
+
+func (s *captureAckSpan) SetAttribute(key string, value interface{}) {
+	s.attributes[key] = value
+}
+
+func (s *captureAckSpan) SetAttributes(attributes map[string]interface{}) {
+	for k, v := range attributes {
+		s.attributes[k] = v
+	}
+}
+
+func (s *captureAckSpan) RecordError(err error) {
+	_ = err
+}
+
+func (s *captureAckSpan) SetStatus(code tracing.StatusCode, description string) {
+	_ = code
+	_ = description
+}
+
+type captureAckTracer struct {
+	mu    sync.Mutex
+	spans []*captureAckSpan
+}
+
+func (t *captureAckTracer) StartSpan(ctx context.Context, name string, opts ...tracing.SpanOption) (context.Context, tracing.Span) {
+	cfg := &tracing.SpanConfig{Attributes: make(map[string]interface{})}
+	for _, opt := range opts {
+		opt(cfg)
+	}
+	span := &captureAckSpan{name: name, attributes: cfg.Attributes}
+	t.mu.Lock()
+	t.spans = append(t.spans, span)
+	t.mu.Unlock()
+	return ctx, span
+}
+
+func (t *captureAckTracer) Shutdown(ctx context.Context) error {
+	_ = ctx
+	return nil
+}
+
+func (m *captureAckLifecycleMetrics) IncrementAckPending() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.pendingCount++
+}
+
+func (m *captureAckLifecycleMetrics) IncrementAckSuccess() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.successCount++
+}
+
+func (m *captureAckLifecycleMetrics) IncrementAckTimeouts() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.timeoutCount++
+}
+
+func (m *captureAckLifecycleMetrics) IncrementAckLate() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.lateCount++
 }
 
 func (m *mockIMClient) RoutePrivateMessage(ctx context.Context, req *RoutePrivateMessageRequest) (*RoutePrivateMessageResponse, error) {
@@ -743,4 +824,74 @@ func TestConnection_HandleAck_ResolvesPending(t *testing.T) {
 	connection.handleAck(&ClientMessage{Type: "ack", MsgID: "msg-ack-3"})
 
 	assert.Equal(t, "delivered", gateway.getAckStatus("msg-ack-3", connection.UserID, connection.DeviceID))
+}
+
+func TestGatewayService_AckLifecycleMetrics_PendingTimeoutAndSuccess(t *testing.T) {
+	gateway, _, _, _ := setupTestGateway(t)
+	metrics := &captureAckLifecycleMetrics{}
+	gateway.SetAckMetrics(metrics)
+
+	gateway.config.AckTimeout = 20 * time.Millisecond
+
+	gateway.registerPendingAck("msg-ack-m-1", "user123", "550e8400-e29b-41d4-a716-446655440000")
+	time.Sleep(40 * time.Millisecond)
+
+	gateway.registerPendingAck("msg-ack-m-2", "user123", "550e8400-e29b-41d4-a716-446655440000")
+	resolved := gateway.resolveAck("msg-ack-m-2", "user123", "550e8400-e29b-41d4-a716-446655440000")
+	require.True(t, resolved)
+
+	metrics.mu.Lock()
+	defer metrics.mu.Unlock()
+	assert.Equal(t, 2, metrics.pendingCount)
+	assert.Equal(t, 1, metrics.timeoutCount)
+	assert.Equal(t, 1, metrics.successCount)
+	assert.Equal(t, 0, metrics.lateCount)
+}
+
+func TestGatewayService_AckLifecycleMetrics_LateAck(t *testing.T) {
+	gateway, _, _, _ := setupTestGateway(t)
+	metrics := &captureAckLifecycleMetrics{}
+	gateway.SetAckMetrics(metrics)
+
+	gateway.config.AckTimeout = 20 * time.Millisecond
+	gateway.registerPendingAck("msg-ack-late-1", "user123", "550e8400-e29b-41d4-a716-446655440000")
+	time.Sleep(40 * time.Millisecond)
+
+	resolved := gateway.resolveAck("msg-ack-late-1", "user123", "550e8400-e29b-41d4-a716-446655440000")
+	require.True(t, resolved)
+	assert.Equal(t, "delivered", gateway.getAckStatus("msg-ack-late-1", "user123", "550e8400-e29b-41d4-a716-446655440000"))
+
+	metrics.mu.Lock()
+	defer metrics.mu.Unlock()
+	assert.Equal(t, 1, metrics.pendingCount)
+	assert.Equal(t, 1, metrics.timeoutCount)
+	assert.Equal(t, 0, metrics.successCount)
+	assert.Equal(t, 1, metrics.lateCount)
+}
+
+func TestGatewayService_AckTracing_Transitions(t *testing.T) {
+	gateway, _, _, _ := setupTestGateway(t)
+	tracer := &captureAckTracer{}
+	gateway.SetTracer(tracer)
+
+	gateway.config.AckTimeout = 20 * time.Millisecond
+	gateway.registerPendingAck("msg-ack-trace-1", "user123", "550e8400-e29b-41d4-a716-446655440000")
+	time.Sleep(40 * time.Millisecond)
+
+	resolved := gateway.resolveAck("msg-ack-trace-1", "user123", "550e8400-e29b-41d4-a716-446655440000")
+	require.True(t, resolved)
+
+	tracer.mu.Lock()
+	defer tracer.mu.Unlock()
+	require.Len(t, tracer.spans, 3)
+
+	assert.Equal(t, "im-gateway.ack.register", tracer.spans[0].name)
+	assert.Equal(t, "pending", tracer.spans[0].attributes["ack.transition"])
+	assert.Equal(t, "msg-ack-trace-1", tracer.spans[0].attributes["msg.id"])
+
+	assert.Equal(t, "im-gateway.ack.timeout", tracer.spans[1].name)
+	assert.Equal(t, "timeout", tracer.spans[1].attributes["ack.transition"])
+
+	assert.Equal(t, "im-gateway.ack.resolve", tracer.spans[2].name)
+	assert.Equal(t, "late", tracer.spans[2].attributes["ack.transition"])
 }

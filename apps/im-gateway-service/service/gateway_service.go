@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/pingxin403/cuckoo/libs/observability/tracing"
 	"github.com/redis/go-redis/v9"
 	clientv3 "go.etcd.io/etcd/client/v3"
 )
@@ -18,9 +19,12 @@ import (
 // GatewayService manages WebSocket connections and message routing.
 type GatewayService struct {
 	// Connection management
-	connections sync.Map // map[string]*Connection (userID -> Connection)
-	upgrader    websocket.Upgrader
-	ackStates   sync.Map
+	connections  sync.Map // map[string]*Connection (userID -> Connection)
+	upgrader     websocket.Upgrader
+	ackStates    sync.Map
+	ackMetrics   AckLifecycleMetrics
+	kafkaMetrics KafkaConsumerMetrics
+	tracer       tracing.Tracer
 
 	// External services
 	authClient          AuthServiceClient
@@ -41,6 +45,13 @@ type GatewayService struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
+}
+
+type AckLifecycleMetrics interface {
+	IncrementAckPending()
+	IncrementAckSuccess()
+	IncrementAckTimeouts()
+	IncrementAckLate()
 }
 
 // GatewayConfig contains configuration for the gateway service.
@@ -229,6 +240,7 @@ func NewGatewayService(
 		config:         config,
 		ctx:            context.Background(),
 		cancel:         func() {},
+		tracer:         tracing.NewNoOpTracer(),
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  config.ReadBufferSize,
 			WriteBufferSize: config.WriteBufferSize,
@@ -266,6 +278,9 @@ func (g *GatewayService) Start(kafkaConfig KafkaConfig) error {
 
 	// Start Kafka consumer for group messages
 	g.kafkaConsumer = NewKafkaConsumer(kafkaConfig, g, g.pushService)
+	if g.kafkaMetrics != nil {
+		g.kafkaConsumer.SetMetrics(g.kafkaMetrics)
+	}
 	if err := g.kafkaConsumer.Start(); err != nil {
 		return fmt.Errorf("failed to start kafka consumer: %w", err)
 	}
@@ -395,6 +410,18 @@ func (g *GatewayService) registerPendingAck(msgID, userID, deviceID string) {
 	}
 
 	state := &ackState{status: "pending"}
+	if g.tracer != nil {
+		_, span := g.tracer.StartSpan(g.ctx, "im-gateway.ack.register", tracing.WithAttributes(map[string]interface{}{
+			"msg.id":         msgID,
+			"user.id":        userID,
+			"device.id":      deviceID,
+			"ack.transition": "pending",
+		}))
+		span.End()
+	}
+	if g.ackMetrics != nil {
+		g.ackMetrics.IncrementAckPending()
+	}
 	state.timer = time.AfterFunc(timeout, func() {
 		if value, ok := g.ackStates.Load(key); ok {
 			ack := value.(*ackState)
@@ -402,6 +429,18 @@ func (g *GatewayService) registerPendingAck(msgID, userID, deviceID string) {
 			defer ack.mu.Unlock()
 			if ack.status == "pending" {
 				ack.status = "timeout"
+				if g.tracer != nil {
+					_, span := g.tracer.StartSpan(context.Background(), "im-gateway.ack.timeout", tracing.WithAttributes(map[string]interface{}{
+						"msg.id":         msgID,
+						"user.id":        userID,
+						"device.id":      deviceID,
+						"ack.transition": "timeout",
+					}))
+					span.End()
+				}
+				if g.ackMetrics != nil {
+					g.ackMetrics.IncrementAckTimeouts()
+				}
 			}
 		}
 	})
@@ -423,10 +462,41 @@ func (g *GatewayService) resolveAck(msgID, userID, deviceID string) bool {
 	ack := value.(*ackState)
 	ack.mu.Lock()
 	defer ack.mu.Unlock()
+	if ack.status == "timeout" {
+		ack.status = "delivered"
+		if g.tracer != nil {
+			_, span := g.tracer.StartSpan(g.ctx, "im-gateway.ack.resolve", tracing.WithAttributes(map[string]interface{}{
+				"msg.id":         msgID,
+				"user.id":        userID,
+				"device.id":      deviceID,
+				"ack.transition": "late",
+			}))
+			span.End()
+		}
+		if ack.timer != nil {
+			ack.timer.Stop()
+		}
+		if g.ackMetrics != nil {
+			g.ackMetrics.IncrementAckLate()
+		}
+		return true
+	}
 	if ack.timer != nil {
 		ack.timer.Stop()
 	}
 	ack.status = "delivered"
+	if g.tracer != nil {
+		_, span := g.tracer.StartSpan(g.ctx, "im-gateway.ack.resolve", tracing.WithAttributes(map[string]interface{}{
+			"msg.id":         msgID,
+			"user.id":        userID,
+			"device.id":      deviceID,
+			"ack.transition": "delivered",
+		}))
+		span.End()
+	}
+	if g.ackMetrics != nil {
+		g.ackMetrics.IncrementAckSuccess()
+	}
 	return true
 }
 
@@ -439,6 +509,34 @@ func (g *GatewayService) getAckStatus(msgID, userID, deviceID string) string {
 		return ack.status
 	}
 	return ""
+}
+
+func (g *GatewayService) SetAckMetrics(metrics AckLifecycleMetrics) {
+	g.ackMetrics = metrics
+}
+
+func (g *GatewayService) SetCrossGatewayMetrics(metrics CrossGatewayMetrics) {
+	if g.pushService != nil {
+		g.pushService.SetMetrics(metrics)
+	}
+}
+
+func (g *GatewayService) SetKafkaConsumerMetrics(metrics KafkaConsumerMetrics) {
+	g.kafkaMetrics = metrics
+	if g.kafkaConsumer != nil {
+		g.kafkaConsumer.SetMetrics(metrics)
+	}
+}
+
+func (g *GatewayService) SetTracer(tracer tracing.Tracer) {
+	if tracer == nil {
+		g.tracer = tracing.NewNoOpTracer()
+	} else {
+		g.tracer = tracer
+	}
+	if g.pushService != nil {
+		g.pushService.SetTracer(g.tracer)
+	}
 }
 
 // Shutdown gracefully shuts down the gateway service.

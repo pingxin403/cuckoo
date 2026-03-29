@@ -59,6 +59,37 @@ groups:
           runbook_url: "https://wiki.example.com/runbooks/im-gateway/ack-timeout"
           dashboard_url: "http://grafana:3000/d/im-gateway-messages"
 
+      - alert: HighCrossGatewayForwardFailureRate
+        expr: |
+          (
+            sum(rate(im_gateway_cross_gateway_forward_total{result="failure"}[5m]))
+            /
+            clamp_min(sum(rate(im_gateway_cross_gateway_forward_total[5m])), 1)
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: P2
+          service: im-gateway-service
+          component: cross-gateway
+        annotations:
+          summary: "High cross-gateway forward failure rate detected"
+          description: "Cross-gateway forward failure rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+          runbook_url: "https://wiki.example.com/runbooks/im-gateway/cross-gateway-forward-failure"
+          dashboard_url: "http://grafana:3000/d/im-gateway-messages"
+
+      - alert: HighKafkaConsumerLag
+        expr: max(im_gateway_kafka_consumer_lag{topic=~"group_msg|read_receipt|membership_change"}) > 5000
+        for: 5m
+        labels:
+          severity: P2
+          service: im-gateway-service
+          component: kafka
+        annotations:
+          summary: "High Kafka consumer lag detected"
+          description: "Kafka consumer lag is {{ $value }} (threshold: 5000) for topic {{ $labels.topic }}"
+          runbook_url: "https://wiki.example.com/runbooks/im-gateway/kafka-consumer-lag"
+          dashboard_url: "http://grafana:3000/d/im-gateway-health"
+
       # Connection Health Alerts
       - alert: HighConnectionErrorRate
         expr: |

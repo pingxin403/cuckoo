@@ -54,6 +54,51 @@ func (m *Metrics) IncrementAckTimeouts() {
 	m.obs.Metrics().IncrementCounter("im_gateway_ack_timeouts_total", nil)
 }
 
+func (m *Metrics) IncrementAckPending() {
+	m.obs.Metrics().IncrementCounter("im_gateway_ack_pending_total", nil)
+}
+
+func (m *Metrics) IncrementAckSuccess() {
+	m.obs.Metrics().IncrementCounter("im_gateway_ack_success_total", nil)
+}
+
+func (m *Metrics) IncrementAckLate() {
+	m.obs.Metrics().IncrementCounter("im_gateway_ack_late_total", nil)
+}
+
+func (m *Metrics) IncForwardSuccess(kind string) {
+	m.obs.Metrics().IncrementCounter("im_gateway_cross_gateway_forward_total", map[string]string{
+		"kind":   kind,
+		"result": "success",
+	})
+}
+
+func (m *Metrics) IncForwardFailure(kind, reason string) {
+	m.obs.Metrics().IncrementCounter("im_gateway_cross_gateway_forward_total", map[string]string{
+		"kind":   kind,
+		"result": "failure",
+		"reason": reason,
+	})
+}
+
+func (m *Metrics) ObserveForwardLatency(kind string, duration time.Duration) {
+	m.obs.Metrics().RecordDuration("im_gateway_cross_gateway_forward_latency_seconds", duration, map[string]string{
+		"kind": kind,
+	})
+}
+
+func (m *Metrics) SetKafkaConsumerLag(topic string, lag int64) {
+	m.obs.Metrics().SetGauge("im_gateway_kafka_consumer_lag", float64(lag), map[string]string{
+		"topic": topic,
+	})
+}
+
+func (m *Metrics) IncrementKafkaConsumerErrors(topic string) {
+	m.obs.Metrics().IncrementCounter("im_gateway_kafka_consumer_errors_total", map[string]string{
+		"topic": topic,
+	})
+}
+
 // Latency tracking
 
 func (m *Metrics) ObserveLatency(duration time.Duration) {

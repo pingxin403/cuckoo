@@ -16,11 +16,17 @@ type KafkaConsumer struct {
 	membershipChangeReader  *kafka.Reader
 	gateway                 *GatewayService
 	pushService             *PushService
+	metrics                 KafkaConsumerMetrics
 	persistReadReceipt      func(ctx context.Context, event *ReadReceiptEvent) error
 	ctx                     context.Context
 	cancel                  context.CancelFunc
 	readReceiptEnabled      bool
 	membershipChangeEnabled bool
+}
+
+type KafkaConsumerMetrics interface {
+	SetKafkaConsumerLag(topic string, lag int64)
+	IncrementKafkaConsumerErrors(topic string)
 }
 
 // KafkaConfig contains Kafka consumer configuration.
@@ -123,6 +129,10 @@ func NewKafkaConsumer(config KafkaConfig, gateway *GatewayService, pushService *
 	return consumer
 }
 
+func (k *KafkaConsumer) SetMetrics(metrics KafkaConsumerMetrics) {
+	k.metrics = metrics
+}
+
 // Start starts consuming messages from Kafka.
 // Validates: Requirements 2.2, 2.3, 2.6, 2.7, 5.3, 5.4
 func (k *KafkaConsumer) Start() error {
@@ -157,10 +167,13 @@ func (k *KafkaConsumer) consumeGroupMessages() {
 			if err == context.Canceled {
 				return
 			}
+			k.incrementKafkaError("group_msg")
 			// Log error and continue
 			time.Sleep(time.Second)
 			continue
 		}
+
+		k.reportReaderLag(k.groupReader, "group_msg")
 
 		// Process the message
 		if err := k.processGroupMessage(msg.Value); err != nil {
@@ -186,10 +199,13 @@ func (k *KafkaConsumer) consumeReadReceipts() {
 			if err == context.Canceled {
 				return
 			}
+			k.incrementKafkaError("read_receipt")
 			// Log error and continue
 			time.Sleep(time.Second)
 			continue
 		}
+
+		k.reportReaderLag(k.readReceiptReader, "read_receipt")
 
 		// Process the read receipt event
 		if err := k.processReadReceiptEvent(msg.Value); err != nil {
@@ -334,10 +350,13 @@ func (k *KafkaConsumer) consumeMembershipChanges() {
 			if err == context.Canceled {
 				return
 			}
+			k.incrementKafkaError("membership_change")
 			// Log error and continue
 			time.Sleep(time.Second)
 			continue
 		}
+
+		k.reportReaderLag(k.membershipChangeReader, "membership_change")
 
 		// Process the membership change event
 		if err := k.processMembershipChangeEvent(msg.Value); err != nil {
@@ -476,4 +495,25 @@ func (k *KafkaConsumer) persistReadReceiptOffline(ctx context.Context, event *Re
 	}
 
 	return k.gateway.redisClient.Expire(ctx, key, 7*24*time.Hour).Err()
+}
+
+func (k *KafkaConsumer) reportReaderLag(reader *kafka.Reader, topic string) {
+	if reader == nil {
+		return
+	}
+	k.reportLag(topic, reader.Stats().Lag)
+}
+
+func (k *KafkaConsumer) reportLag(topic string, lag int64) {
+	if k.metrics == nil {
+		return
+	}
+	k.metrics.SetKafkaConsumerLag(topic, lag)
+}
+
+func (k *KafkaConsumer) incrementKafkaError(topic string) {
+	if k.metrics == nil {
+		return
+	}
+	k.metrics.IncrementKafkaConsumerErrors(topic)
 }
