@@ -21,9 +21,9 @@ spring:
 
   # MySQL - Local Docker instance
   datasource:
-    url: jdbc:mysql://localhost:3306/flash_sale?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8mb4
-    username: flash_sale_user
-    password: flash_sale_password
+    url: jdbc:mysql://localhost:3306/flash_sale?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8
+    username: root
+    password: root_password
 
   jpa:
     hibernate:
