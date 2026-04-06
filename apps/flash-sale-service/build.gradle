@@ -47,6 +47,8 @@ configurations.all {
 dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.security:spring-security-crypto'
 	implementation "net.devh:grpc-spring-boot-starter:${grpcSpringBootStarterVersion}"
 	implementation "io.grpc:grpc-protobuf:${grpcVersion}"
 	implementation "io.grpc:grpc-stub:${grpcVersion}"
@@ -60,7 +62,8 @@ dependencies {
 	
 	// Redis for inventory management and caching
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
-	implementation 'org.apache.commons:commons-pool2:2.12.0'  // For Redis connection pooling
+	implementation 'org.apache.commons:commons-pool2:2.12.0'
+	implementation 'commons-codec:commons-codec:1.16.0'
 	
 	// Kafka for message queue (order processing, event streaming)
 	implementation 'org.springframework.kafka:spring-kafka'

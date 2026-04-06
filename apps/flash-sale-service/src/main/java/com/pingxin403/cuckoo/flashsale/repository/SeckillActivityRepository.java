@@ -147,4 +147,7 @@ public interface SeckillActivityRepository extends JpaRepository<SeckillActivity
    * @return list of activities
    */
   List<SeckillActivity> findByStatusAndRemainingStock(ActivityStatus status, int remainingStock);
+
+  List<SeckillActivity> findByStatusAndStartTimeBetween(
+      ActivityStatus status, LocalDateTime startTime, LocalDateTime endTime);
 }
