@@ -390,7 +390,7 @@ import (
     "google.golang.org/grpc"
 )
 
-conn, err := grpc.Dial("gateway:9093", grpc.WithInsecure())
+conn, err := grpc.Dial("gateway:9097", grpc.WithInsecure())
 if err != nil {
     log.Fatal(err)
 }
@@ -489,30 +489,6 @@ fmt.Printf("Status: %s\n", resp.Status)
 - `200 OK`: Service is healthy
 - `503 Service Unavailable`: Service is unhealthy
 
-### Readiness Check
-
-**Endpoint**: `GET /ready`  
-**Purpose**: Readiness probe
-
-**Response**:
-```json
-{
-  "status": "ready",
-  "dependencies": {
-    "etcd": "healthy",
-    "redis": "healthy",
-    "kafka": "healthy",
-    "auth_service": "healthy",
-    "user_service": "healthy",
-    "im_service": "healthy"
-  }
-}
-```
-
-**Status Codes**:
-- `200 OK`: Service is ready
-- `503 Service Unavailable`: Service is not ready
-
 ### Metrics
 
 **Endpoint**: `GET /metrics`  
@@ -541,27 +517,8 @@ im_gateway_message_latency_bucket{le="+Inf"} 1234500
 im_gateway_connection_errors_total 67
 ```
 
-### Statistics
-
-**Endpoint**: `GET /stats`  
-**Purpose**: Connection statistics
-
-**Response**:
-```json
-{
-  "active_connections": 85234,
-  "total_messages_sent": 1234567,
-  "total_messages_delivered": 1234500,
-  "uptime_seconds": 86400,
-  "memory_usage_bytes": 6871947673,
-  "goroutines": 85500,
-  "cache_stats": {
-    "user_mapping_size": 85234,
-    "group_membership_size": 1234,
-    "hit_rate": 0.95
-  }
-}
-```
+> Note: Current implementation explicitly exposes `/ws` and `/health` on HTTP port, and metrics on observability metrics port.
+> `/ready` and `/stats` are not exposed by current service code.
 
 ## Message Formats
 

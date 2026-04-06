@@ -53,7 +53,7 @@ func TestProperty_ServiceMethodIdempotent(t *testing.T) {
 		// 	t.Fatalf("not idempotent: %v != %v", result1.Result, result2.Result)
 		// }
 
-		// TODO: Implement your property test
+		// IMPLEMENT_ME: Implement your property test
 		_ = service
 		_ = ctx
 		_ = input
@@ -84,7 +84,7 @@ func TestProperty_ServiceMethodNeverPanics(t *testing.T) {
 		// Call method
 		// _, _ = service.YourMethod(ctx, &{{PROTO_PACKAGE}}.YourRequest{Field: input})
 
-		// TODO: Implement your property test
+		// IMPLEMENT_ME: Implement your property test
 		_ = service
 		_ = ctx
 		_ = input
@@ -114,7 +114,7 @@ func TestProperty_ServiceMethodValidatesInput(t *testing.T) {
 		// 	t.Fatalf("expected error for invalid input %q, got nil", invalidInput)
 		// }
 
-		// TODO: Implement your property test
+		// IMPLEMENT_ME: Implement your property test
 		_ = service
 		_ = ctx
 		_ = invalidInput
@@ -147,7 +147,7 @@ func TestProperty_WithCustomGenerator(t *testing.T) {
 		// 	t.Fatalf("unexpected error for valid ID %q: %v", id, err)
 		// }
 
-		// TODO: Implement your property test
+		// IMPLEMENT_ME: Implement your property test
 		_ = service
 		_ = ctx
 		_ = id

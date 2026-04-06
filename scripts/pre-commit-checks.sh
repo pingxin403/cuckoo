@@ -72,7 +72,7 @@ if files_changed_in "apps/hello-service/src"; then
     cd ../..
 fi
 
-# Go linting (TODO Service)
+# Go linting (Todo service)
 if files_changed_in "apps/todo-service"; then
     echo -e "${YELLOW}  Checking Go code (todo-service)...${NC}"
     
@@ -131,7 +131,7 @@ if files_changed_in "apps/hello-service"; then
     cd ../..
 fi
 
-# Go tests (TODO Service)
+# Go tests (Todo service)
 if files_changed_in "apps/todo-service"; then
     echo -e "${YELLOW}  Testing Go code (todo-service)...${NC}"
     if cd apps/todo-service && go test ./... -short 2>&1 | grep -q "PASS\|ok"; then

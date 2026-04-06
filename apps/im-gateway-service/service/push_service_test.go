@@ -220,6 +220,67 @@ func TestPushService_PushMessage_RemoteGatewayForwarding(t *testing.T) {
 	assert.Empty(t, resp.FailedDevices)
 }
 
+func TestPushService_PushMessage_SpecificDeviceRemoteGatewayForwarding(t *testing.T) {
+	gateway, _, mockRegistry, _ := setupTestGateway(t)
+
+	mockRegistry.SetUserLocations("user123", []GatewayLocation{
+		{GatewayNode: "gateway-node-2", DeviceID: "device-remote-1", ConnectedAt: time.Now().Unix()},
+	})
+
+	called := false
+	gateway.pushService.SetRemoteForwarder(&mockRemoteForwarder{
+		forwardMessageFunc: func(ctx context.Context, gatewayNode string, req *PushMessageRequest) (*PushMessageResponse, error) {
+			called = true
+			assert.Equal(t, "gateway-node-2", gatewayNode)
+			assert.Equal(t, "device-remote-1", req.DeviceID)
+			assert.Equal(t, "user123", req.RecipientID)
+			return &PushMessageResponse{Success: true, DeliveredCount: 1}, nil
+		},
+	})
+
+	resp, err := gateway.pushService.PushMessage(context.Background(), &PushMessageRequest{
+		MsgID:       "msg-remote-specific-1",
+		RecipientID: "user123",
+		DeviceID:    "device-remote-1",
+		SenderID:    "user789",
+		Content:     "Hello remote specific device",
+		Timestamp:   time.Now().Unix(),
+	})
+
+	require.NoError(t, err)
+	require.True(t, called)
+	assert.True(t, resp.Success)
+	assert.Equal(t, int32(1), resp.DeliveredCount)
+	assert.Empty(t, resp.FailedDevices)
+}
+
+func TestPushService_PushMessage_RemoteGatewayDeliveredCountPreserved(t *testing.T) {
+	gateway, _, mockRegistry, _ := setupTestGateway(t)
+
+	mockRegistry.SetUserLocations("user123", []GatewayLocation{
+		{GatewayNode: "gateway-node-2", DeviceID: "device-remote-1", ConnectedAt: time.Now().Unix()},
+	})
+
+	gateway.pushService.SetRemoteForwarder(&mockRemoteForwarder{
+		forwardMessageFunc: func(ctx context.Context, gatewayNode string, req *PushMessageRequest) (*PushMessageResponse, error) {
+			return &PushMessageResponse{Success: true, DeliveredCount: 2}, nil
+		},
+	})
+
+	resp, err := gateway.pushService.PushMessage(context.Background(), &PushMessageRequest{
+		MsgID:       "msg-remote-count-1",
+		RecipientID: "user123",
+		SenderID:    "user789",
+		Content:     "Hello remote count",
+		Timestamp:   time.Now().Unix(),
+	})
+
+	require.NoError(t, err)
+	assert.True(t, resp.Success)
+	assert.Equal(t, int32(2), resp.DeliveredCount)
+	assert.Empty(t, resp.FailedDevices)
+}
+
 func TestPushService_PushReadReceipt_RemoteGatewayForwarding(t *testing.T) {
 	gateway, _, mockRegistry, _ := setupTestGateway(t)
 
@@ -336,6 +397,64 @@ func TestPushService_RemoteForwardMetrics_ReadReceiptFailureReason(t *testing.T)
 	assert.Contains(t, metrics.latencyKinds, "read_receipt")
 	assert.NotEmpty(t, metrics.failureRecords)
 	assert.Contains(t, metrics.failureRecords[0], "read_receipt:")
+}
+
+func TestPushService_PushReadReceipt_RemoteGatewayDeliveredCountPreserved(t *testing.T) {
+	gateway, _, mockRegistry, _ := setupTestGateway(t)
+
+	mockRegistry.SetUserLocations("sender123", []GatewayLocation{{
+		GatewayNode: "gateway-node-2",
+		DeviceID:    "device-remote-1",
+		ConnectedAt: time.Now().Unix(),
+	}})
+
+	gateway.pushService.SetRemoteForwarder(&mockRemoteForwarder{
+		forwardReadReceiptFunc: func(ctx context.Context, gatewayNode string, req *PushReadReceiptRequest) (*PushMessageResponse, error) {
+			return &PushMessageResponse{Success: true, DeliveredCount: 2}, nil
+		},
+	})
+
+	resp, err := gateway.pushService.PushReadReceipt(context.Background(), &PushReadReceiptRequest{
+		MsgID:          "msg-rr-count-1",
+		SenderID:       "sender123",
+		ReaderID:       "reader456",
+		ConversationID: "conv-1",
+		ReadAt:         time.Now().Unix(),
+	})
+	require.NoError(t, err)
+	assert.True(t, resp.Success)
+	assert.Equal(t, int32(2), resp.DeliveredCount)
+	assert.Empty(t, resp.FailedDevices)
+}
+
+func TestPushService_PushReadReceipt_RemoteGatewaySameNode_ForwardOnce(t *testing.T) {
+	gateway, _, mockRegistry, _ := setupTestGateway(t)
+
+	mockRegistry.SetUserLocations("sender123", []GatewayLocation{
+		{GatewayNode: "gateway-node-2", DeviceID: "device-remote-1", ConnectedAt: time.Now().Unix()},
+		{GatewayNode: "gateway-node-2", DeviceID: "device-remote-2", ConnectedAt: time.Now().Unix()},
+	})
+
+	callCount := 0
+	gateway.pushService.SetRemoteForwarder(&mockRemoteForwarder{
+		forwardReadReceiptFunc: func(ctx context.Context, gatewayNode string, req *PushReadReceiptRequest) (*PushMessageResponse, error) {
+			callCount++
+			return &PushMessageResponse{Success: true, DeliveredCount: 2}, nil
+		},
+	})
+
+	resp, err := gateway.pushService.PushReadReceipt(context.Background(), &PushReadReceiptRequest{
+		MsgID:          "msg-rr-same-node-1",
+		SenderID:       "sender123",
+		ReaderID:       "reader456",
+		ConversationID: "conv-1",
+		ReadAt:         time.Now().Unix(),
+	})
+	require.NoError(t, err)
+	assert.True(t, resp.Success)
+	assert.Equal(t, int32(2), resp.DeliveredCount)
+	assert.Equal(t, 1, callCount)
+	assert.Empty(t, resp.FailedDevices)
 }
 
 func TestPushService_Tracing_RemoteForwardMessageFailureAndSuccess(t *testing.T) {
@@ -515,4 +634,183 @@ func TestGatewayService_GetGroupMembers_FallbackProviderError(t *testing.T) {
 	require.Error(t, err)
 	assert.Nil(t, members)
 	assert.Contains(t, err.Error(), "provider unavailable")
+}
+
+func TestPushService_BroadcastToGroup_DeduplicatesDuplicateMembers(t *testing.T) {
+	gateway, _, _, _ := setupTestGateway(t)
+	gateway.cacheManager = nil
+	gateway.SetGroupMemberProvider(&mockGatewayGroupMemberProvider{
+		getGroupMembersFunc: func(ctx context.Context, groupID string) ([]string, error) {
+			return []string{"user123", "user123"}, nil
+		},
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	conn1 := &Connection{UserID: "user123", DeviceID: "device1", Send: make(chan []byte, 8), Gateway: gateway, ctx: ctx, cancel: cancel}
+	conn2 := &Connection{UserID: "user123", DeviceID: "device2", Send: make(chan []byte, 8), Gateway: gateway, ctx: ctx, cancel: cancel}
+	connOther := &Connection{UserID: "user456", DeviceID: "device1", Send: make(chan []byte, 8), Gateway: gateway, ctx: ctx, cancel: cancel}
+
+	gateway.connections.Store("user123_device1", conn1)
+	gateway.connections.Store("user123_device2", conn2)
+	gateway.connections.Store("user456_device1", connOther)
+
+	payload := []byte("group-message")
+	delivered, err := gateway.pushService.BroadcastToGroup(context.Background(), "group_123", payload)
+	require.NoError(t, err)
+
+	assert.Equal(t, int32(2), delivered)
+	assert.Equal(t, 1, len(conn1.Send))
+	assert.Equal(t, 1, len(conn2.Send))
+	assert.Equal(t, 0, len(connOther.Send))
+}
+
+func TestPushService_BroadcastToGroup_SkipsBlockedConnectionAndDeliversOthers(t *testing.T) {
+	gateway, _, _, _ := setupTestGateway(t)
+	gateway.cacheManager = nil
+	gateway.SetGroupMemberProvider(&mockGatewayGroupMemberProvider{
+		getGroupMembersFunc: func(ctx context.Context, groupID string) ([]string, error) {
+			return []string{"user123"}, nil
+		},
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	blockedConn := &Connection{UserID: "user123", DeviceID: "blocked", Send: make(chan []byte, 1), Gateway: gateway, ctx: ctx, cancel: cancel}
+	fastConn := &Connection{UserID: "user123", DeviceID: "fast", Send: make(chan []byte, 1), Gateway: gateway, ctx: ctx, cancel: cancel}
+	blockedConn.Send <- []byte("already-full")
+
+	gateway.connections.Store("user123_blocked", blockedConn)
+	gateway.connections.Store("user123_fast", fastConn)
+
+	delivered, err := gateway.pushService.BroadcastToGroup(context.Background(), "group_123", []byte("group-message"))
+	require.NoError(t, err)
+	assert.Equal(t, int32(1), delivered)
+	assert.Equal(t, 1, len(fastConn.Send))
+	assert.Equal(t, 1, len(blockedConn.Send))
+}
+
+func TestPushService_BroadcastToGroup_DeduplicatesSameDeviceAcrossAliasKeys(t *testing.T) {
+	gateway, _, _, _ := setupTestGateway(t)
+	gateway.cacheManager = nil
+	gateway.SetGroupMemberProvider(&mockGatewayGroupMemberProvider{
+		getGroupMembersFunc: func(ctx context.Context, groupID string) ([]string, error) {
+			return []string{"user123"}, nil
+		},
+	})
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	conn := &Connection{UserID: "user123", DeviceID: "device1", Send: make(chan []byte, 8), Gateway: gateway, ctx: ctx, cancel: cancel}
+	gateway.connections.Store("user123_device1", conn)
+	gateway.connections.Store("user123_device1_alias", conn)
+
+	delivered, err := gateway.pushService.BroadcastToGroup(context.Background(), "group_123", []byte("group-message"))
+	require.NoError(t, err)
+	assert.Equal(t, int32(1), delivered)
+	assert.Equal(t, 1, len(conn.Send))
+}
+
+func TestPushService_PushMessage_RemoteGatewaySameNode_ForwardOnce(t *testing.T) {
+	gateway, _, mockRegistry, _ := setupTestGateway(t)
+
+	mockRegistry.SetUserLocations("user123", []GatewayLocation{
+		{GatewayNode: "gateway-node-2", DeviceID: "device-remote-1", ConnectedAt: time.Now().Unix()},
+		{GatewayNode: "gateway-node-2", DeviceID: "device-remote-2", ConnectedAt: time.Now().Unix()},
+	})
+
+	callCount := 0
+	gateway.pushService.SetRemoteForwarder(&mockRemoteForwarder{
+		forwardMessageFunc: func(ctx context.Context, gatewayNode string, req *PushMessageRequest) (*PushMessageResponse, error) {
+			callCount++
+			return &PushMessageResponse{Success: true, DeliveredCount: 2}, nil
+		},
+	})
+
+	resp, err := gateway.pushService.PushMessage(context.Background(), &PushMessageRequest{
+		MsgID:       "msg-forward-same-node-1",
+		RecipientID: "user123",
+		SenderID:    "sender1",
+		Content:     "hello",
+		Timestamp:   time.Now().Unix(),
+	})
+	require.NoError(t, err)
+	assert.True(t, resp.Success)
+	assert.Equal(t, int32(2), resp.DeliveredCount)
+	assert.Equal(t, 1, callCount)
+	assert.Empty(t, resp.FailedDevices)
+}
+
+func TestPushService_PushMessage_RemoteGatewaySameNode_FailureForwardOnce(t *testing.T) {
+	gateway, _, mockRegistry, _ := setupTestGateway(t)
+
+	mockRegistry.SetUserLocations("user123", []GatewayLocation{
+		{GatewayNode: "gateway-node-2", DeviceID: "device-remote-1", ConnectedAt: time.Now().Unix()},
+		{GatewayNode: "gateway-node-2", DeviceID: "device-remote-2", ConnectedAt: time.Now().Unix()},
+	})
+
+	callCount := 0
+	gateway.pushService.SetRemoteForwarder(&mockRemoteForwarder{
+		forwardMessageFunc: func(ctx context.Context, gatewayNode string, req *PushMessageRequest) (*PushMessageResponse, error) {
+			callCount++
+			return nil, errors.New("temporary unavailable")
+		},
+	})
+
+	resp, err := gateway.pushService.PushMessage(context.Background(), &PushMessageRequest{
+		MsgID:       "msg-forward-same-node-fail-1",
+		RecipientID: "user123",
+		SenderID:    "sender1",
+		Content:     "hello",
+		Timestamp:   time.Now().Unix(),
+	})
+	require.NoError(t, err)
+	assert.False(t, resp.Success)
+	assert.Equal(t, int32(0), resp.DeliveredCount)
+	assert.Equal(t, 1, callCount)
+	assert.Equal(t, []string{"device-remote-1"}, resp.FailedDevices)
+}
+
+func TestPushService_PushMessage_RemoteGatewayTransientRecovery(t *testing.T) {
+	gateway, _, mockRegistry, _ := setupTestGateway(t)
+
+	mockRegistry.SetUserLocations("user123", []GatewayLocation{
+		{GatewayNode: "gateway-node-2", DeviceID: "device-remote-1", ConnectedAt: time.Now().Unix()},
+	})
+
+	callCount := 0
+	gateway.pushService.SetRemoteForwarder(&mockRemoteForwarder{
+		forwardMessageFunc: func(ctx context.Context, gatewayNode string, req *PushMessageRequest) (*PushMessageResponse, error) {
+			callCount++
+			if callCount == 1 {
+				return nil, errors.New("temporary unavailable")
+			}
+			return &PushMessageResponse{Success: true, DeliveredCount: 1}, nil
+		},
+	})
+
+	first, err := gateway.pushService.PushMessage(context.Background(), &PushMessageRequest{
+		MsgID:       "msg-transient-1",
+		RecipientID: "user123",
+		SenderID:    "sender1",
+		Content:     "hello",
+		Timestamp:   time.Now().Unix(),
+	})
+	require.NoError(t, err)
+	assert.False(t, first.Success)
+	assert.Equal(t, int32(0), first.DeliveredCount)
+
+	second, err := gateway.pushService.PushMessage(context.Background(), &PushMessageRequest{
+		MsgID:       "msg-transient-2",
+		RecipientID: "user123",
+		SenderID:    "sender1",
+		Content:     "hello again",
+		Timestamp:   time.Now().Unix(),
+	})
+	require.NoError(t, err)
+	assert.True(t, second.Success)
+	assert.Equal(t, int32(1), second.DeliveredCount)
 }

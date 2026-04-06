@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import com.pingxin403.cuckoo.flashsale.alert.AlertPublisher;
 import com.pingxin403.cuckoo.flashsale.service.dto.ReconciliationReport;
 
 /**
@@ -18,6 +19,12 @@ import com.pingxin403.cuckoo.flashsale.service.dto.ReconciliationReport;
 public class ReconciliationAlertService {
 
   private static final Logger logger = LoggerFactory.getLogger(ReconciliationAlertService.class);
+
+  private final AlertPublisher alertPublisher;
+
+  public ReconciliationAlertService(AlertPublisher alertPublisher) {
+    this.alertPublisher = alertPublisher;
+  }
 
   @Value("${flash-sale.reconciliation.alert-threshold:5}")
   private int alertThreshold;
@@ -38,9 +45,13 @@ public class ReconciliationAlertService {
         report.failedSkus(),
         report.getTotalDiscrepancies());
 
-    // TODO: Integrate with actual alerting system (e.g., PagerDuty, Slack, Email)
-    // For now, we log the alert
-    logger.warn("Alert details: {}", report);
+    alertPublisher.publishWarning(
+        "reconciliation_discrepancy_detected",
+        "Reconciliation discrepancies detected",
+        java.util.Map.of(
+            "failedSkus", report.failedSkus(),
+            "totalDiscrepancies", report.getTotalDiscrepancies(),
+            "timestamp", report.timestamp().toString()));
   }
 
   /**
@@ -67,8 +78,14 @@ public class ReconciliationAlertService {
         "CRITICAL: Pausing flash sale activities due to excessive discrepancies - count={}",
         report.getTotalDiscrepancies());
 
-    // TODO: Implement actual activity pause logic
-    // TODO: Send critical alert to operations team
+    alertPublisher.publishCritical(
+        "reconciliation_activity_pause_required",
+        "Critical reconciliation discrepancy threshold reached",
+        java.util.Map.of(
+            "failedSkus", report.failedSkus(),
+            "totalDiscrepancies", report.getTotalDiscrepancies(),
+            "criticalThreshold", criticalThreshold,
+            "timestamp", report.timestamp().toString()));
 
     logger.error("Operations team notified. Manual intervention required.");
   }
@@ -83,6 +100,9 @@ public class ReconciliationAlertService {
   public void sendReconciliationErrorAlert(Exception error) {
     logger.error("ALERT: Reconciliation execution failed", error);
 
-    // TODO: Integrate with actual alerting system
+    alertPublisher.publishCritical(
+        "reconciliation_execution_failed",
+        error.getMessage(),
+        java.util.Map.of("exceptionType", error.getClass().getName()));
   }
 }

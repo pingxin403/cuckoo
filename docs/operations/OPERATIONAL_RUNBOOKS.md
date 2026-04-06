@@ -868,8 +868,8 @@ If scaling causes issues:
 3. **Wait for connections to drain** (or force close):
    ```bash
    # Monitor active connections on pod
-   kubectl exec -it <gateway-pod-name> -n im-system -- \
-     curl http://localhost:8080/stats | jq .active_connections
+    kubectl exec -it <gateway-pod-name> -n im-system -- \
+      curl http://localhost:9090/metrics | grep im_gateway_active_connections
    
    # Wait until connections < 1000 or timeout (5 minutes)
    ```

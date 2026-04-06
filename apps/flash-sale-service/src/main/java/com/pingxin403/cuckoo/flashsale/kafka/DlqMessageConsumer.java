@@ -9,6 +9,7 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
 
+import com.pingxin403.cuckoo.flashsale.alert.AlertPublisher;
 import com.pingxin403.cuckoo.flashsale.model.DlqMessage;
 
 /**
@@ -22,14 +23,6 @@ import com.pingxin403.cuckoo.flashsale.model.DlqMessage;
  *   <li>Metrics: exposes DLQ message count for monitoring systems
  * </ul>
  *
- * <p>Note: This is a placeholder implementation. In production, this should integrate with:
- *
- * <ul>
- *   <li>Alerting systems (PagerDuty, OpsGenie, etc.)
- *   <li>Monitoring dashboards (Grafana, etc.)
- *   <li>Manual reprocessing workflows
- * </ul>
- *
  * <p>Requirements: 2.5
  */
 @Component
@@ -37,11 +30,17 @@ public class DlqMessageConsumer {
 
   private static final Logger logger = LoggerFactory.getLogger(DlqMessageConsumer.class);
 
+  private final AlertPublisher alertPublisher;
+
   /** Counter for total DLQ messages received. */
   private final AtomicLong dlqMessageCount = new AtomicLong(0);
 
   /** Counter for DLQ messages received in the last hour (for alerting). */
   private final AtomicLong hourlyDlqMessageCount = new AtomicLong(0);
+
+  public DlqMessageConsumer(AlertPublisher alertPublisher) {
+    this.alertPublisher = alertPublisher;
+  }
 
   /**
    * Consumes messages from the dead letter queue.
@@ -95,10 +94,26 @@ public class DlqMessageConsumer {
           totalCount);
     }
 
-    // TODO: In production, integrate with alerting systems:
-    // - Send alert to PagerDuty/OpsGenie
-    // - Update Prometheus metrics
-    // - Store in database for manual reprocessing UI
+    alertPublisher.publishWarning(
+        "flash_sale_dlq_message",
+        "DLQ message received",
+        java.util.Map.of(
+            "orderId",
+                dlqMessage.originalMessage() != null
+                    ? dlqMessage.originalMessage().orderId()
+                    : "null",
+            "retryCount", dlqMessage.retryCount(),
+            "topic", dlqMessage.topic(),
+            "partition", dlqMessage.partition(),
+            "offset", dlqMessage.offset(),
+            "hourlyCount", hourlyCount));
+
+    if (hourlyCount > 100) {
+      alertPublisher.publishCritical(
+          "flash_sale_dlq_burst",
+          "High DLQ message rate detected",
+          java.util.Map.of("hourlyCount", hourlyCount, "totalCount", totalCount));
+    }
 
     acknowledgment.acknowledge();
   }

@@ -1012,11 +1012,8 @@ docker logs im-gateway-service --tail 100 --follow
 # Check service health endpoint
 curl http://localhost:8080/health
 
-# Check service readiness
-curl http://localhost:8080/ready
-
 # Check service metrics
-curl http://localhost:8080/metrics
+curl http://localhost:9090/metrics
 ```
 
 #### 2. Infrastructure Health Check

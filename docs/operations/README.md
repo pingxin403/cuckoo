@@ -21,6 +21,15 @@ Operational guides for running, monitoring, and maintaining the IM Chat System i
 
 **Use this guide as your primary reference for all monitoring and alerting needs.**
 
+### ⚡ P2 Baseline Capture Guide
+**File**: [P2_BASELINE_CAPTURE.md](./P2_BASELINE_CAPTURE.md)
+
+Guidance for OpenSpec P2 task 1.1 baseline capture:
+- load test execution entrypoints
+- baseline dimensions (throughput, latency, timeout, error)
+- baseline report output contract
+- task acceptance criteria and next-step dependencies
+
 ---
 
 ### Operational Runbooks
@@ -462,4 +471,3 @@ Service Level Objectives tracking and monitoring:
 **Last Updated**: 2026-01-25  
 **Maintained By**: Operations Team  
 **Review Frequency**: Monthly
-

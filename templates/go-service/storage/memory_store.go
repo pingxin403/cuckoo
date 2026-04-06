@@ -8,7 +8,7 @@ import (
 )
 
 // Store 定义存储接口
-// TODO: 根据服务需求更新此接口的方法
+// IMPLEMENT_ME: 根据服务需求更新此接口的方法
 type Store interface {
 	Create(item *{{PROTO_PACKAGE}}.YourItem) error
 	Get(id string) (*{{PROTO_PACKAGE}}.YourItem, error)

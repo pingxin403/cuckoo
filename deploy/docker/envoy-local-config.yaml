@@ -24,7 +24,7 @@ static_resources:
                 route:
                   cluster: hello_service
                   timeout: 30s
-              # TODO Service routing
+              # Todo service routing
               - match:
                   prefix: "/api/todo"
                 route:
@@ -100,7 +100,7 @@ static_resources:
       healthy_threshold: 2
       grpc_health_check: {}
 
-  # TODO Service cluster
+  # Todo service cluster
   - name: todo_service
     type: LOGICAL_DNS
     lb_policy: ROUND_ROBIN

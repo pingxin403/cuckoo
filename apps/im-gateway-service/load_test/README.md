@@ -88,6 +88,34 @@ Test results are saved to `results/YYYYMMDD_HHMMSS/` with:
 - JSON output files
 - Summary JSON files
 - Test logs
+- `p2-baseline-report.json` (P2 baseline collector output for task 1.1)
+
+### P2 Baseline Report (Task 1.1)
+
+The load test runner now automatically generates a baseline report after successful runs:
+
+```bash
+./run-load-tests.sh quick
+# or
+./run-load-tests.sh all
+```
+
+Generated file:
+
+```bash
+apps/im-gateway-service/load_test/results/<timestamp>/p2-baseline-report.json
+```
+
+The report captures baseline fields for critical paths:
+- throughput (msg/sec)
+- P95/P99 latency
+- timeout rate (when available)
+- error rate
+
+Current baseline sources:
+- private/group message: throughput test summary
+- cross-gateway delivery: cluster summary when available
+- read-receipt path: marked pending until dedicated scenario is added
 
 ## CI/CD Integration
 

@@ -117,7 +117,7 @@ The test environment includes:
 - **Auth Service** (port 9095) - JWT token validation
 - **User Service** (port 9096) - User profile and group membership
 - **IM Service** (port 9094) - Message routing
-- **IM Gateway Service** (ports 9093, 8080) - WebSocket gateway
+- **IM Gateway Service** (ports 9097, 8080) - gRPC + WebSocket gateway
 
 ### Infrastructure
 - **MySQL** (ports 3306, 3307) - User data and offline messages

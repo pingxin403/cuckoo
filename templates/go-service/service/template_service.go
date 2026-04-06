@@ -41,7 +41,7 @@ func (s *{{ServiceName}}ServiceServer) recordMetrics(method string, status strin
 	})
 }
 
-// TODO: Implement your RPC methods here
+// IMPLEMENT_ME: Implement your RPC methods here
 //
 // Example:
 //

@@ -24,8 +24,8 @@ public class TemplateServiceImpl {
     
     private static final Logger logger = LoggerFactory.getLogger(TemplateServiceImpl.class);
     
-    // TODO: Extend the generated gRPC service base class
-    // TODO: Implement your RPC methods
+	// IMPLEMENT_ME: Extend the generated gRPC service base class
+	// IMPLEMENT_ME: Implement your RPC methods
     
     /**
      * Example RPC method implementation:

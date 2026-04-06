@@ -8,6 +8,8 @@ import (
 	"os"
 	"sync"
 	"time"
+
+	"go.opentelemetry.io/otel/trace"
 )
 
 // StructuredLogger implements Logger with structured logging
@@ -125,8 +127,12 @@ func (l *StructuredLogger) log(ctx context.Context, level Level, msg string, key
 		entry[k] = v
 	}
 
-	// Add context fields (trace_id, span_id, etc.)
-	// TODO: Extract from context when tracing is implemented
+	if span := trace.SpanFromContext(ctx); span.SpanContext().IsValid() {
+		spanCtx := span.SpanContext()
+		entry["trace_id"] = spanCtx.TraceID().String()
+		entry["span_id"] = spanCtx.SpanID().String()
+		entry["trace_flags"] = spanCtx.TraceFlags().String()
+	}
 
 	// Add key-value pairs
 	for i := 0; i < len(keysAndValues); i += 2 {

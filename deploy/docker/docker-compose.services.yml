@@ -24,7 +24,7 @@ services:
       - monorepo-network
     restart: unless-stopped
 
-  # TODO Service (Go)
+  # Todo service (Go)
   todo-service:
     build:
       context: ../..
@@ -123,6 +123,7 @@ services:
       - PORT=9095
       - LOG_LEVEL=info
       - JWT_SECRET=your-secret-key-change-in-production
+      - APP_ENV=production
     healthcheck:
       test: ["CMD", "pgrep", "-f", "auth-service"]
       interval: 15s
@@ -151,6 +152,7 @@ services:
       - MYSQL_USER=im_service
       - MYSQL_PASSWORD=im_service_password
       - LOG_LEVEL=info
+      - APP_ENV=production
     depends_on:
       mysql:
         condition: service_healthy
@@ -211,6 +213,7 @@ services:
       - AUTH_SERVICE_ADDR=auth-service:9095
       - USER_SERVICE_ADDR=user-service:9096
       - LOG_LEVEL=info
+      - APP_ENV=production
     depends_on:
       mysql:
         condition: service_healthy
@@ -239,20 +242,21 @@ services:
     build:
       context: ../..
       dockerfile: apps/im-gateway-service/Dockerfile
-    image: im-gateway-service:latest
+    image: im-gateway-service:local
     container_name: im-gateway-service
     ports:
       - "9097:9097"  # gRPC
-      - "8082:8080"  # WebSocket
+      - "8082:9093"
     environment:
       - GRPC_PORT=9097
-      - WEBSOCKET_PORT=8080
+      - SERVER_HTTP_PORT=9093
       - ETCD_ENDPOINTS=etcd:2379
       - KAFKA_BROKERS=kafka:9092
       - REDIS_ADDR=redis:6379
       - AUTH_SERVICE_ADDR=auth-service:9095
       - IM_SERVICE_ADDR=im-service:9094
       - LOG_LEVEL=info
+      - APP_ENV=production
     depends_on:
       etcd:
         condition: service_healthy
@@ -265,7 +269,7 @@ services:
       im-service:
         condition: service_started
     healthcheck:
-      test: ["CMD", "pgrep", "-f", "im-gateway-service"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9093/health"]
       interval: 15s
       timeout: 3s
       retries: 3

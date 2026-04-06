@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func TestNewStructuredLogger(t *testing.T) {
@@ -258,6 +259,44 @@ func TestStructuredLogger_ConcurrentAccess(t *testing.T) {
 
 	// Verify output is not empty and no panics occurred
 	assert.NotEmpty(t, buf.String())
+}
+
+func TestStructuredLogger_ExtractsTraceContext(t *testing.T) {
+	var buf bytes.Buffer
+	logger := &StructuredLogger{
+		config: Config{Format: "json"},
+		level:  InfoLevel,
+		output: &buf,
+		fields: make(map[string]interface{}),
+	}
+
+	traceID, err := trace.TraceIDFromHex("0123456789abcdef0123456789abcdef")
+	require.NoError(t, err)
+	spanID, err := trace.SpanIDFromHex("0123456789abcdef")
+	require.NoError(t, err)
+
+	spanCtx := trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID:    traceID,
+		SpanID:     spanID,
+		TraceFlags: trace.FlagsSampled,
+		Remote:     true,
+	})
+	ctx := trace.ContextWithSpanContext(context.Background(), spanCtx)
+
+	logger.Info(ctx, "trace-context-test")
+
+	output := strings.TrimSpace(buf.String())
+	if output == "" {
+		t.Fatal("expected log output")
+	}
+
+	var entry map[string]interface{}
+	err = json.Unmarshal([]byte(output), &entry)
+	require.NoError(t, err)
+
+	assert.Equal(t, traceID.String(), entry["trace_id"])
+	assert.Equal(t, spanID.String(), entry["span_id"])
+	assert.Equal(t, "01", entry["trace_flags"])
 }
 
 func TestParseLevel(t *testing.T) {

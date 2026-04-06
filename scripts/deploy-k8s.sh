@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Kubernetes Deployment Script
-# This script deploys the Monorepo Hello/TODO Services to a Kubernetes cluster
+# This script deploys the Monorepo Hello/Todo Services to a Kubernetes cluster
 
 set -e
 
@@ -215,7 +215,7 @@ wait_for_deployments() {
         exit 1
     fi
     
-    # Wait for TODO Service
+	# Wait for Todo service
     echo -e "${YELLOW}Waiting for todo-service...${NC}"
     if kubectl rollout status deployment/todo-service -n "$NAMESPACE" --timeout=5m; then
         echo -e "${GREEN}✓ todo-service is ready${NC}"
@@ -261,7 +261,7 @@ show_logs() {
     echo -e "${YELLOW}Hello Service logs:${NC}"
     kubectl logs -n "$NAMESPACE" -l app=hello-service --tail=10 --prefix=true || true
     
-    echo -e "${YELLOW}TODO Service logs:${NC}"
+	echo -e "${YELLOW}Todo service logs:${NC}"
     kubectl logs -n "$NAMESPACE" -l app=todo-service --tail=10 --prefix=true || true
 }
 
@@ -313,4 +313,3 @@ main() {
 
 # Run main function
 main
-

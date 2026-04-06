@@ -404,6 +404,16 @@ func (g *GatewayService) registerPendingAck(msgID, userID, deviceID string) {
 	}
 
 	key := g.ackKey(msgID, userID, deviceID)
+	if existing, ok := g.ackStates.Load(key); ok {
+		if prev, ok := existing.(*ackState); ok {
+			prev.mu.Lock()
+			if prev.timer != nil {
+				prev.timer.Stop()
+			}
+			prev.mu.Unlock()
+		}
+	}
+
 	timeout := g.config.AckTimeout
 	if timeout <= 0 {
 		timeout = 5 * time.Second
@@ -425,6 +435,9 @@ func (g *GatewayService) registerPendingAck(msgID, userID, deviceID string) {
 	state.timer = time.AfterFunc(timeout, func() {
 		if value, ok := g.ackStates.Load(key); ok {
 			ack := value.(*ackState)
+			if ack != state {
+				return
+			}
 			ack.mu.Lock()
 			defer ack.mu.Unlock()
 			if ack.status == "pending" {
@@ -462,6 +475,11 @@ func (g *GatewayService) resolveAck(msgID, userID, deviceID string) bool {
 	ack := value.(*ackState)
 	ack.mu.Lock()
 	defer ack.mu.Unlock()
+
+	if ack.status == "delivered" {
+		return false
+	}
+
 	if ack.status == "timeout" {
 		ack.status = "delivered"
 		if g.tracer != nil {
@@ -481,6 +499,11 @@ func (g *GatewayService) resolveAck(msgID, userID, deviceID string) bool {
 		}
 		return true
 	}
+
+	if ack.status != "pending" {
+		return false
+	}
+
 	if ack.timer != nil {
 		ack.timer.Stop()
 	}

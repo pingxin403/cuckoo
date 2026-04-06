@@ -235,8 +235,8 @@ spec:
       - name: im-gateway-service
         image: im-gateway-service:latest
         ports:
-        - containerPort: 9093  # gRPC
-        - containerPort: 8080  # WebSocket
+        - containerPort: 9097  # gRPC
+        - containerPort: 8080  # HTTP + WebSocket (/ws)
         resources:
           limits:
             memory: "512Mi"

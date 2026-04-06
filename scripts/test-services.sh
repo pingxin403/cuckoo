@@ -305,11 +305,11 @@ if [ "$TEST_SUITE" = "all" ] || [ "$TEST_SUITE" = "im" ]; then
     echo ""
 fi
 
-# Check if services are running (Hello/TODO)
+# Check if services are running (Hello/Todo)
 if [ "$TEST_SUITE" = "all" ] || [ "$TEST_SUITE" = "hello-todo" ]; then
-    echo -e "${BLUE}=== Hello/TODO Services Tests ===${NC}"
+	echo -e "${BLUE}=== Hello/Todo Services Tests ===${NC}"
 test_service_running "Hello Service" 9090
-test_service_running "TODO Service" 9091
+test_service_running "Todo service" 9091
 test_service_running "Frontend" 5173
 
 # Check if Envoy is running (optional)
@@ -350,21 +350,21 @@ fi
 
 echo ""
 
-# Test TODO Service
-echo -e "${BLUE}Testing TODO Service...${NC}"
+# Test Todo service
+echo -e "${BLUE}Testing Todo service...${NC}"
 
 if command -v grpcurl &> /dev/null; then
     # Create a TODO
     echo -e "${YELLOW}Creating a TODO item...${NC}"
     CREATE_RESPONSE=$(grpcurl -plaintext -d '{"title":"Test TODO","description":"This is a test"}' localhost:9091 api.v1.TodoService/CreateTodo 2>/dev/null || echo "")
     if echo "$CREATE_RESPONSE" | grep -q "Test TODO"; then
-        print_result "TODO Service creates TODO" "PASS"
+		print_result "Todo service creates TODO" "PASS"
         
         # Extract TODO ID
         TODO_ID=$(echo "$CREATE_RESPONSE" | grep -o '"id":"[^"]*"' | cut -d'"' -f4)
         echo -e "${BLUE}Created TODO with ID: $TODO_ID${NC}"
     else
-        print_result "TODO Service creates TODO" "FAIL"
+		print_result "Todo service creates TODO" "FAIL"
         TODO_ID=""
     fi
     
@@ -372,9 +372,9 @@ if command -v grpcurl &> /dev/null; then
     echo -e "${YELLOW}Listing TODO items...${NC}"
     LIST_RESPONSE=$(grpcurl -plaintext -d '{}' localhost:9091 api.v1.TodoService/ListTodos 2>/dev/null || echo "")
     if echo "$LIST_RESPONSE" | grep -q "Test TODO"; then
-        print_result "TODO Service lists TODOs" "PASS"
+		print_result "Todo service lists TODOs" "PASS"
     else
-        print_result "TODO Service lists TODOs" "FAIL"
+		print_result "Todo service lists TODOs" "FAIL"
     fi
     
     # Update TODO (if we have an ID)
@@ -382,20 +382,20 @@ if command -v grpcurl &> /dev/null; then
         echo -e "${YELLOW}Updating TODO item...${NC}"
         UPDATE_RESPONSE=$(grpcurl -plaintext -d "{\"id\":\"$TODO_ID\",\"title\":\"Updated TODO\",\"description\":\"Updated description\",\"completed\":true}" localhost:9091 api.v1.TodoService/UpdateTodo 2>/dev/null || echo "")
         if echo "$UPDATE_RESPONSE" | grep -q "Updated TODO"; then
-            print_result "TODO Service updates TODO" "PASS"
-        else
-            print_result "TODO Service updates TODO" "FAIL"
-        fi
+			print_result "Todo service updates TODO" "PASS"
+		else
+			print_result "Todo service updates TODO" "FAIL"
+		fi
         
         # Delete TODO
         echo -e "${YELLOW}Deleting TODO item...${NC}"
         DELETE_RESPONSE=$(grpcurl -plaintext -d "{\"id\":\"$TODO_ID\"}" localhost:9091 api.v1.TodoService/DeleteTodo 2>/dev/null || echo "")
         if echo "$DELETE_RESPONSE" | grep -q "success"; then
-            print_result "TODO Service deletes TODO" "PASS"
-        else
-            print_result "TODO Service deletes TODO" "FAIL"
-        fi
-    fi
+			print_result "Todo service deletes TODO" "PASS"
+		else
+			print_result "Todo service deletes TODO" "FAIL"
+		fi
+	fi
 else
     echo -e "${YELLOW}Skipping gRPC tests (grpcurl not installed)${NC}"
 fi
@@ -404,13 +404,13 @@ echo ""
 
 # Test service-to-service communication
 echo -e "${BLUE}Testing service-to-service communication...${NC}"
-echo -e "${YELLOW}Note: TODO Service should be able to call Hello Service${NC}"
-echo -e "${YELLOW}This is verified by checking if TODO Service can start with HELLO_SERVICE_ADDR set${NC}"
+echo -e "${YELLOW}Note: Todo service should be able to call Hello Service${NC}"
+echo -e "${YELLOW}This is verified by checking if Todo service can start with HELLO_SERVICE_ADDR set${NC}"
 
-if test_service_running "TODO Service" 9091 >/dev/null 2>&1; then
-    print_result "TODO Service can communicate with Hello Service" "PASS"
+if test_service_running "Todo service" 9091 >/dev/null 2>&1; then
+	print_result "Todo service can communicate with Hello Service" "PASS"
 else
-    print_result "TODO Service can communicate with Hello Service" "FAIL"
+	print_result "Todo service can communicate with Hello Service" "FAIL"
 fi
 
 echo ""
@@ -470,4 +470,3 @@ else
     echo -e "${YELLOW}Please check the logs in the logs/ directory for more details${NC}"
     exit 1
 fi
-

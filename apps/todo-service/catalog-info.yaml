@@ -28,7 +28,7 @@ apiVersion: backstage.io/v1alpha1
 kind: API
 metadata:
   name: todo-api
-  description: TODO Service gRPC API
+  description: Todo service gRPC API
 spec:
   type: grpc
   lifecycle: production

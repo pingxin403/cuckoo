@@ -110,6 +110,11 @@ To customize the default K8s configuration:
 
 ## Template Maintenance
 
+### Placeholder Conventions
+
+- Use `IMPLEMENT_ME` for template scaffolding placeholders where a generated service author must fill in business logic.
+- Avoid `TODO`/`FIXME` markers in templates to reduce false positives in repository-wide TODO scans.
+
 ### Adding New Files to Templates
 
 1. Add the file to the appropriate template directory

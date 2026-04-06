@@ -5,6 +5,17 @@ set -e
 
 NAMESPACE="${NAMESPACE:-im-chat-system}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+RUN_MIGRATIONS="${RUN_MIGRATIONS:-false}"
+MIGRATION_JOB_NAME="${MIGRATION_JOB_NAME:-im-liquibase-migration}"
+MIGRATION_IMAGE="${MIGRATION_IMAGE:-im-liquibase:latest}"
+MIGRATION_CHANGELOG="${MIGRATION_CHANGELOG:-changelog/db.changelog-master.yaml}"
+MIGRATION_DB_NAME="${MIGRATION_DB_NAME:-im_chat}"
+MIGRATION_DB_USER="${MIGRATION_DB_USER:-im_service}"
+MIGRATION_DB_PASSWORD="${MIGRATION_DB_PASSWORD:-im_service_password}"
+MIGRATION_CONTEXTS="${MIGRATION_CONTEXTS:-prod}"
+MIGRATION_TIMEOUT="${MIGRATION_TIMEOUT:-300s}"
+MIGRATION_CLEANUP_ON_SUCCESS="${MIGRATION_CLEANUP_ON_SUCCESS:-false}"
+MIGRATION_DRY_RUN="${MIGRATION_DRY_RUN:-false}"
 
 echo "=========================================="
 echo "Deploying IM Chat System Infrastructure"
@@ -125,7 +136,51 @@ helm upgrade --install higress higress/higress \
 echo "Waiting for Higress to be ready..."
 kubectl wait --for=condition=ready pod -l app=higress-gateway -n higress-system --timeout=300s || true
 
-# TODO: Run Liquibase migrations
+echo ""
+if [ "$RUN_MIGRATIONS" = "true" ]; then
+  echo "Running Liquibase migrations..."
+
+  if [ -z "$MIGRATION_IMAGE" ]; then
+    echo "ERROR: MIGRATION_IMAGE is required when RUN_MIGRATIONS=true"
+    exit 1
+  fi
+
+  MIGRATION_URL="${MIGRATION_URL:-jdbc:mysql://im-mysql:3306/$MIGRATION_DB_NAME?useSSL=false}"
+
+  kubectl delete job "$MIGRATION_JOB_NAME" -n "$NAMESPACE" --ignore-not-found >/dev/null 2>&1 || true
+
+  if [ "$MIGRATION_DRY_RUN" = "true" ]; then
+    MIGRATION_COMMAND="updateSQL"
+  else
+    MIGRATION_COMMAND="update"
+  fi
+
+  kubectl create job "$MIGRATION_JOB_NAME" \
+    --image="$MIGRATION_IMAGE" \
+    --namespace="$NAMESPACE" \
+    -- liquibase \
+    --changelog-file="$MIGRATION_CHANGELOG" \
+    --url="$MIGRATION_URL" \
+    --username="$MIGRATION_DB_USER" \
+    --password="$MIGRATION_DB_PASSWORD" \
+    --driver=com.mysql.cj.jdbc.Driver \
+    --contexts="$MIGRATION_CONTEXTS" \
+    "$MIGRATION_COMMAND"
+
+  if [ "$MIGRATION_DRY_RUN" = "true" ]; then
+    kubectl logs -n "$NAMESPACE" -f "job/$MIGRATION_JOB_NAME"
+  else
+    kubectl wait --for=condition=complete --timeout="$MIGRATION_TIMEOUT" "job/$MIGRATION_JOB_NAME" -n "$NAMESPACE"
+    kubectl logs -n "$NAMESPACE" "job/$MIGRATION_JOB_NAME"
+  fi
+
+  if [ "$MIGRATION_CLEANUP_ON_SUCCESS" = "true" ]; then
+    kubectl delete job "$MIGRATION_JOB_NAME" -n "$NAMESPACE" --ignore-not-found >/dev/null 2>&1 || true
+  fi
+else
+  echo "Skipping Liquibase migrations (RUN_MIGRATIONS=false)"
+fi
+
 echo ""
 echo "=========================================="
 echo "Infrastructure deployment complete!"
@@ -134,12 +189,21 @@ echo ""
 echo "Deployed components:"
 echo "  ✅ etcd cluster (3 nodes) - Bitnami Helm chart"
 echo "  ✅ MySQL database - Bitnami Helm chart"
+if [ "$RUN_MIGRATIONS" = "true" ]; then
+  if [ "$MIGRATION_DRY_RUN" = "true" ]; then
+    echo "  ✅ Liquibase migration dry-run executed"
+  else
+    echo "  ✅ Liquibase migrations executed"
+  fi
+else
+  echo "  ⏭️  Liquibase migrations skipped"
+fi
 echo "  ✅ Redis cache - Bitnami Helm chart"
 echo "  ✅ Kafka cluster (3 brokers, KRaft mode) - Bitnami Helm chart"
 echo "  ✅ Higress API Gateway - Higress Helm chart"
 echo ""
 echo "Next steps:"
-echo "1. Run database migrations: kubectl create job im-liquibase-migration ..."
+echo "1. Run migrations by re-running with RUN_MIGRATIONS=true (optional MIGRATION_* overrides)"
 echo "2. Deploy application services: kubectl apply -k deploy/k8s/overlays/..."
 echo "3. Verify all pods are running: kubectl get pods -n $NAMESPACE"
 echo "4. Check Higress gateway: kubectl get svc -n higress-system"

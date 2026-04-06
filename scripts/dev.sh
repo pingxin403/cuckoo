@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Development startup script for Monorepo Hello/TODO Services
+# Development startup script for Monorepo Hello/Todo/Services
 # This script starts all services in development mode with proper cleanup
 
 set -e
@@ -11,6 +11,13 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# Services to start (add new services here)
+SERVICES=(
+  "hello-service:Hello Service:9090:java"
+  "todo-service:TODO Service:9091:go"
+  "shortener-service:URL Shortener Service:9092:go"
+)
 
 # PID tracking
 PIDS=()
@@ -85,7 +92,7 @@ echo -e "${GREEN}=== Starting Monorepo Development Environment ===${NC}\n"
 # Check if required ports are available
 echo -e "${BLUE}Checking port availability...${NC}"
 check_port 9090  # Hello Service
-check_port 9091  # TODO Service
+check_port 9091  # Todo service
 check_port 8080  # Envoy
 check_port 5173  # Vite dev server
 
@@ -111,18 +118,18 @@ echo -e "${GREEN}Hello Service started (PID: $HELLO_PID)${NC}"
 # Wait for Hello Service to be ready
 wait_for_service "Hello Service" 9090
 
-# Start TODO Service (Go)
-echo -e "${BLUE}Starting TODO Service (Go)...${NC}"
+# Start Todo service (Go)
+echo -e "${BLUE}Starting Todo service (Go)...${NC}"
 cd apps/todo-service
 export HELLO_SERVICE_ADDR="localhost:9090"
 go run . > "../../$LOG_DIR/todo-service.log" 2>&1 &
 TODO_PID=$!
 PIDS+=($TODO_PID)
 cd ../..
-echo -e "${GREEN}TODO Service started (PID: $TODO_PID)${NC}"
+echo -e "${GREEN}Todo service started (PID: $TODO_PID)${NC}"
 
-# Wait for TODO Service to be ready
-wait_for_service "TODO Service" 9091
+# Wait for Todo service to be ready
+wait_for_service "Todo service" 9091
 
 # Start Envoy (if available)
 if [ "$SKIP_ENVOY" = false ]; then
@@ -156,7 +163,7 @@ if [ "$SKIP_ENVOY" = false ]; then
     echo -e "  - Envoy Admin:   ${GREEN}http://localhost:9901${NC}"
 fi
 echo -e "  - Hello Service: ${GREEN}localhost:9090${NC} (gRPC)"
-echo -e "  - TODO Service:  ${GREEN}localhost:9091${NC} (gRPC)"
+echo -e "  - Todo service:  ${GREEN}localhost:9091${NC} (gRPC)"
 echo -e "\n${BLUE}Logs are available in:${NC} $LOG_DIR/"
 echo -e "\n${YELLOW}Press Ctrl+C to stop all services${NC}\n"
 

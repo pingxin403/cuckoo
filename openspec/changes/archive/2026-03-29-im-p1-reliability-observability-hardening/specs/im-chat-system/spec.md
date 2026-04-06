@@ -34,8 +34,6 @@ The system SHALL emit alert-ready metrics for key reliability risks.
 - **THEN** metrics expose threshold-breaching values for alerting
 - **AND** runbook-relevant context is logged
 
-## MODIFIED Requirements
-
 ### Requirement: Message Delivery Guarantee
 The system SHALL classify delivery outcomes with observable failure categories while preserving at-least-once semantics.
 

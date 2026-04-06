@@ -132,8 +132,32 @@ func (p *PushService) PushMessage(ctx context.Context, req *PushMessageRequest) 
 			}
 		} else {
 			// Device not connected locally, check Registry for remote gateway
-			// This handles the case where device is on another gateway node
-			failedDevices = append(failedDevices, req.DeviceID)
+			locations, lookupErr := p.gateway.registryClient.LookupUser(ctx, req.RecipientID)
+			if lookupErr != nil {
+				return &PushMessageResponse{
+					Success:      false,
+					ErrorMessage: fmt.Sprintf("failed to lookup user devices: %v", lookupErr),
+				}, nil
+			}
+
+			var target *GatewayLocation
+			for i := range locations {
+				if locations[i].DeviceID == req.DeviceID {
+					target = &locations[i]
+					break
+				}
+			}
+
+			if target == nil {
+				failedDevices = append(failedDevices, req.DeviceID)
+			} else {
+				forwardCount, ok := p.forwardMessageToRemote(ctx, req, *target)
+				if ok {
+					deliveredCount += forwardCount
+				} else {
+					failedDevices = append(failedDevices, req.DeviceID)
+				}
+			}
 		}
 	} else {
 		// Multi-device delivery: Query Registry for all user devices
@@ -148,6 +172,7 @@ func (p *PushService) PushMessage(ctx context.Context, req *PushMessageRequest) 
 
 		// Track which devices we've attempted to deliver to
 		attemptedDevices := make(map[string]bool)
+		forwardedGatewayNodes := make(map[string]bool)
 
 		// Deliver to all devices found in Registry
 		for _, location := range locations {
@@ -164,44 +189,16 @@ func (p *PushService) PushMessage(ctx context.Context, req *PushMessageRequest) 
 					failedDevices = append(failedDevices, location.DeviceID)
 				}
 			} else {
-				forwardReq := *req
-				forwardReq.DeviceID = location.DeviceID
-				spanCtx, span := p.tracer.StartSpan(ctx, "im-gateway.forward.message", tracing.WithSpanKind(tracing.SpanKindClient), tracing.WithAttributes(map[string]interface{}{
-					"msg.id":           req.MsgID,
-					"recipient.id":     req.RecipientID,
-					"target.gateway":   location.GatewayNode,
-					"target.device_id": location.DeviceID,
-				}))
-				forwardStart := time.Now()
-				forwardResp, forwardErr := p.remoteForwarder.ForwardMessage(spanCtx, location.GatewayNode, &forwardReq)
-				if p.metrics != nil {
-					p.metrics.ObserveForwardLatency("message", time.Since(forwardStart))
-				}
-				if forwardErr != nil || forwardResp == nil || !forwardResp.Success || forwardResp.DeliveredCount <= 0 {
-					failureReason := classifyForwardFailureReason(forwardErr, forwardResp)
-					span.SetAttribute("forward.result", "failure")
-					span.SetAttribute("forward.failure_reason", failureReason)
-					span.SetAttribute("forward.latency_ms", time.Since(forwardStart).Milliseconds())
-					if forwardErr != nil {
-						span.RecordError(forwardErr)
-						span.SetStatus(tracing.StatusCodeError, forwardErr.Error())
-					}
-					span.End()
-					if p.metrics != nil {
-						p.metrics.IncForwardFailure("message", failureReason)
-					}
-					failedDevices = append(failedDevices, location.DeviceID)
+				if forwardedGatewayNodes[location.GatewayNode] {
 					continue
 				}
-				span.SetAttribute("forward.result", "success")
-				span.SetAttribute("forward.delivered_count", forwardResp.DeliveredCount)
-				span.SetAttribute("forward.latency_ms", time.Since(forwardStart).Milliseconds())
-				span.SetStatus(tracing.StatusCodeOK, "")
-				span.End()
-				if p.metrics != nil {
-					p.metrics.IncForwardSuccess("message")
+				forwardCount, ok := p.forwardMessageToRemote(ctx, req, location)
+				forwardedGatewayNodes[location.GatewayNode] = true
+				if ok {
+					deliveredCount += forwardCount
+				} else {
+					failedDevices = append(failedDevices, location.DeviceID)
 				}
-				deliveredCount += forwardResp.DeliveredCount
 			}
 		}
 
@@ -251,6 +248,93 @@ func (p *PushService) pushToConnection(conn *Connection, data []byte, _ string) 
 	}
 }
 
+func (p *PushService) forwardMessageToRemote(ctx context.Context, req *PushMessageRequest, location GatewayLocation) (int32, bool) {
+	forwardReq := *req
+	forwardReq.DeviceID = location.DeviceID
+
+	spanCtx, span := p.tracer.StartSpan(ctx, "im-gateway.forward.message", tracing.WithSpanKind(tracing.SpanKindClient), tracing.WithAttributes(map[string]interface{}{
+		"msg.id":           req.MsgID,
+		"recipient.id":     req.RecipientID,
+		"target.gateway":   location.GatewayNode,
+		"target.device_id": location.DeviceID,
+	}))
+
+	forwardStart := time.Now()
+	forwardResp, forwardErr := p.remoteForwarder.ForwardMessage(spanCtx, location.GatewayNode, &forwardReq)
+	latency := time.Since(forwardStart)
+	if p.metrics != nil {
+		p.metrics.ObserveForwardLatency("message", latency)
+	}
+
+	if forwardErr != nil || forwardResp == nil || !forwardResp.Success || forwardResp.DeliveredCount <= 0 {
+		failureReason := classifyForwardFailureReason(forwardErr, forwardResp)
+		span.SetAttribute("forward.result", "failure")
+		span.SetAttribute("forward.failure_reason", failureReason)
+		span.SetAttribute("forward.latency_ms", latency.Milliseconds())
+		if forwardErr != nil {
+			span.RecordError(forwardErr)
+			span.SetStatus(tracing.StatusCodeError, forwardErr.Error())
+		}
+		span.End()
+		if p.metrics != nil {
+			p.metrics.IncForwardFailure("message", failureReason)
+		}
+		return 0, false
+	}
+
+	span.SetAttribute("forward.result", "success")
+	span.SetAttribute("forward.delivered_count", forwardResp.DeliveredCount)
+	span.SetAttribute("forward.latency_ms", latency.Milliseconds())
+	span.SetStatus(tracing.StatusCodeOK, "")
+	span.End()
+	if p.metrics != nil {
+		p.metrics.IncForwardSuccess("message")
+	}
+
+	return forwardResp.DeliveredCount, true
+}
+
+func (p *PushService) forwardReadReceiptToRemote(ctx context.Context, req *PushReadReceiptRequest, location GatewayLocation) (int32, bool) {
+	spanCtx, span := p.tracer.StartSpan(ctx, "im-gateway.forward.read_receipt", tracing.WithSpanKind(tracing.SpanKindClient), tracing.WithAttributes(map[string]interface{}{
+		"msg.id":           req.MsgID,
+		"sender.id":        req.SenderID,
+		"reader.id":        req.ReaderID,
+		"target.gateway":   location.GatewayNode,
+		"target.device_id": location.DeviceID,
+	}))
+	forwardStart := time.Now()
+	forwardResp, forwardErr := p.remoteForwarder.ForwardReadReceipt(spanCtx, location.GatewayNode, req)
+	latency := time.Since(forwardStart)
+	if p.metrics != nil {
+		p.metrics.ObserveForwardLatency("read_receipt", latency)
+	}
+	if forwardErr != nil || forwardResp == nil || !forwardResp.Success || forwardResp.DeliveredCount <= 0 {
+		failureReason := classifyForwardFailureReason(forwardErr, forwardResp)
+		span.SetAttribute("forward.result", "failure")
+		span.SetAttribute("forward.failure_reason", failureReason)
+		span.SetAttribute("forward.latency_ms", latency.Milliseconds())
+		if forwardErr != nil {
+			span.RecordError(forwardErr)
+			span.SetStatus(tracing.StatusCodeError, forwardErr.Error())
+		}
+		span.End()
+		if p.metrics != nil {
+			p.metrics.IncForwardFailure("read_receipt", failureReason)
+		}
+		return 0, false
+	}
+	span.SetAttribute("forward.result", "success")
+	span.SetAttribute("forward.delivered_count", forwardResp.DeliveredCount)
+	span.SetAttribute("forward.latency_ms", latency.Milliseconds())
+	span.SetStatus(tracing.StatusCodeOK, "")
+	span.End()
+	if p.metrics != nil {
+		p.metrics.IncForwardSuccess("read_receipt")
+	}
+
+	return forwardResp.DeliveredCount, true
+}
+
 // BroadcastToGroup broadcasts a message to all locally-connected group members.
 // Validates: Requirements 2.2, 2.3
 func (p *PushService) BroadcastToGroup(ctx context.Context, groupID string, message []byte) (int32, error) {
@@ -263,13 +347,25 @@ func (p *PushService) BroadcastToGroup(ctx context.Context, groupID string, mess
 	}
 
 	// Push to all locally-connected members
+	seenMembers := make(map[string]struct{}, len(members))
 	for _, memberID := range members {
+		if _, exists := seenMembers[memberID]; exists {
+			continue
+		}
+		seenMembers[memberID] = struct{}{}
+		seenDevices := make(map[string]struct{})
+
 		// Find all connections for this member
 		p.gateway.connections.Range(func(key, value any) bool {
 			keyStr := key.(string)
 			if len(keyStr) > len(memberID) && keyStr[:len(memberID)] == memberID {
 				connection := value.(*Connection)
 				if connection.UserID == memberID {
+					deviceKey := connection.UserID + "_" + connection.DeviceID
+					if _, seen := seenDevices[deviceKey]; seen {
+						return true
+					}
+					seenDevices[deviceKey] = struct{}{}
 					select {
 					case connection.Send <- message:
 						deliveredCount++
@@ -414,6 +510,7 @@ func (p *PushService) PushReadReceipt(ctx context.Context, req *PushReadReceiptR
 
 	// Track which devices we've attempted to deliver to
 	attemptedDevices := make(map[string]bool)
+	forwardedGatewayNodes := make(map[string]bool)
 
 	// Deliver to all devices found in Registry
 	for _, location := range locations {
@@ -430,43 +527,17 @@ func (p *PushService) PushReadReceipt(ctx context.Context, req *PushReadReceiptR
 				failedDevices = append(failedDevices, location.DeviceID)
 			}
 		} else {
-			spanCtx, span := p.tracer.StartSpan(ctx, "im-gateway.forward.read_receipt", tracing.WithSpanKind(tracing.SpanKindClient), tracing.WithAttributes(map[string]interface{}{
-				"msg.id":           req.MsgID,
-				"sender.id":        req.SenderID,
-				"reader.id":        req.ReaderID,
-				"target.gateway":   location.GatewayNode,
-				"target.device_id": location.DeviceID,
-			}))
-			forwardStart := time.Now()
-			forwardResp, forwardErr := p.remoteForwarder.ForwardReadReceipt(spanCtx, location.GatewayNode, req)
-			if p.metrics != nil {
-				p.metrics.ObserveForwardLatency("read_receipt", time.Since(forwardStart))
-			}
-			if forwardErr != nil || forwardResp == nil || !forwardResp.Success || forwardResp.DeliveredCount <= 0 {
-				failureReason := classifyForwardFailureReason(forwardErr, forwardResp)
-				span.SetAttribute("forward.result", "failure")
-				span.SetAttribute("forward.failure_reason", failureReason)
-				span.SetAttribute("forward.latency_ms", time.Since(forwardStart).Milliseconds())
-				if forwardErr != nil {
-					span.RecordError(forwardErr)
-					span.SetStatus(tracing.StatusCodeError, forwardErr.Error())
-				}
-				span.End()
-				if p.metrics != nil {
-					p.metrics.IncForwardFailure("read_receipt", failureReason)
-				}
-				failedDevices = append(failedDevices, location.DeviceID)
+			if forwardedGatewayNodes[location.GatewayNode] {
 				continue
 			}
-			span.SetAttribute("forward.result", "success")
-			span.SetAttribute("forward.delivered_count", forwardResp.DeliveredCount)
-			span.SetAttribute("forward.latency_ms", time.Since(forwardStart).Milliseconds())
-			span.SetStatus(tracing.StatusCodeOK, "")
-			span.End()
-			if p.metrics != nil {
-				p.metrics.IncForwardSuccess("read_receipt")
+
+			forwardCount, ok := p.forwardReadReceiptToRemote(ctx, req, location)
+			if ok {
+				forwardedGatewayNodes[location.GatewayNode] = true
+				deliveredCount += forwardCount
+			} else {
+				failedDevices = append(failedDevices, location.DeviceID)
 			}
-			deliveredCount += forwardResp.DeliveredCount
 		}
 	}
 

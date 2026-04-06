@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Initialization script for Monorepo Hello/TODO Services
+# Initialization script for Monorepo Hello/Todo Services
 # This script sets up the development environment and installs all dependencies
 
 set -e
@@ -12,7 +12,7 @@ YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}=== Monorepo Hello/TODO Services - Environment Setup ===${NC}\n"
+echo -e "${BLUE}=== Monorepo Hello/Todo Services - Environment Setup ===${NC}\n"
 
 # Load version requirements
 if [ -f ".tool-versions" ]; then

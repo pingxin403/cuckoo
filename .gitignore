@@ -108,3 +108,13 @@ logs/
 # test reports
 test-reports/
 */coverage.html
+
+# Load test results
+apps/*/load_test/results/
+!apps/*/load_test/results/.gitkeep
+*/summary.json
+summary*.json
+
+# Build binaries
+apps/*/im-gateway-service
+apps/*/*.exe

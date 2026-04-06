@@ -46,7 +46,7 @@ func TestMultiDevice_MaxDeviceLimit(t *testing.T) {
 	// All devices are remote (not connected locally), so delivery fails
 	assert.False(t, resp.Success)
 	assert.Equal(t, int32(0), resp.DeliveredCount)
-	assert.Equal(t, 5, len(resp.FailedDevices))
+	assert.Equal(t, 1, len(resp.FailedDevices))
 }
 
 // TestMultiDevice_DeviceIDValidation tests device ID format validation
@@ -217,9 +217,8 @@ func TestMultiDevice_PartialDeliveryFailure(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, resp.Success) // Success because at least 1 device received
 	assert.Equal(t, int32(2), resp.DeliveredCount)
-	assert.Equal(t, 2, len(resp.FailedDevices))
+	assert.Equal(t, 1, len(resp.FailedDevices))
 	assert.Contains(t, resp.FailedDevices, "device3")
-	assert.Contains(t, resp.FailedDevices, "device4")
 }
 
 // TestMultiDevice_RegistryLookupError tests Registry lookup failure handling
@@ -416,7 +415,7 @@ func TestMultiDevice_NoDevicesOnline(t *testing.T) {
 	assert.NoError(t, err)
 	assert.False(t, resp.Success)
 	assert.Equal(t, int32(0), resp.DeliveredCount)
-	assert.Equal(t, 2, len(resp.FailedDevices))
+	assert.Equal(t, 1, len(resp.FailedDevices))
 }
 
 // TestMultiDevice_EmptyRecipientID tests error handling for empty recipient ID

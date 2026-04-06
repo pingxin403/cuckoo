@@ -117,19 +117,19 @@ check_deployments() {
         print_result "Hello Service deployment exists" "FAIL"
     fi
     
-    # Check TODO Service deployment
+	# Check Todo service deployment
     if kubectl get deployment todo-service -n "$NAMESPACE" &> /dev/null; then
         READY=$(kubectl get deployment todo-service -n "$NAMESPACE" -o jsonpath='{.status.readyReplicas}')
         DESIRED=$(kubectl get deployment todo-service -n "$NAMESPACE" -o jsonpath='{.spec.replicas}')
         
         if [ "$READY" = "$DESIRED" ] && [ "$READY" != "" ]; then
-            print_result "TODO Service deployment ($READY/$DESIRED replicas ready)" "PASS"
-        else
-            print_result "TODO Service deployment ($READY/$DESIRED replicas ready)" "FAIL"
-        fi
-    else
-        print_result "TODO Service deployment exists" "FAIL"
-    fi
+			print_result "Todo service deployment ($READY/$DESIRED replicas ready)" "PASS"
+		else
+			print_result "Todo service deployment ($READY/$DESIRED replicas ready)" "FAIL"
+		fi
+	else
+		print_result "Todo service deployment exists" "FAIL"
+	fi
     echo ""
 }
 
@@ -145,13 +145,13 @@ check_pods() {
         print_result "Hello Service has running pods" "FAIL"
     fi
     
-    # Check TODO Service pods
+	# Check Todo service pods
     TODO_PODS=$(kubectl get pods -n "$NAMESPACE" -l app=todo-service --field-selector=status.phase=Running --no-headers 2>/dev/null | wc -l)
     if [ "$TODO_PODS" -gt 0 ]; then
-        print_result "TODO Service has $TODO_PODS running pod(s)" "PASS"
-    else
-        print_result "TODO Service has running pods" "FAIL"
-    fi
+		print_result "Todo service has $TODO_PODS running pod(s)" "PASS"
+	else
+		print_result "Todo service has running pods" "FAIL"
+	fi
     
     # Check for pod restarts
     HELLO_RESTARTS=$(kubectl get pods -n "$NAMESPACE" -l app=hello-service -o jsonpath='{.items[*].status.containerStatuses[*].restartCount}' 2>/dev/null | awk '{s+=$1} END {print s}')
@@ -171,10 +171,10 @@ check_pods() {
     fi
     
     if [ "$TODO_RESTARTS" -eq 0 ]; then
-        print_result "TODO Service pods have no restarts" "PASS"
-    else
-        print_result "TODO Service pods have $TODO_RESTARTS restart(s)" "FAIL"
-    fi
+		print_result "Todo service pods have no restarts" "PASS"
+	else
+		print_result "Todo service pods have $TODO_RESTARTS restart(s)" "FAIL"
+	fi
     echo ""
 }
 
@@ -194,17 +194,17 @@ check_services() {
         print_result "Hello Service exists" "FAIL"
     fi
     
-    # Check TODO Service
+	# Check Todo service
     if kubectl get service todo-service -n "$NAMESPACE" &> /dev/null; then
         ENDPOINTS=$(kubectl get endpoints todo-service -n "$NAMESPACE" -o jsonpath='{.subsets[*].addresses[*].ip}' | wc -w)
         if [ "$ENDPOINTS" -gt 0 ]; then
-            print_result "TODO Service has $ENDPOINTS endpoint(s)" "PASS"
-        else
-            print_result "TODO Service has endpoints" "FAIL"
-        fi
-    else
-        print_result "TODO Service exists" "FAIL"
-    fi
+			print_result "Todo service has $ENDPOINTS endpoint(s)" "PASS"
+		else
+			print_result "Todo service has endpoints" "FAIL"
+		fi
+	else
+		print_result "Todo service exists" "FAIL"
+	fi
     echo ""
 }
 
@@ -260,14 +260,14 @@ check_resources() {
         print_result "Hello Service resource usage within limits" "PASS"
     fi
     
-    # Check TODO Service resource usage
+	# Check Todo service resource usage
     TODO_CPU=$(kubectl top pods -n "$NAMESPACE" -l app=todo-service --no-headers 2>/dev/null | awk '{sum+=$2} END {print sum}' | sed 's/m//')
     TODO_MEM=$(kubectl top pods -n "$NAMESPACE" -l app=todo-service --no-headers 2>/dev/null | awk '{sum+=$3} END {print sum}' | sed 's/Mi//')
     
     if [ -n "$TODO_CPU" ] && [ "$TODO_CPU" != "0" ]; then
-        echo -e "${BLUE}TODO Service: ${TODO_CPU}m CPU, ${TODO_MEM}Mi Memory${NC}"
-        print_result "TODO Service resource usage within limits" "PASS"
-    fi
+		echo -e "${BLUE}Todo service: ${TODO_CPU}m CPU, ${TODO_MEM}Mi Memory${NC}"
+		print_result "Todo service resource usage within limits" "PASS"
+	fi
     echo ""
 }
 
@@ -285,12 +285,12 @@ check_logs() {
         kubectl logs -n "$NAMESPACE" -l app=hello-service --tail=100 2>/dev/null | grep -i "error\|exception\|fatal" | tail -5
     fi
     
-    # Check TODO Service logs
+	# Check Todo service logs
     TODO_ERRORS=$(kubectl logs -n "$NAMESPACE" -l app=todo-service --tail=100 2>/dev/null | grep -i "error\|exception\|fatal" | wc -l)
     if [ "$TODO_ERRORS" -eq 0 ]; then
-        print_result "TODO Service logs have no errors" "PASS"
-    else
-        print_result "TODO Service logs have $TODO_ERRORS error(s)" "FAIL"
+		print_result "Todo service logs have no errors" "PASS"
+	else
+		print_result "Todo service logs have $TODO_ERRORS error(s)" "FAIL"
         echo -e "${YELLOW}Recent errors:${NC}"
         kubectl logs -n "$NAMESPACE" -l app=todo-service --tail=100 2>/dev/null | grep -i "error\|exception\|fatal" | tail -5
     fi
@@ -312,27 +312,27 @@ test_connectivity() {
         fi
     fi
     
-    # Test TODO Service
-    echo -e "${YELLOW}Testing TODO Service...${NC}"
+	# Test Todo service
+	echo -e "${YELLOW}Testing Todo service...${NC}"
     POD=$(kubectl get pods -n "$NAMESPACE" -l app=todo-service -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
     if [ -n "$POD" ]; then
         if kubectl exec -n "$NAMESPACE" "$POD" -- sh -c "exit 0" &> /dev/null; then
-            print_result "Can execute commands in TODO Service pod" "PASS"
-        else
-            print_result "Can execute commands in TODO Service pod" "FAIL"
-        fi
-    fi
+			print_result "Can execute commands in Todo service pod" "PASS"
+		else
+			print_result "Can execute commands in Todo service pod" "FAIL"
+		fi
+	fi
     
     # Test service-to-service connectivity
     echo -e "${YELLOW}Testing service-to-service connectivity...${NC}"
     TODO_POD=$(kubectl get pods -n "$NAMESPACE" -l app=todo-service -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
     if [ -n "$TODO_POD" ]; then
         if kubectl exec -n "$NAMESPACE" "$TODO_POD" -- sh -c "nc -zv hello-service 9090" &> /dev/null; then
-            print_result "TODO Service can reach Hello Service" "PASS"
-        else
-            print_result "TODO Service can reach Hello Service" "FAIL"
-        fi
-    fi
+			print_result "Todo service can reach Hello Service" "PASS"
+		else
+			print_result "Todo service can reach Hello Service" "FAIL"
+		fi
+	fi
     echo ""
 }
 
@@ -357,7 +357,7 @@ show_summary() {
         if [ -n "$INGRESS_HOST" ]; then
             echo -e "  - API Gateway: https://$INGRESS_HOST"
             echo -e "  - Hello Service: https://$INGRESS_HOST/api/hello"
-            echo -e "  - TODO Service: https://$INGRESS_HOST/api/todo"
+			echo -e "  - Todo service: https://$INGRESS_HOST/api/todo"
         else
             echo -e "  - Use port-forward to access services:"
             echo -e "    kubectl port-forward -n $NAMESPACE svc/hello-service 9090:9090"
@@ -395,4 +395,3 @@ main() {
 
 # Run main function
 main
-

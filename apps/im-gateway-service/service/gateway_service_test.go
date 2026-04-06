@@ -895,3 +895,62 @@ func TestGatewayService_AckTracing_Transitions(t *testing.T) {
 	assert.Equal(t, "im-gateway.ack.resolve", tracer.spans[2].name)
 	assert.Equal(t, "late", tracer.spans[2].attributes["ack.transition"])
 }
+
+func TestGatewayService_AckLifecycle_ReregisterDoesNotUseStaleTimer(t *testing.T) {
+	gateway, _, _, _ := setupTestGateway(t)
+	gateway.config.AckTimeout = 100 * time.Millisecond
+
+	msgID := "msg-ack-reregister-1"
+	userID := "user123"
+	deviceID := "550e8400-e29b-41d4-a716-446655440000"
+
+	gateway.registerPendingAck(msgID, userID, deviceID)
+	time.Sleep(30 * time.Millisecond)
+	gateway.registerPendingAck(msgID, userID, deviceID)
+
+	time.Sleep(80 * time.Millisecond)
+	assert.Equal(t, "pending", gateway.getAckStatus(msgID, userID, deviceID))
+}
+
+func TestGatewayService_AckLifecycle_ReregisterDoesNotPrematurelyIncrementTimeoutMetrics(t *testing.T) {
+	gateway, _, _, _ := setupTestGateway(t)
+	metrics := &captureAckLifecycleMetrics{}
+	gateway.SetAckMetrics(metrics)
+	gateway.config.AckTimeout = 100 * time.Millisecond
+
+	msgID := "msg-ack-reregister-metric-1"
+	userID := "user123"
+	deviceID := "550e8400-e29b-41d4-a716-446655440000"
+
+	gateway.registerPendingAck(msgID, userID, deviceID)
+	time.Sleep(30 * time.Millisecond)
+	gateway.registerPendingAck(msgID, userID, deviceID)
+
+	time.Sleep(80 * time.Millisecond)
+	metrics.mu.Lock()
+	timeoutCount := metrics.timeoutCount
+	metrics.mu.Unlock()
+	assert.Equal(t, 0, timeoutCount)
+}
+
+func TestGatewayService_AckLifecycle_DuplicateResolveDoesNotDoubleCountSuccess(t *testing.T) {
+	gateway, _, _, _ := setupTestGateway(t)
+	metrics := &captureAckLifecycleMetrics{}
+	gateway.SetAckMetrics(metrics)
+
+	msgID := "msg-ack-duplicate-resolve-1"
+	userID := "user123"
+	deviceID := "550e8400-e29b-41d4-a716-446655440000"
+
+	gateway.registerPendingAck(msgID, userID, deviceID)
+	firstResolved := gateway.resolveAck(msgID, userID, deviceID)
+	secondResolved := gateway.resolveAck(msgID, userID, deviceID)
+
+	require.True(t, firstResolved)
+	assert.False(t, secondResolved)
+
+	metrics.mu.Lock()
+	successCount := metrics.successCount
+	metrics.mu.Unlock()
+	assert.Equal(t, 1, successCount)
+}

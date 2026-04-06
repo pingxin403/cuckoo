@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# TODO Service - Integration Test Runner
+# Todo service - Integration Test Runner
 # This script runs integration tests with the service running in Docker
 
 set -e
@@ -16,7 +16,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}========================================${NC}"
-echo -e "${BLUE}TODO Service - Integration Tests${NC}"
+echo -e "${BLUE}Todo service - Integration Tests${NC}"
 echo -e "${BLUE}========================================${NC}"
 echo ""
 

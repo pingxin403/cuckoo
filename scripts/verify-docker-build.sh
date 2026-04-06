@@ -54,9 +54,9 @@ build_hello_service() {
     fi
 }
 
-# Build TODO Service image
+# Build Todo service image
 build_todo_service() {
-    echo -e "\n${BLUE}Building TODO Service Docker image...${NC}"
+	echo -e "\n${BLUE}Building Todo service Docker image...${NC}"
     
     # Ensure Protobuf code is generated
     echo -e "${YELLOW}Ensuring Protobuf code is generated...${NC}"
@@ -64,7 +64,7 @@ build_todo_service() {
     
     # Build the image
     if docker build -t todo-service:latest -f apps/todo-service/Dockerfile apps/todo-service; then
-        echo -e "${GREEN}✓ TODO Service image built successfully${NC}"
+		echo -e "${GREEN}✓ Todo service image built successfully${NC}"
         
         # Get image size
         SIZE=$(docker images todo-service:latest --format "{{.Size}}")
@@ -72,7 +72,7 @@ build_todo_service() {
         
         return 0
     else
-        echo -e "${RED}✗ Failed to build TODO Service image${NC}"
+		echo -e "${RED}✗ Failed to build Todo service image${NC}"
         return 1
     fi
 }
@@ -169,10 +169,10 @@ main() {
     fi
     
     if [ $TODO_SUCCESS -eq 1 ]; then
-        echo -e "${GREEN}✓ TODO Service image: todo-service:latest${NC}"
-    else
-        echo -e "${RED}✗ TODO Service image build failed${NC}"
-    fi
+		echo -e "${GREEN}✓ Todo service image: todo-service:latest${NC}"
+	else
+		echo -e "${RED}✗ Todo service image build failed${NC}"
+	fi
     
     echo ""
     
@@ -199,4 +199,3 @@ main() {
 
 # Run main function
 main
-

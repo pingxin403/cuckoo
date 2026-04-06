@@ -102,5 +102,16 @@ const indexedDB = {
 
 global.indexedDB = indexedDB as any;
 
+// Mock localStorage
+const localStorageMock = {
+  getItem: vi.fn(() => null),
+  setItem: vi.fn(),
+  removeItem: vi.fn(),
+  clear: vi.fn(),
+  key: vi.fn(),
+  getLength: vi.fn(() => 0),
+};
+global.localStorage = localStorageMock as any;
+
 // Mock scrollIntoView
 Element.prototype.scrollIntoView = vi.fn();

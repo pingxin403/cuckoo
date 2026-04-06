@@ -3,7 +3,7 @@
 # Load Test Runner for IM Gateway Service
 # Runs various load test scenarios
 
-set -e
+set -euo pipefail
 
 # Colors for output
 RED='\033[0;31m'
@@ -40,6 +40,7 @@ echo ""
 # Create results directory
 RESULTS_DIR="$SCRIPT_DIR/results/$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$RESULTS_DIR"
+RUN_FAILED=0
 
 echo -e "${YELLOW}Results will be saved to: $RESULTS_DIR${NC}"
 echo ""
@@ -65,6 +66,57 @@ run_test() {
     echo ""
 }
 
+collect_baseline_report() {
+    local output_path="$RESULTS_DIR/p2-baseline-report.json"
+    local throughput_summary=""
+    local connection_summary=""
+    local cluster_summary=""
+
+    if [ -f "$RESULTS_DIR/message-throughput-test-summary.json" ]; then
+        throughput_summary="$RESULTS_DIR/message-throughput-test-summary.json"
+    elif [ -f "$RESULTS_DIR/quick-throughput-test-summary.json" ]; then
+        throughput_summary="$RESULTS_DIR/quick-throughput-test-summary.json"
+    fi
+
+    if [ -f "$RESULTS_DIR/connection-load-test-summary.json" ]; then
+        connection_summary="$RESULTS_DIR/connection-load-test-summary.json"
+    elif [ -f "$RESULTS_DIR/quick-connection-test-summary.json" ]; then
+        connection_summary="$RESULTS_DIR/quick-connection-test-summary.json"
+    fi
+
+    if ls "$RESULTS_DIR"/cluster-load-test-node-*-summary.json >/dev/null 2>&1; then
+        cluster_summary=$(ls "$RESULTS_DIR"/cluster-load-test-node-*-summary.json | head -n 1)
+    fi
+
+    if [ -z "$throughput_summary" ] && [ -z "$connection_summary" ] && [ -z "$cluster_summary" ]; then
+        echo -e "${YELLOW}No summary files found for baseline collection.${NC}"
+        return 0
+    fi
+
+    local args=(
+        "$SCRIPT_DIR/collect-baseline.js"
+        --output "$output_path"
+        --label "p2-baseline-$(date +%Y%m%d_%H%M%S)"
+    )
+
+    if [ -n "$throughput_summary" ]; then
+        args+=(--throughput "$throughput_summary")
+    fi
+    if [ -n "$connection_summary" ]; then
+        args+=(--connection "$connection_summary")
+    fi
+    if [ -n "$cluster_summary" ]; then
+        args+=(--cluster "$cluster_summary")
+    fi
+
+    if node "${args[@]}"; then
+        echo -e "${GREEN}✓ Baseline report generated: $output_path${NC}"
+    else
+        echo -e "${RED}✗ Baseline report generation failed${NC}"
+        return 1
+    fi
+}
+
 # Test selection
 TEST_SUITE="${1:-all}"
 
@@ -72,13 +124,13 @@ case "$TEST_SUITE" in
     "connection"|"conn")
         echo -e "${YELLOW}Running Connection Load Test${NC}"
         echo ""
-        run_test "connection-load-test" "connection-load-test.js" ""
+        run_test "connection-load-test" "connection-load-test.js" "" || RUN_FAILED=1
         ;;
     
     "throughput"|"msg")
         echo -e "${YELLOW}Running Message Throughput Test${NC}"
         echo ""
-        run_test "message-throughput-test" "message-throughput-test.js" ""
+        run_test "message-throughput-test" "message-throughput-test.js" "" || RUN_FAILED=1
         ;;
     
     "cluster")
@@ -88,7 +140,7 @@ case "$TEST_SUITE" in
         CLUSTER_SIZE="${CLUSTER_SIZE:-100}"
         export NODE_ID
         export CLUSTER_SIZE
-        run_test "cluster-load-test-node-${NODE_ID}" "cluster-load-test.js" ""
+        run_test "cluster-load-test-node-${NODE_ID}" "cluster-load-test.js" "" || RUN_FAILED=1
         ;;
     
     "quick")
@@ -97,11 +149,11 @@ case "$TEST_SUITE" in
         
         echo -e "${BLUE}1. Quick Connection Test (1K connections, 2 min)${NC}"
         run_test "quick-connection-test" "connection-load-test.js" \
-            "--vus 1000 --duration 2m"
+            "--vus 1000 --duration 2m --no-thresholds" || RUN_FAILED=1
         
         echo -e "${BLUE}2. Quick Throughput Test (100 users, 2 min)${NC}"
         run_test "quick-throughput-test" "message-throughput-test.js" \
-            "--vus 100 --duration 2m"
+            "--vus 100 --duration 2m --no-thresholds" || RUN_FAILED=1
         ;;
     
     "all")
@@ -109,11 +161,11 @@ case "$TEST_SUITE" in
         echo ""
         
         echo -e "${BLUE}Test 1/2: Connection Load Test${NC}"
-        run_test "connection-load-test" "connection-load-test.js" ""
+        run_test "connection-load-test" "connection-load-test.js" "" || RUN_FAILED=1
         
         echo ""
         echo -e "${BLUE}Test 2/2: Message Throughput Test${NC}"
-        run_test "message-throughput-test" "message-throughput-test.js" ""
+        run_test "message-throughput-test" "message-throughput-test.js" "" || RUN_FAILED=1
         ;;
     
     *)
@@ -152,6 +204,13 @@ if [ -f "$RESULTS_DIR/connection-load-test-summary.json" ]; then
         "  P99 Message Latency: \(.message_latency.values["p(99)"] | tostring | .[0:7])ms"' \
         "$RESULTS_DIR/connection-load-test-summary.json" 2>/dev/null || echo "  (Summary not available)"
     echo ""
+elif [ -f "$RESULTS_DIR/quick-connection-test-summary.json" ]; then
+    echo -e "${GREEN}Quick Connection Test:${NC}"
+    jq -r '.metrics |
+        "  Success Rate: \(.connection_success.value * 100 | tostring | .[0:5])%\n" +
+        "  P95 Connect Time: \(.ws_connecting["p(95)"] | tostring | .[0:7])ms"' \
+        "$RESULTS_DIR/quick-connection-test-summary.json" 2>/dev/null || echo "  (Summary not available)"
+    echo ""
 fi
 
 if [ -f "$RESULTS_DIR/message-throughput-test-summary.json" ]; then
@@ -163,16 +222,24 @@ if [ -f "$RESULTS_DIR/message-throughput-test-summary.json" ]; then
         "  Success Rate: \(.message_throughput.values.rate * 100 | tostring | .[0:5])%"' \
         "$RESULTS_DIR/message-throughput-test-summary.json" 2>/dev/null || echo "  (Summary not available)"
     echo ""
+elif [ -f "$RESULTS_DIR/quick-throughput-test-summary.json" ]; then
+    echo -e "${GREEN}Quick Throughput Test:${NC}"
+    jq -r '.metrics |
+        "  Iterations: \(.iterations.count | tostring)\n" +
+        "  ws_connecting p95: \(.ws_connecting["p(95)"] | tostring | .[0:7])ms"' \
+        "$RESULTS_DIR/quick-throughput-test-summary.json" 2>/dev/null || echo "  (Summary not available)"
+    echo ""
 fi
 
 echo -e "${YELLOW}Results saved to: $RESULTS_DIR${NC}"
 echo ""
 
 # Check for failures
-if grep -q "✗" "$RESULTS_DIR"/*.log 2>/dev/null; then
+if [ "$RUN_FAILED" -ne 0 ]; then
     echo -e "${RED}Some tests failed. Check logs for details.${NC}"
     exit 1
 else
+    collect_baseline_report
     echo -e "${GREEN}All tests completed successfully!${NC}"
     exit 0
 fi

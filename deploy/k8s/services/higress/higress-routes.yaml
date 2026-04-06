@@ -57,7 +57,7 @@ spec:
             port:
               number: 9090
       
-      # TODO Service - gRPC API
+      # Todo service - gRPC API
       - path: /api.v1.TodoService
         pathType: Prefix
         backend:
@@ -66,7 +66,7 @@ spec:
             port:
               number: 9091
       
-      # TODO Service - REST-style path
+      # Todo service - REST-style path
       - path: /api/todo
         pathType: Prefix
         backend:
@@ -267,7 +267,7 @@ spec:
         - name: X-Service
           value: hello-service
   
-  # TODO Service routing
+  # Todo service routing
   - matches:
     - path:
         type: PathPrefix

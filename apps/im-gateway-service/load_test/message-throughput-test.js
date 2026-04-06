@@ -132,8 +132,8 @@ export default function () {
 }
 
 export function handleSummary(data) {
-  const totalMessages = data.metrics.messages_sent.values.count;
-  const totalTime = data.state.testRunDurationMs / 1000; // Convert to seconds
+  const totalMessages = data.metrics?.messages_sent?.values?.count || 0;
+  const totalTime = (data.state?.testRunDurationMs || 0) / 1000; // Convert to seconds
   const throughput = totalMessages / totalTime;
   
   const summary = {
@@ -145,14 +145,19 @@ export function handleSummary(data) {
 }
 
 function generateTextSummary(data, throughput) {
+  const sent = data.metrics?.messages_sent?.values?.count || 0;
+  const received = data.metrics?.messages_received?.values?.count || 0;
+  const errors = data.metrics?.send_errors?.values?.count || 0;
+  const successRate = data.metrics?.message_throughput?.values?.rate || 0;
+
   let summary = '\n';
   summary += 'Message Throughput Test Summary\n';
   summary += '================================\n\n';
   
   summary += 'Messages:\n';
-  summary += `  Sent: ${data.metrics.messages_sent.values.count}\n`;
-  summary += `  Received: ${data.metrics.messages_received.values.count}\n`;
-  summary += `  Errors: ${data.metrics.send_errors.values.count}\n`;
+  summary += `  Sent: ${sent}\n`;
+  summary += `  Received: ${received}\n`;
+  summary += `  Errors: ${errors}\n`;
   summary += `  Throughput: ${throughput.toFixed(2)} msg/sec\n\n`;
   
   if (data.metrics.message_latency) {
@@ -166,7 +171,7 @@ function generateTextSummary(data, throughput) {
   }
   
   summary += 'Success Rate:\n';
-  summary += `  Message Success: ${(data.metrics.message_throughput.values.rate * 100).toFixed(2)}%\n`;
+  summary += `  Message Success: ${(successRate * 100).toFixed(2)}%\n`;
   
   return summary;
 }

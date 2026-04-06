@@ -255,13 +255,13 @@
   - 将 `/api/*` 代理到本地 Envoy（`http://localhost:8080`）
   - _Requirements: 4.5, 11.4_
 
-- [ ]* 5.10 编写前端组件测试
+- [x] 5.10 编写前端组件测试
   - 使用 Vitest + React Testing Library
   - 测试 HelloForm 和 TodoList 组件
   - Mock gRPC 客户端
   - _Requirements: 9.2, 9.6_
 
-- [ ]* 5.11 编写前端错误处理属性测试
+- [x] 5.11 编写前端错误处理属性测试
   - **Property 4: Frontend Error Handling**
   - 使用 fast-check 生成随机错误场景
   - 验证 UI 显示错误消息而不崩溃

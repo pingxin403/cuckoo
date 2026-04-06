@@ -173,15 +173,16 @@ sudo sysctl -p
 #### Server Configuration
 ```bash
 # Server ports
-SERVER_GRPC_PORT=9093          # gRPC port for internal communication
-SERVER_WS_PORT=8080            # WebSocket port for client connections
-SERVER_HTTP_PORT=8081          # HTTP port for health checks
+SERVER_GRPC_PORT=9097          # gRPC port for internal communication
+SERVER_HTTP_PORT=8080          # HTTP/WebSocket port (WebSocket path: /ws)
 
 # Server limits
 MAX_CONNECTIONS=100000         # Maximum concurrent connections
 READ_BUFFER_SIZE=4096          # WebSocket read buffer size (bytes)
 WRITE_BUFFER_SIZE=4096         # WebSocket write buffer size (bytes)
 ```
+
+> Code-as-truth note: current service exposes `/ws` and `/health` on HTTP port. `/ready` and `/stats` are not implemented endpoints.
 
 #### WebSocket Configuration
 ```bash
@@ -238,9 +239,8 @@ LOG_FORMAT=json                # json or text
 **config.yaml**:
 ```yaml
 server:
-  grpc_port: 9093
-  ws_port: 8080
-  http_port: 8081
+  grpc_port: 9097
+  http_port: 8080
   max_connections: 100000
   read_buffer_size: 4096
   write_buffer_size: 4096
@@ -311,8 +311,8 @@ docker build -t im-gateway-service:latest .
 docker run -d \
   --name im-gateway \
   -p 8080:8080 \
-  -p 9093:9093 \
-  -p 8081:8081 \
+  -p 9097:9097 \
+  -p 9090:9090 \
   -e ETCD_ENDPOINTS=etcd-1:2379,etcd-2:2379,etcd-3:2379 \
   -e REDIS_ADDR=redis-master:6379 \
   -e KAFKA_BROKERS=kafka-1:9092,kafka-2:9092,kafka-3:9092 \
@@ -332,8 +332,8 @@ services:
     image: im-gateway-service:latest
     ports:
       - "8080:8080"
-      - "9093:9093"
-      - "8081:8081"
+      - "9097:9097"
+      - "9090:9090"
     environment:
       - ETCD_ENDPOINTS=etcd-1:2379,etcd-2:2379,etcd-3:2379
       - REDIS_ADDR=redis-master:6379
@@ -389,10 +389,10 @@ spec:
         ports:
         - containerPort: 8080
           name: websocket
-        - containerPort: 9093
+        - containerPort: 9097
           name: grpc
-        - containerPort: 8081
-          name: http
+        - containerPort: 9090
+          name: metrics
         env:
         - name: ETCD_ENDPOINTS
           value: "etcd-1:2379,etcd-2:2379,etcd-3:2379"
@@ -425,13 +425,13 @@ spec:
         livenessProbe:
           httpGet:
             path: /health
-            port: 8081
+            port: 8080
           initialDelaySeconds: 30
           periodSeconds: 10
         readinessProbe:
           httpGet:
-            path: /ready
-            port: 8081
+            path: /health
+            port: 8080
           initialDelaySeconds: 10
           periodSeconds: 5
 ```
@@ -453,12 +453,12 @@ spec:
     targetPort: 8080
     protocol: TCP
   - name: grpc
-    port: 9093
-    targetPort: 9093
+    port: 9097
+    targetPort: 9097
     protocol: TCP
-  - name: http
-    port: 8081
-    targetPort: 8081
+  - name: metrics
+    port: 9090
+    targetPort: 9090
     protocol: TCP
   sessionAffinity: ClientIP
   sessionAffinityConfig:
@@ -562,7 +562,7 @@ sudo journalctl -u im-gateway -f
    ```bash
    # Check connection distribution
    kubectl exec -it im-gateway-pod-1 -n im-system -- \
-     curl localhost:8081/metrics | grep active_connections
+      curl localhost:9090/metrics | grep active_connections
    ```
 
 3. **Monitor Rebalancing**:
@@ -691,7 +691,7 @@ spec:
    # Check connections per pod
    for pod in $(kubectl get pods -n im-system -l app=im-gateway-service -o name); do
      echo "$pod:"
-     kubectl exec -n im-system $pod -- curl -s localhost:8081/metrics | grep active_connections
+      kubectl exec -n im-system $pod -- curl -s localhost:9090/metrics | grep active_connections
    done
    ```
 
@@ -720,7 +720,7 @@ spec:
    ```bash
    # Watch active connections decrease
    kubectl exec -n im-system im-gateway-pod-5 -- \
-     watch -n 5 'curl -s localhost:8081/metrics | grep active_connections'
+      watch -n 5 'curl -s localhost:9090/metrics | grep active_connections'
    ```
 
 4. **Scale Down Deployment**:
@@ -821,7 +821,7 @@ kubectl top pod -n im-system -l app=im-gateway-service
 
 # Check connection count
 kubectl exec -n im-system im-gateway-pod-1 -- \
-  curl localhost:8081/metrics | grep active_connections
+  curl localhost:9090/metrics | grep active_connections
 
 # Memory per connection
 Memory per connection = Total Memory / Active Connections
@@ -843,7 +843,7 @@ Memory per connection = Total Memory / Active Connections
 ```bash
 # Check latency metrics
 kubectl exec -n im-system im-gateway-pod-1 -- \
-  curl localhost:8081/metrics | grep message_latency
+  curl localhost:9090/metrics | grep message_latency
 
 # Check CPU usage
 kubectl top pod -n im-system -l app=im-gateway-service
@@ -897,29 +897,9 @@ curl http://localhost:8081/health
 }
 ```
 
-### Readiness Probe
-```bash
-curl http://localhost:8081/ready
-```
-
-**Response**:
-```json
-{
-  "status": "ready",
-  "dependencies": {
-    "etcd": "healthy",
-    "redis": "healthy",
-    "kafka": "healthy",
-    "auth_service": "healthy",
-    "user_service": "healthy",
-    "im_service": "healthy"
-  }
-}
-```
-
 ### Metrics Endpoint
 ```bash
-curl http://localhost:8081/metrics
+curl http://localhost:9090/metrics
 ```
 
 **Key Metrics**:
