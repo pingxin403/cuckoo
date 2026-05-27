@@ -1,54 +1,58 @@
-# Cuckoo - 企业级微服务 Monorepo
+# Cuckoo — 多语言微服务 Monorepo
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Local Setup](https://img.shields.io/badge/local%20setup-verified-brightgreen)](docs/archive/LOCAL_SETUP_VERIFICATION.md)
-[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-> **一句话描述**: 生产级多语言微服务 Monorepo，包含即时通讯、URL 短链接、用户认证等完整业务系统，采用 gRPC + Protobuf 通信，支持 Docker Compose 和 Kubernetes 部署，内置统一依赖管理、代码质量检查和 CI/CD 流程。
+> **One-line summary**: A polyglot microservices monorepo (Go + Java + TypeScript) demonstrating service decomposition, gRPC/Protobuf contracts, multi-level caching, and observability — packaged with a unified Makefile + GitHub Actions CI/CD. Reference implementation, single-author.
 
-**Cuckoo** 是一个企业级微服务 Monorepo 项目，展示了现代化微服务架构的最佳实践。项目采用多语言技术栈（Go、Java、TypeScript），通过 Protobuf 定义统一 API 契约，使用 gRPC 进行高效通信，并提供完整的开发、测试、部署工具链。
+> **一句话定位**: 多语言微服务 Monorepo（Go + Java + TypeScript），用于演练服务拆分、gRPC/Protobuf 契约、多级缓存、可观测性等微服务工程实践。**单人作品集 / 学习项目**，配套统一 Makefile + GitHub Actions CI/CD 流水线。
 
-## ✅ 项目状态
+> **Project nature**: This is a single-author reference implementation built to practice and demonstrate microservice patterns. It runs locally end-to-end (verified — see [LOCAL_SETUP_VERIFICATION](docs/archive/LOCAL_SETUP_VERIFICATION.md)), but **has never carried real production traffic**. Performance numbers in service-level READMEs are local Docker Compose baselines unless explicitly noted otherwise.
+>
+> **项目性质**: 单人参考实现 / 学习项目，本地端到端跑通有验证报告，但**未承载真实生产流量**。各服务 README 中的性能数字若无显式说明，均为本机 Docker Compose 基线，不是生产 SLA。
 
-- **本地开发**: ✅ 已验证可运行 ([查看验证报告](docs/archive/LOCAL_SETUP_VERIFICATION.md))
-- **构建系统**: ✅ 所有服务可成功构建
-- **基础设施**: ✅ Envoy/Higress 配置完成
-- **CI/CD**: ✅ 动态增量构建 ([查看策略](docs/ci-cd/DYNAMIC_CI_STRATEGY.md))
-- **代码质量**: ✅ Shift-left 实践已实施 ([查看详情](docs/process/SHIFT_LEFT.md))
-- **架构可扩展性**: ⭐⭐⭐⭐⭐ 支持无限服务扩展 ([查看分析](docs/archive/ARCHITECTURE_SCALABILITY_ANALYSIS.md))
+## Project status / 项目状态
 
-## 项目概述
+- **Local dev**: verified runnable — [verification report](docs/archive/LOCAL_SETUP_VERIFICATION.md)
+- **Build**: all services build successfully via `make build`
+- **Infra**: Envoy/Higress gateway configured
+- **CI/CD**: incremental dynamic build — [strategy](docs/ci-cd/DYNAMIC_CI_STRATEGY.md)
+- **Code quality**: shift-left practices in place — [details](docs/process/SHIFT_LEFT.md)
+- **Architecture**: see [scalability analysis](docs/archive/ARCHITECTURE_SCALABILITY_ANALYSIS.md) for an honest assessment of extension limits, not a marketing claim
 
-### 核心特性
+## Overview / 项目概述
 
-🚀 **生产就绪的微服务架构**
-- 7 个微服务：认证、用户、即时通讯、网关、URL 短链接、示例服务
-- 完整的 IM 聊天系统：支持私聊、群聊、离线消息、消息去重、敏感词过滤
-- 高性能 URL 短链接服务：多级缓存、自定义短码、访问统计
+### Core capabilities / 核心特性
 
-🛠️ **统一开发工具链**
-- 一键初始化：`make init` 自动配置开发环境
-- 统一依赖管理：`make deps` 管理 Go、Java、Node.js 依赖
-- 代码质量保证：自动 lint、format、test，pre-commit hooks
-- 智能构建系统：自动检测变更，增量构建
+**Microservice scaffold**
+- 7 services across Go and Java: auth, user, IM, IM gateway, URL shortener, hello (Java sample), todo
+- IM chat: 1:1, group, offline message persistence, message dedup, sensitive-word filtering
+- URL shortener: multi-level cache, custom short codes, access analytics
 
-🏗️ **企业级基础设施**
-- API 网关：Higress/Envoy 统一入口，gRPC-Web 支持
-- 服务发现：etcd 集群，支持服务注册和健康检查
-- 消息队列：Kafka 集群，支持消息持久化和分布式处理
-- 数据存储：MySQL + Redis，支持主从复制和缓存
+**Unified developer toolchain**
+- One-shot init: `make init`
+- Unified deps: `make deps` (Go / Java / Node)
+- Pre-commit hooks: lint + format + test on commit
+- Incremental build: detects changed services, builds only those
 
-📊 **完整的可观测性**
-- 监控：Prometheus + Grafana，实时指标和告警
-- 链路追踪：Jaeger，分布式调用链分析
-- 日志聚合：Loki，集中式日志查询
-- 健康检查：HTTP 健康端点，K8s 就绪探针
+**Infrastructure**
+- API gateway: Higress / Envoy with gRPC-Web bridging
+- Service discovery: etcd
+- Messaging: Kafka
+- Storage: MySQL + Redis (with replica patterns where noted in service READMEs)
 
-🔒 **安全与合规**
-- JWT 认证：统一的身份认证和授权
-- 消息加密：端到端加密支持
-- 审计日志：完整的操作审计记录
-- GDPR 合规：数据导出和删除功能
+**Observability**
+- Metrics: Prometheus + Grafana
+- Tracing: Jaeger (distributed call graphs)
+- Logs: Loki (centralized querying)
+- Health: HTTP `/healthz` endpoints + K8s readiness probes
+
+**Auth & data**
+- JWT authentication, unified across services
+- Audit log scaffolding (not a substitute for a real compliance review)
+- Message-level encryption hooks (interface + sample impl; production deployments must integrate a real KMS / HSM)
+
+> **What this section is NOT claiming**: GDPR compliance, SOC2 readiness, or "drop-in production replacement". Those require organizational process, legal review, and real auditors — none of which a single-author repo can certify.
 
 ### 技术栈
 
@@ -78,25 +82,21 @@
 - **Property-Based Testing**: Go 和 Java 属性测试
 - **CI/CD**: GitHub Actions 自动化流水线
 
-### 项目亮点
+### Engineering practice / 工程实践亮点
 
-✨ **真实的生产级代码**
-- 不是玩具项目，而是可以直接用于生产的完整系统
-- 包含完整的错误处理、日志、监控、测试
-- 78+ 单元测试，9+ 属性测试，全部通过
+**Quality engineering**
+- Test layer: 93 Go test files + 43 Java test files; **at least 10 property-based test files** (see e.g. `apps/shortener-service/cache/*_property_test.go`). Counts measured by `find . -name "*_test.go" | wc -l`.
+- Shift-Left: pre-commit hooks gate lint + format + tests
+- Incremental CI: dynamic detection of changed services so unchanged services skip rebuild — see [DYNAMIC_CI_STRATEGY](docs/ci-cd/DYNAMIC_CI_STRATEGY.md)
+- Code ownership: CODEOWNERS-driven review routing
+- Per-service docs: every service under `apps/` has its own README and API doc
 
-✨ **最佳实践示范**
-- Shift-Left 质量保证：pre-commit hooks 自动检查
-- 增量构建：只构建变更的服务，节省 CI 时间
-- 代码所有权：CODEOWNERS 文件定义审批流程
-- 文档完善：每个服务都有详细的 README 和 API 文档
+**Extensibility scaffolding**
+- Service templates for Go and Java — new service onboards via `make` + template scaffolding
+- Unified Makefile interface across services
+- New service automatically wired into build / test / deploy graph
 
-✨ **易于扩展**
-- 服务模板：快速创建新的 Go 或 Java 服务
-- 统一接口：所有服务遵循相同的模式和规范
-- 自动集成：新服务自动加入构建、测试、部署流程
-
-✨ **开发体验优秀**
+**Developer experience**
 - 一键启动：`make im-up` 启动完整的 IM 系统
 - 快速反馈：代码变更后自动重新加载
 - 清晰的错误信息：友好的错误提示和故障排查指南
@@ -225,7 +225,7 @@ make deps-node         # 只处理 Node.js 依赖
 - ✅ 完整性验证：确保依赖一致性
 - 📊 状态查看：快速了解项目依赖
 
-详细说明请参考 [统一依赖管理文档](.kiro/specs/im-chat-system/UNIFIED_DEPS_IMPLEMENTATION.md)
+详细说明请参考各服务模板（`templates/go-service/` 与 `templates/java-service/`）的依赖声明，以及根 `Makefile` 中的 `deps`/`tidy` 目标。
 
 ### 🔧 手动设置（如果需要）
 
@@ -571,8 +571,7 @@ make im-up
 
 - [IM Service 文档](apps/im-service/README.md) - 核心消息路由和离线持久化
 - [IM Gateway 文档](apps/im-gateway-service/README.md) - WebSocket 网关
-- [设计文档](.kiro/specs/im-chat-system/design.md) - 系统设计
-- [任务列表](.kiro/specs/im-chat-system/tasks.md) - 实现进度
+- IM 设计与任务清单：早期使用 Kiro IDE 的 `.kiro/specs/` 维护，已停用。当前以各服务 README + `docs/architecture/` + git 提交历史作为追溯依据。
 
 ### 🎯 下一步
 
@@ -637,7 +636,7 @@ make create
 - ✅ Docker 构建支持
 - ✅ Kubernetes 部署模板
 
-详细说明请参考 [应用管理指南](docs/APP_MANAGEMENT.md#adding-new-apps)
+详细说明请参考 [应用管理指南](docs/development/APP_MANAGEMENT.md#adding-new-apps)
 
 ### 手动使用模板
 
@@ -952,14 +951,15 @@ cd apps/todo-service && go run .
 - [代码检查指南](docs/development/LINTING_GUIDE.md) - Linting 配置和使用说明
 - [创建应用](docs/development/CREATE_APP_GUIDE.md) - 创建新应用的完整指南
 - [应用管理](docs/development/APP_MANAGEMENT.md) - 应用管理系统使用指南
+- [属性测试指南](docs/development/PROPERTY_TESTING.md) - Go 与 Java 属性测试规范
 - [Makefile 指南](docs/development/MAKEFILE_GUIDE.md) - Makefile 使用和 Proto 生成
 
 ### ⚙️ 配置文档
 
-- [配置系统完整指南](docs/CONFIG_SYSTEM_GUIDE.md) ⭐ - 配置系统完整文档
+- [配置系统完整指南](docs/CONFIG_SYSTEM_GUIDE.md) - 配置系统完整文档
 - [多环境配置快速参考](docs/MULTI_ENV_CONFIG_QUICK_REFERENCE.md) - 配置命令速查
-- [配置迁移指南](docs/CONFIG_MIGRATION_GUIDE.md) - 服务配置迁移步骤
-- [配置文档索引](docs/CONFIG_DOCUMENTATION_INDEX.md) - 配置文档导航
+- [配置迁移指南](docs/archive/CONFIG_MIGRATION_GUIDE.md) - 服务配置迁移步骤（已归档）
+- [配置文档简化记录](docs/CONFIG_DOCUMENTATION_SIMPLIFICATION.md) - 配置文档治理过程
 
 ### 🚢 部署文档
 
