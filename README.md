@@ -84,6 +84,9 @@
 
 ### Engineering practice / 工程实践亮点
 
+**Architecture decisions**
+- 7 ADRs documenting non-obvious choices: monorepo + polyglot, gRPC/Protobuf contract, Higress vs. Envoy, stateless WS gateway + etcd, multi-level cache + singleflight, OTel-first observability, at-least-once delivery + dedup. See [`docs/adr/`](docs/adr/) for the full set.
+
 **Quality engineering**
 - Test layer: 93 Go test files + 43 Java test files; **at least 10 property-based test files** (see e.g. `apps/shortener-service/cache/*_property_test.go`). Counts measured by `find . -name "*_test.go" | wc -l`.
 - Shift-Left: pre-commit hooks gate lint + format + tests
@@ -940,6 +943,7 @@ cd apps/todo-service && go run .
 
 ### 🏗️ 架构文档
 
+- [架构决策记录 / ADRs](docs/adr/) - 7 篇 ADR 记录关键架构决策与取舍
 - [系统架构](docs/architecture/ARCHITECTURE.md) - 系统架构和设计决策
 - [基础设施](docs/architecture/INFRASTRUCTURE.md) - K8s 和 Higress 配置
 - [Higress 路由配置](docs/architecture/HIGRESS_ROUTING_CONFIGURATION.md) - API 网关路由
